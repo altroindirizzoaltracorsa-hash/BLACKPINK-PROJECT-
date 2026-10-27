@@ -135,6 +135,50 @@ console.log('--- and on the home carousel too, which is where people look');
   r.withDots===r.needDots
     ? ok('each with its dots',`${r.withDots}/${r.needDots}`)
     : bad('each with its dots',`${r.withDots}/${r.needDots}`);
+
+  // AND THE DOTS HAVE TO LAND ON THEIR OWN PICTURE. Dots that exist, look
+  // right and go to the wrong slide is the state this page was in: carouselGo
+  // scrolls to `slide.offsetLeft`, which is measured from the nearest
+  // POSITIONED ancestor, and the strip was static — so every target carried
+  // the strip's offset inside the card as a constant error. On a five-picture
+  // strip that error was smaller than the scroll range and snap-proximity hid
+  // it. On ADDICTED's two-picture strip it was larger, so both dots clamped to
+  // the end and the first could never come back. Nothing errored, the dots lit
+  // in sequence, and only clicking one showed it.
+  //
+  // So: click each dot and check which frame is actually under the middle of
+  // the strip.
+  for (const [i,strip] of (await page.$$('#home-countdowns > .cd-wrap .cd-strip')).entries()) {
+    const n = await strip.$$eval('.cd-frame', f => f.length);
+    const dots = await page.$$(`#home-countdowns > .cd-wrap .cd-strip-nav:nth-of-type(1) .cd-dot`);
+    if (n < 2) continue;
+    const label = await strip.evaluate(e => (e.getAttribute('aria-label')||`strip ${e.className}`));
+    let wrong = [];
+    for (let k = 0; k < n; k++) {
+      const moved = await strip.evaluate((el,k2) => {
+        const nav = el.parentElement.querySelector(':scope > [data-carousel-nav]');
+        const d = nav && nav.querySelectorAll('.cd-dot')[k2];
+        if (!d) return null;
+        d.click();
+        return new Promise(r2 => setTimeout(() => {
+          const mid = el.getBoundingClientRect().left + el.clientWidth/2;
+          const at = [...el.querySelectorAll('.cd-frame')]
+            .map((f,ix) => ({ ix, d: Math.abs(f.getBoundingClientRect().left + f.offsetWidth/2 - mid) }))
+            .sort((a,b) => a.d - b.d)[0];
+          r2({ want: k2, got: at.ix,
+               lit: [...nav.querySelectorAll('.cd-dot')].findIndex(x => x.classList.contains('is-on')) });
+        }, 1400));
+      }, k);
+      if (!moved) continue;
+      if (moved.got !== moved.want || moved.lit !== moved.want) {
+        wrong.push(`dot ${moved.want+1} → frame ${moved.got+1}, lit ${moved.lit+1}`);
+      }
+    }
+    wrong.length === 0
+      ? ok(`   its dots go to their own picture`, `${label}, ${n}`)
+      : bad(`   its dots go to their own picture`, `${label}: ${wrong.join('; ')}`);
+    void dots; void i;
+  }
   r.times>0 ? ok("the other cards' own release times are untouched",`${r.times} shown`)
             : bad("the other cards' own release times are untouched",'they were hidden');
   r.lisaTimes===0 ? ok("and the MV's worldwide times stay on the release's own page")

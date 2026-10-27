@@ -2094,8 +2094,13 @@
   .cd-card-addicted .ad-locket img { height: 1.05rem; width: auto; display: block; }
   /* No border, no letterbox backing: the photo is nearly black and the card is
      nearly black, so anything drawn around it reads as a box with nothing in
-     it. At the portrait's own ratio there is nothing to letterbox anyway. */
-  .cd-card-addicted .ad-strip { overflow: visible; }
+     it. At the portrait's own ratio there is nothing to letterbox anyway.
+     What is NOT overridden here is the overflow. This carried
+     `overflow: visible` while the strip held one picture, which cost nothing
+     then and silently broke it the moment a second arrived: a strip with
+     visible overflow is not a scroll container, so `scrollLeft` stayed 0, the
+     dots did nothing, and the second photograph sat outside the card where
+     only a screenshot would find it. */
   .cd-card-addicted .ad-strip .cd-frame { border: 0; }
   .cd-card-addicted .ad-strip .cd-frame img { background: transparent; object-fit: cover; }
   .ad-snippet { width: 100%; margin: 0.6rem auto 0; text-align: center; }
@@ -2558,7 +2563,17 @@
   /* It scrolls rather than wrapping or shrinking: several frames side by side on
      a card this width would be too small to read, and a wrap would make the card
      taller than the countdown it belongs to. */
-  .cd-strip { display: flex; gap: 0.35rem; width: 100%; min-width: 0; margin: 0.5rem auto 0;
+  /* `position: relative` so the frames measure from the STRIP. carouselGo
+     computes where to scroll from `slide.offsetLeft`, which is relative to the
+     nearest positioned ancestor — with the strip static that was the card, so
+     every target carried the strip's own offset inside it as a constant error.
+     On a long strip it mostly hid: the targets were all shifted by the same
+     ~91px and snap-proximity pulled each one back onto a picture. On the
+     two-picture ADDICTED strip the shift (352px) was larger than the whole
+     scroll range (216px), so BOTH dots clamped to the end and the first one
+     could never return. */
+  .cd-strip { position: relative;
+    display: flex; gap: 0.35rem; width: 100%; min-width: 0; margin: 0.5rem auto 0;
     overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x proximity;
     scrollbar-width: none; -ms-overflow-style: none; }
   .cd-strip::-webkit-scrollbar { display: none; }
@@ -4056,9 +4071,27 @@
                  which is what it is. It never belonged in a picture carousel
                  next to a photograph, and that is also why the two could not
                  agree on a frame shape. -->
-            <div class="cd-strip ad-strip" style="--cd-frame-ratio: 3 / 4;" aria-label="ADDICTED promotional image">
+            <div class="cd-strip ad-strip" style="--cd-frame-ratio: 3 / 4;" data-carousel data-carousel-autoplay="4500"
+                 aria-label="ADDICTED promotional images">
               <a class="cd-frame" href="/strips/addicted-1.webp" target="_blank" rel="noopener">
                 <img src="/strips/addicted-1.webp" loading="lazy" alt="JISOO looking through a gap in a beaded curtain"></a>
+              <!-- 1088x1440, so 0.756 against the strip's 3/4 — eight thousandths
+                   wide, which `cover` takes off the sides without anything to
+                   see. It carries the title treatment and the date in its own
+                   corner, unlike the first; that is a caption inside a
+                   photograph rather than the key visual, which is a wordmark
+                   with a face at the edge and still belongs only on the share
+                   card. -->
+              <a class="cd-frame" href="/strips/addicted-4.jpg" target="_blank" rel="noopener">
+                <img src="/strips/addicted-4.jpg" loading="lazy" alt="JISOO crouching in a star-covered dress against a curtain of light"></a>
+            </div>
+            <!-- The dots. With one picture this card had none and did not need
+                 any; with two, a strip that scrolls and says nothing about it
+                 is a second picture nobody finds. A sibling of the strip,
+                 because the carousel looks for its nav as a direct child of
+                 the track's parent. -->
+            <div class="cd-nav cd-strip-nav" data-carousel-nav hidden>
+              <div class="cd-dots" data-carousel-dots></div>
             </div>
             <!-- LINKS OUT, NOT A PLAYER. An embedded preview cannot start on
                  its own — browsers refuse audio before a gesture, so anything
@@ -25167,6 +25200,7 @@ const ADDICTED_CARD_PICS = [
   { url: '/strips/addicted-1.webp',              hasLockup: false },
   { url: '/strips/addicted-2.jpg',               hasLockup: true  },
   { url: '/strips/addicted-3.jpg',               hasLockup: true  },
+  { url: '/strips/addicted-4.jpg',               hasLockup: true  },
 ];
 
 async function selectAddictedCardArt(url, thumbEl) {
