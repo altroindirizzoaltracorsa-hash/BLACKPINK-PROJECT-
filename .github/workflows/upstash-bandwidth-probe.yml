@@ -1,0 +1,104 @@
+name: Generate known Upstash bandwidth
+
+# The other half of "is the traffic compressed?".
+#
+# `redis-report.yml` answers how COMPRESSIBLE the data is (bu_yt_live_* gzips
+# 6.9x). It cannot answer whether anything compresses it in transit, or whether
+# Upstash bills the compressed figure — neither is visible from inside the code,
+# and Upstash reports one bandwidth number for the whole database with no
+# per-caller breakdown.
+#
+# What settles it is a delta: put a KNOWN amount of read through the database
+# and see how far the console's figure moves.
+#
+#   1. Read the bandwidth figure on the Upstash console's usage page.
+#   2. Run this with a call count.
+#   3. Read the figure again.
+#
+#   moved by ~450 KB per call  → billed raw; compression is worth asking
+#                                Upstash support about
+#   moved by ~65 KB per call   → already compressed (450 / 6.9); nothing to gain
+#
+# The old recipe was "open /vs.html for exactly ten minutes", which meant
+# estimating the poll count from the interval and trusting a browser tab to stay
+# awake. This does a counted number of identical reads instead, and reports the
+# bytes it actually received.
+#
+# WHY HAMMERING THIS ENDPOINT IS SAFE. /api/youtube-history is not purely
+# read-only: a read freezes newly-derived milestone crossings and the 24h pin.
+# Every one of those writes is NX (HSETNX), so the FIRST call freezes whatever
+# was ready and the rest cannot overwrite it — N calls do what one /vs.html poll
+# does, N times, and the repeats are no-ops. Nothing here writes a snapshot:
+# that needs ?snapshot=1, which this never sends.
+#
+# It is also `Cache-Control: no-store`, which is the point — every call reaches
+# the origin and reads Redis. A cached endpoint would measure nothing.
+#
+# This SPENDS bandwidth on purpose. 20 calls is roughly 9 MB.
+on:
+  workflow_dispatch:
+    inputs:
+      calls:
+        description: 'How many reads to generate (1-100). 20 ≈ 9 MB.'
+        required: false
+        default: '20'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Generate the reads and report the bytes
+        env:
+          CALLS: ${{ github.event.inputs.calls }}
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+        run: |
+          set -u
+          if [ -z "$ADMIN_KEY" ]; then echo "::error::ADMIN_KEY is not set"; exit 1; fi
+          n="${CALLS:-20}"
+          case "$n" in ''|*[!0-9]*) echo "::error::calls must be a number"; exit 1;; esac
+          # Capped so a slipped zero cannot spend a gigabyte of the allowance
+          # this is meant to be explaining.
+          if [ "$n" -lt 1 ] || [ "$n" -gt 100 ]; then
+            echo "::error::calls must be between 1 and 100 (got $n)"; exit 1
+          fi
+
+          URL="https://www.blinksunited.com/api/youtube-history?live=1"
+          echo "Note the bandwidth figure on the Upstash console BEFORE reading on."
+          echo "Generating $n reads of $URL"
+          echo
+
+          total=0; failed=0
+          for i in $(seq 1 "$n"); do
+            # --max-time so one hung request cannot stall the run; the admin key
+            # goes in a header, never the URL, so it stays out of access logs.
+            out=$(curl -sS --max-time 60 -o /dev/null \
+                    -w '%{http_code} %{size_download}' \
+                    -H "x-admin-secret: $ADMIN_KEY" "$URL") || out="000 0"
+            code=${out%% *}; bytes=${out##* }
+            if [ "$code" = "200" ]; then
+              total=$((total + bytes))
+            else
+              failed=$((failed + 1)); echo "  call $i: HTTP $code"
+            fi
+          done
+
+          ok=$((n - failed))
+          echo
+          echo "calls that succeeded : $ok of $n"
+          [ "$failed" -gt 0 ] && echo "calls that FAILED    : $failed (excluded from the total)"
+          echo "bytes received       : $total  (~$((total / 1024)) KB)"
+          [ "$ok" -gt 0 ] && echo "per call             : ~$((total / ok / 1024)) KB"
+          echo
+          echo "Now read the Upstash bandwidth figure again."
+          echo "Divide the increase by $ok to get the billed bytes per read, and"
+          echo "compare it with the per-call figure above:"
+          echo "  about the same      -> billed raw, uncompressed"
+          echo "  roughly a seventh   -> already compressed (bu_yt_live_* gzips 6.9x)"
+          echo
+          echo "The two are not the same measurement — the bytes above crossed the"
+          echo "wire to Vercel, the console counts what Upstash billed between"
+          echo "Redis and Vercel — so compare the ORDER, not the digits."
+
+          if [ "$ok" -eq 0 ]; then echo "::error::every call failed; nothing was measured"; exit 1; fi
+          echo "::notice title=upstash::$ok reads, ~$((total / 1024)) KB received (~$((total / ok / 1024)) KB each)"
