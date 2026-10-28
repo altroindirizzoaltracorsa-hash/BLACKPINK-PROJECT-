@@ -866,6 +866,36 @@ console.log('\n--- the panel');
     // hits a refused clipboard gets a different post from everyone else.
     const fallbackCap = (guide.match(/<pre id="caption-fallback"[^>]*>([\s\S]*?)<\/pre>/) || [])[1];
     check(fallbackCap === cap.t, 'as is the copy shown when the clipboard is refused');
+
+    // HOW MANY ADVANCE IS ONE FACT IN FOUR PLACES — two sentences on the site
+    // and two on the poster, all hand-written, none derived from the others.
+    // Mnet changed it from 20 to 10 and every copy had to be found by hand;
+    // the one that gets missed is on a poster people download and post, where
+    // it outlives the correction.
+    //
+    // Not checked against a number written here, which would be a fifth copy
+    // to go stale. Checked for AGREEMENT: pull every statement of the cut out
+    // of both files and require them to say the same thing.
+    {
+      // Scoped to MAMA's own phrasing. A looser pattern caught BreakTudo's
+      // "Top 20 advance to the next round" — a different award, with its own
+      // cut, which is not a disagreement at all. The count floor is what keeps
+      // the narrowing honest: reword one of these and it drops out of the
+      // match, the count falls, and this fails rather than passing on three
+      // copies that happen to agree.
+      const cuts = [/top\s+(\d+)<\/b>[^.<]{0,40}go through/gi, /makes the top\s+(\d+)/gi];
+      const found = [];
+      for (const [file, text] of [['index.html', site], ['mama-guide.html', guide]]) {
+        for (const re of cuts) {
+          for (const m of text.matchAll(re)) found.push({ file, n: m[1], at: m[0].replace(/\s+/g, ' ') });
+        }
+      }
+      check(found.length === 4, `found ${found.length} statements of the advancement cut, expected 4`,
+            found.map((f) => `${f.file}:${f.n}`).join(', '));
+      const ns = [...new Set(found.map((f) => f.n))];
+      check(ns.length === 1, 'and they all name the same number',
+            ns.length === 1 ? `top ${ns[0]}` : found.map((f) => `${f.file}: ${f.at}`).join(' | '));
+    }
     const dl = guide.match(/<a[^>]+class="dl-btn"[^>]*>/) || [];
     check(dl[0] && /download="[^"]*\.png"/.test(dl[0]) && /href="\/mama-guide\.png"/.test(dl[0]),
           `the poster page offers it as a download (${(dl[0] || 'no button').slice(0, 72)}…)`);
