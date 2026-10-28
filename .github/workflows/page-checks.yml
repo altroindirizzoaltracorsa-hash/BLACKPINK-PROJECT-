@@ -21,6 +21,9 @@ on:
       - 'collabs.html'
       - 'api/collabs.js'
       - 'api/leaderboard.js'
+      - 'api/youtube-history.js'
+      - 'vs.html'
+      - 'mama-guide.html'
       - 'api/proxy-image.js'
       - 'addicted/**'
       - 'vendor/three/**'
@@ -44,6 +47,9 @@ on:
       - 'collabs.html'
       - 'api/collabs.js'
       - 'api/leaderboard.js'
+      - 'api/youtube-history.js'
+      - 'vs.html'
+      - 'mama-guide.html'
       - 'api/proxy-image.js'
       - 'addicted/**'
       - 'vendor/three/**'
@@ -214,6 +220,25 @@ jobs:
       - name: The history read asks for each thing once
         if: always()
         run: node .github/scripts/test_youtube_history_reads.mjs
+
+      # The MAMA ballot is two rounds with different deep links, and the poster
+      # page keeps its own copy of the caption because it is standalone and
+      # cannot call the site's generator. Both go stale at a round rollover —
+      # and both did, silently, because this check existed and was never run
+      # from CI. Round 2 opened on 28 Oct with the card still offering the
+      # event page and the poster still saying "round 1, Ends 22 Oct".
+      - name: The MAMA rounds, links and captions agree
+        if: always()
+        run: node .github/scripts/test_mama_votes.mjs
+
+      # The teaser rows poll hourly instead of every 45s, which is a quarter of
+      # the commands this page costs — and on pay-as-you-go commands are the
+      # bill. The split only works because the fast poll MERGES: assigning
+      # histData whole, as it used to, wipes the rows that were not in that
+      # request and blanks their charts for an hour.
+      - name: /vs.html merges its fast and slow polls
+        if: always()
+        run: node .github/scripts/test_vs_poll_split.mjs
 
       # When Upstash suspended the database, four endpoints answered a 96-byte
       # FUNCTION_INVOCATION_FAILED that named nothing, and the stream cards sat
