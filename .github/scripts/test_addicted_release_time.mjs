@@ -135,40 +135,40 @@ console.log('\n--- the assets, where each one belongs');
   }
 }
 
-console.log('\n--- the snippet is linked, not embedded');
-// Asked for explicitly, and for a good reason: a preview that cannot start on
-// its own is a player sitting there looking broken. Browsers refuse audio
-// before a gesture, so an autoplaying snippet would have to be muted — no use
-// for a song. These go to where it plays by itself in a feed.
+console.log('\n--- the teaser is linked, not embedded');
+// The audio snippet across three platforms was replaced by the official
+// teaser, which is one YouTube video — so one link and no chooser.
+//
+// The rule it inherits is the one the snippet was built on, and it is the same
+// rule for the same reason: a player that cannot start on its own is a player
+// sitting there looking broken. Browsers refuse audio before a gesture, so an
+// autoplaying teaser would have to be muted, which is no use for a teaser.
 {
   const page = readFileSync(root + 'index.html', 'utf8');
   const card = (page.match(/<div class="cd-card cd-card-addicted"[\s\S]*?(?=<div class="cd-card )/) || [''])[0];
-  check(/youtube\.com\/shorts\/rdPMdCzb5yg/.test(card), 'the YouTube snippet is linked');
-  // One control, not three competing with Pre-save. <details> so it works
-  // before the page's script has run.
-  const summaries = card.match(/<summary class="[^"]*ad-snippet-summary/g) || [];
-  check(summaries.length === 1, 'and it is ONE button that opens the choices', `${summaries.length} found`);
+  const block = (card.match(/<div class="ad-snippet">[\s\S]*?<\/div>/) || [''])[0];
+  check(!!block, 'the card has a teaser block');
+
+  const hrefs = [...block.matchAll(/href="([^"]*)"/g)].map(m => m[1]);
+  check(hrefs.length === 1, `it has ${hrefs.length} link(s), not a chooser`, hrefs.join(' '));
+  check(hrefs.some(h => /youtu\.?be(\.com)?\//.test(h)), 'and it goes to YouTube', hrefs.join(' '));
   check(!/ytm-card|ytmPlay|i\.ytimg\.com|youtube(-nocookie)?\.com\/embed/.test(card),
         'and nothing on the card embeds or previews it');
 
-  // Every link in the row must actually go somewhere. A placeholder left
-  // behind while waiting for the Instagram or TikTok URL is a dead button on a
-  // release card.
-  const row = (card.match(/<div class="ad-snippet-links">[\s\S]*?<\/div>/) || [''])[0];
-  const hrefs = [...row.matchAll(/href="([^"]*)"/g)].map(m => m[1]);
-  check(hrefs.length === 3, `the snippet row has ${hrefs.length} link(s)`, hrefs.join(' '));
-  for (const host of ['youtube.com', 'instagram.com', 'tiktok.com']) {
-    check(hrefs.some(h => h.includes(host)), `${host} is linked`);
-  }
-  // Share-tracking tokens are stripped before a link goes on a public page:
-  // ?obrf= on Instagram and ?is= on YouTube identify whoever copied the link,
-  // do nothing for the post, and would be handed to every visitor alike.
+  // Share-tracking tokens are stripped before a link goes on a public page.
+  // ?is= on YouTube and ?obrf= on Instagram identify whoever copied the link,
+  // do nothing for the video, and would be handed to every visitor alike. The
+  // teaser URL arrived carrying ?is=jIZqHwTnEbAt5bbO.
   check(!hrefs.some(h => /[?&](obrf|is|si|_r|_t)=/.test(h)),
-        'and none carries a share-tracking parameter',
+        'and carries no share-tracking parameter',
         hrefs.filter(h => /[?&](obrf|is|si|_r|_t)=/.test(h)).join(' '));
   check(hrefs.every(h => /^https:\/\/\S+\.\S+/.test(h)),
-        'and every one is a real URL, no placeholders',
-        hrefs.filter(h => !/^https:\/\/\S+\.\S+/.test(h)).join(' / ') || hrefs.join(' / '));
+        'and is a real URL, not a placeholder', hrefs.join(' / '));
+
+  // The chooser is gone, so its markup and its styles must be too — a rule
+  // left behind styles nothing and reads as a feature that is still there.
+  check(!/ad-snippet-summary|ad-snippet-links/.test(page),
+        'the old three-platform chooser is fully removed, markup and CSS');
 }
 
 console.log(`\nFAILURES: ${fails.length}`);

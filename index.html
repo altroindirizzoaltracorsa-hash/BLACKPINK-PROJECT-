@@ -2103,16 +2103,11 @@
      only a screenshot would find it. */
   .cd-card-addicted .ad-strip .cd-frame { border: 0; }
   .cd-card-addicted .ad-strip .cd-frame img { background: transparent; object-fit: cover; }
+  /* Was the snippet's three-platform chooser; now one teaser link. The
+     chooser's rules went with it rather than being left behind to style
+     nothing. */
   .ad-snippet { width: 100%; margin: 0.6rem auto 0; text-align: center; }
-  .ad-snippet-summary { display: inline-block; cursor: pointer; list-style: none; }
-  .ad-snippet-summary::-webkit-details-marker { display: none; }
-  .ad-snippet[open] .ad-snippet-summary { opacity: 0.75; }
-  .ad-snippet-links { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center;
-    margin: 0.5rem auto 0; }
-  .ad-snippet-links a { font-size: 0.8rem; padding: 0.35rem 0.7rem; border-radius: 999px;
-    color: var(--ad-text); text-decoration: none;
-    border: 1px solid rgba(182,163,255,0.5); background: rgba(12,7,24,0.4); }
-  .ad-snippet-links a:hover { border-color: var(--ad-light); }
+  .ad-teaser { display: inline-block; }
   .ad-timetable { display: block; margin: 0 0 0.6rem; border-radius: 6px; overflow: hidden; line-height: 0; }
   .ad-timetable img { display: block; width: 100%; height: auto; }
   .cd-card-addicted .cd-goal-label { color: var(--ad-text); opacity: 0.92; }
@@ -4112,14 +4107,22 @@
                  TikTok is the vt.tiktok.com short form as supplied — those do
                  expire, so if it dead-ends, swap in the full
                  www.tiktok.com/@user/video/<id> url. -->
-            <details class="ad-snippet">
-              <summary class="cd-btn ad-btn ad-btn-ghost ad-snippet-summary">▶ Hear the snippet</summary>
-              <div class="ad-snippet-links">
-                <a href="https://youtube.com/shorts/rdPMdCzb5yg" target="_blank" rel="noopener">YouTube ↗</a>
-                <a href="https://www.instagram.com/reel/De9E9T8p_2B/" target="_blank" rel="noopener">Instagram ↗</a>
-                <a href="https://vt.tiktok.com/ZSg4yFEAg/" target="_blank" rel="noopener">TikTok ↗</a>
-              </div>
-            </details>
+            <!-- The official teaser, replacing the audio snippet. One link, so
+                 no chooser: the snippet lived on three platforms and this is a
+                 YouTube video.
+
+                 LINKED, NOT EMBEDDED, for the reason the snippet was: a player
+                 that cannot start on its own is a player sitting there looking
+                 broken, and browsers refuse audio before a gesture, so an
+                 autoplaying teaser would have to be muted — no use for a teaser.
+
+                 The ?is= token is stripped. It identifies whoever copied the
+                 link, does nothing for the video, and would be handed to every
+                 visitor alike. -->
+            <div class="ad-snippet">
+              <a class="cd-btn ad-btn ad-btn-ghost ad-teaser" href="https://youtu.be/ZKupyV0lgqg"
+                 target="_blank" rel="noopener">▶ Watch the teaser ↗</a>
+            </div>
             <div class="cd-links">
               <a class="cd-btn ad-btn" href="https://jisoo.lnk.to/addicted" target="_blank" rel="noopener" onclick="saveAddicted()">Pre-save ↗</a>
               <a class="cd-btn ad-btn ad-btn-ghost" href="https://www.jisoo.io" target="_blank" rel="noopener">jisoo.io ↗</a>
@@ -9681,12 +9684,19 @@ function milestoneTotalOf(tp) { return MILESTONE_TRACK_IDS.reduce((s, id) => s +
 // names the round and carries a template id — `…/mama-fans-choice-vote-r1/
 // 6ab09532…` — so round 1's link is not round 2's, and a card still pointing
 // at r1 on 29 October would be sending everyone to a ballot that closed.
-// Round 2's id does not exist yet; until it does, mamaVoteUrl() falls back to
-// the event page, which is the right answer rather than a broken one.
+// Round 2's link arrived on 2026-10-28, the day that round opened, and its
+// template is `mama-fans-choice-vote-r2-v2` — a different NAME as well as a
+// different id, which is exactly why this is stored per round rather than
+// built from the round number.
+//
+// Both links are stored trimmed: the share sheet hands over `missionType` and
+// `refererCode` too, and the note under mamaVoteUrl() says why neither belongs
+// on a public page.
 const MAMA_ROUNDS = [
   { n: 1, from: Date.parse('2026-10-12T10:00:00Z'), to: Date.parse('2026-10-22T14:59:59Z'),
     voteUrl: 'https://mnetplus.world/event/2026-mama?deeplink=mnetplus%3A%2F%2Fvote%2Ftemplates%2Fmama-fans-choice-vote-r1%2F6ab09532c314bb17315adc4e%3Furl_fallback_type%3Dupdate' },
-  { n: 2, from: Date.parse('2026-10-28T09:00:00Z'), to: Date.parse('2026-11-08T14:59:59Z') },
+  { n: 2, from: Date.parse('2026-10-28T09:00:00Z'), to: Date.parse('2026-11-08T14:59:59Z'),
+    voteUrl: 'https://mnetplus.world/event/2026-mama?deeplink=mnetplus%3A%2F%2Fvote%2Ftemplates%2Fmama-fans-choice-vote-r2-v2%2F6acecda6f3778e1b06f5170b%3Furl_fallback_type%3Dupdate' },
 ];
 // Where the ballot lives when no round-specific link is known.
 const MAMA_EVENT_URL = 'https://mnetplus.world/event/2026-mama';

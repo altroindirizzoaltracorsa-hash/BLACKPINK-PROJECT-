@@ -615,10 +615,17 @@ console.log('\n--- the panel');
   check(rowHref === card.href, 'and the category’s own Vote link is the same URL');
 
   // ROUND 2 HAS A DIFFERENT BALLOT. The deep link names the round and carries a
-  // template id, so round 1's link is dead the moment round 2 opens. Round 2's
-  // id is not known yet; the fallback has to be the event page, never r1 — a
-  // card confidently pointing at a closed ballot is worse than one that makes
-  // you tap twice.
+  // template id, so round 1's link is dead the moment round 2 opens.
+  //
+  // Round 2's link arrived on 2026-10-28 and this check changed with it: it
+  // used to assert the event-page FALLBACK, which was right while the id was
+  // unknown and is wrong now. What never changes is the thing underneath — a
+  // card must never point at a closed ballot — so every window is checked
+  // against `vote-r1` leaking into it, whatever it does point at.
+  //
+  // Round 2's template is `mama-fans-choice-vote-r2-v2`, a different NAME as
+  // well as a different id, which is why the test matches on r1's absence and
+  // r2's own string rather than on a round number spliced into a pattern.
   const urls = await page.evaluate(() => ({
     r1:   mamaVoteUrl(Date.parse('2026-10-15T00:00:00Z')),
     gap:  mamaVoteUrl(Date.parse('2026-10-25T00:00:00Z')),
@@ -626,11 +633,24 @@ console.log('\n--- the panel');
     over: mamaVoteUrl(Date.parse('2026-12-01T00:00:00Z')),
     event: MAMA_EVENT_URL,
   }));
-  check(/vote-r1/.test(decodeURIComponent(urls.r1)), 'round 1 uses round 1’s ballot');
-  check(!/vote-r1/.test(decodeURIComponent(urls.r2)) && urls.r2 === urls.event,
-        `round 2 falls back to the event page, not to round 1’s closed ballot (${urls.r2})`);
-  check(!/vote-r1/.test(decodeURIComponent(urls.over)) && urls.over === urls.event,
-        'and so does the period after the last round');
+  const plain = (u) => decodeURIComponent(u);
+  check(/vote-r1/.test(plain(urls.r1)), 'round 1 uses round 1’s ballot');
+  check(/vote-r2/.test(plain(urls.r2)) && !/vote-r1/.test(plain(urls.r2)),
+        'round 2 uses round 2’s own ballot, not round 1’s', urls.r2);
+  // The gap sits between a closed round and an open one, and it points forward.
+  check(!/vote-r1/.test(plain(urls.gap)), 'the gap never points back at round 1', urls.gap);
+  // After the last round there is no ballot to name, so the event page is still
+  // the only honest answer.
+  check(!/vote-r1|vote-r2/.test(plain(urls.over)) && urls.over === urls.event,
+        'after the last round it falls back to the event page', urls.over);
+  // Both stored links are trimmed. The share sheet hands over a tracking
+  // parameter and an empty referral slot; the second is the dangerous one,
+  // because the day it is copied with a code in it every blink who taps Vote
+  // Now is quietly crediting one account.
+  for (const [name, u] of [['round 1', urls.r1], ['round 2', urls.r2]]) {
+    check(!/missionType|refererCode/.test(u), `${name}’s link carries no share tracking`,
+          (u.match(/(missionType|refererCode)[^&]*/g) || []).join(' '));
+  }
   check(card && card.linkColour && card.linkColour !== 'rgb(0, 0, 238)',
         `the rules link is styled, not browser-default blue (${card && card.linkColour})`);
 

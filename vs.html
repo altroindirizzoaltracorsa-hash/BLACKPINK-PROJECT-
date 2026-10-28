@@ -182,6 +182,22 @@
     { key:'fa', label:'JENNIE · Fallen Angel',  ids:['s466YCiHfKw'] },
   ];
   const VIDEOS = ROWS.flatMap(r => r.ids);   // everything we fetch
+
+  // Rows that do NOT need the 45-second poll. Named by ROW KEY rather than by
+  // video id, so retiring a teaser and putting a new one in its place is an
+  // edit to ROWS above and nothing else — an id list here would go stale
+  // silently and start fast-polling the replacement.
+  //
+  // WHY: on pay-as-you-go the Upstash bill is the COMMAND COUNT, and one live
+  // poll costs 5 reads per video. Seven videos is 35 commands every 45s, which
+  // is ~2,800 an hour for as long as this page is open — the largest single
+  // consumer on the database. Dropping the two teasers out of that poll takes
+  // it to 25, and they are the pair whose minute-to-minute movement nobody is
+  // watching.
+  const SLOW_ROWS = ['ts'];
+  const SLOW_MS = 60 * 60 * 1000;
+  const slowIds = () => ROWS.filter(r => SLOW_ROWS.includes(r.key)).flatMap(r => r.ids);
+  const liveIds = () => VIDEOS.filter(id => !slowIds().includes(id));
   const POLL_MS = 15000;
 
   // Release moments, served by /api/youtube-history alongside the data. The page
@@ -823,16 +839,24 @@
     return r;
   }
 
-  async function pollHistory(){
+  // `ids` defaults to the fast rows. Pass the slow ones to top them up.
+  //
+  // histData is MERGED, not replaced. It used to be assigned whole, which was
+  // right while every poll carried every video — the moment one poll carries a
+  // subset, assigning it wipes the rows that were not in this request and their
+  // charts go blank until the next hour.
+  async function pollHistory(ids){
     try{
-      const r = await apiGet('/api/youtube-history?live=1&ids='+VIDEOS.join(','));
+      const want = ids || liveIds();
+      if (!want.length) return;
+      const r = await apiGet('/api/youtube-history?live=1&ids='+want.join(','));
       if (!r) return;
       const d = await r.json();
       if (d && d.releases){ RELEASE = d.releases; }   // before the milestones, which read it
       if (d && d.marks){ markData = d.marks; }        // before updateMilestones, which renders them
       if (d && d.milestones){ milestoneData = d.milestones; updateMilestones(); }
       if (d && d.viewMilestones){ viewMsData = d.viewMilestones; updateViewMs(); }
-      if (d && d.videos){ histData = d.videos; drawAll(); }
+      if (d && d.videos){ histData = Object.assign({}, histData, d.videos); drawAll(); }
     }catch(e){}
   }
 
@@ -892,9 +916,18 @@
   // database. The frequency was never the problem; what each poll dragged along
   // was. Re-measure before raising either of these.
   setInterval(pollHistory, 45 * 1000);
+  // The slow rows, once an hour. Fetched ONCE up front as well, or they would
+  // sit blank for the first hour the page is open — the saving is in the
+  // repeat, not in the first read.
+  const pollSlow = () => pollHistory(slowIds());
+  pollSlow();
+  setInterval(pollSlow, SLOW_MS);
   pollHourly();
   setInterval(pollHourly, 5 * 60 * 1000);
-  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ poll(); pollHistory(); pollHourly(); } });
+  // Coming back to the tab refreshes everything including the slow rows: the
+  // cost of this page is the repeat poll, and somebody who has just looked at
+  // it wants what is true now.
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden){ poll(); pollHistory(); pollSlow(); pollHourly(); } });
 </script>
 </body>
 </html>
