@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-29T16:28:02.300Z",
+  "generatedAt": "2026-10-29T21:28:13.451Z",
   "date": "2026-10-29",
   "source": "https://xn--o39an51b2re.com",
   "charts": [
@@ -21,8 +21,8 @@
       "kr": "실시간 차트",
       "label": "Melon · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/melon/realtime",
-      "available": true,
-      "totalRows": 100,
+      "available": false,
+      "totalRows": 0,
       "entries": []
     },
     {
@@ -391,8 +391,8 @@
           "link": "https://www.melon.com/song/detail.htm?songId=38629386"
         },
         {
-          "rank": 79,
-          "previous": 79,
+          "rank": 80,
+          "previous": 80,
           "song": "APT.",
           "artists": "로제 (ROSÉ), Bruno Mars",
           "member": "ROSÉ",
@@ -508,7 +508,7 @@
       "label": "Melon · Newest (1w)",
       "url": "https://xn--o39an51b2re.com/chart/melon/newest-w1",
       "available": true,
-      "totalRows": 49,
+      "totalRows": 50,
       "entries": [
         {
           "rank": 34,
@@ -734,42 +734,9 @@
       "kr": "실시간 차트",
       "label": "Genie · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/genie/realtime",
-      "available": true,
-      "totalRows": 250,
-      "entries": [
-        {
-          "rank": 71,
-          "previous": 64,
-          "song": "toxic till the end",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108575614"
-        },
-        {
-          "rank": 100,
-          "previous": 80,
-          "song": "뛰어(JUMP)",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=110931419"
-        },
-        {
-          "rank": 104,
-          "previous": 124,
-          "song": "APT.",
-          "artists": "로제 (ROSÉ), 로제 (ROSÉ) & Bruno Mars, Bruno Mars",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108107291"
-        },
-        {
-          "rank": 133,
-          "previous": 122,
-          "song": "like JENNIE",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=109342665"
-        }
-      ]
+      "available": false,
+      "totalRows": 0,
+      "entries": []
     },
     {
       "key": "genie-daily",
@@ -962,7 +929,7 @@
           "link": "https://www.music-flo.com/detail/track/522311944/details"
         },
         {
-          "rank": 86,
+          "rank": 85,
           "previous": 86,
           "song": "뛰어(JUMP)",
           "artists": "BLACKPINK",
@@ -970,20 +937,20 @@
           "link": "https://www.music-flo.com/detail/track/547505427/details"
         },
         {
-          "rank": 87,
-          "previous": 87,
-          "song": "like JENNIE",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.music-flo.com/detail/track/531884639/details"
-        },
-        {
-          "rank": 89,
+          "rank": 88,
           "previous": 89,
           "song": "APT.",
           "artists": "로제 (ROSÉ), Bruno Mars",
           "member": "ROSÉ",
           "link": "https://www.music-flo.com/detail/track/517125479/details"
+        },
+        {
+          "rank": 89,
+          "previous": 87,
+          "song": "like JENNIE",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://www.music-flo.com/detail/track/531884639/details"
         }
       ]
     },
@@ -1141,7 +1108,7 @@
   ],
   "summary": {
     "chartsChecked": 26,
-    "chartsAvailable": 25,
-    "totalEntries": 104
+    "chartsAvailable": 23,
+    "totalEntries": 100
   }
 }
