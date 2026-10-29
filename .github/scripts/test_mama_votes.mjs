@@ -302,7 +302,7 @@ console.log('\n--- signed out');
 // ── the page ────────────────────────────────────────────────────────────────
 console.log('\n--- the panel');
 {
-  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+  const b = await chromium.launch();
   const page = await b.newPage({ viewport: { width: 1100, height: 1200 } });
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e)));
