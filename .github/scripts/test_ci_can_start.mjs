@@ -35,29 +35,41 @@ for (const s of scripts) {
   check(existsSync(root + '.github/scripts/' + s), `${s} exists`);
 }
 
-console.log('\n--- and none of them hardcode a path that only exists in a session');
-// The absolute path is legitimate INSIDE _playwright.mjs, which is the fallback
-// arm of the try/catch. Anywhere else it is a test that cannot start on a
-// runner. Scripts not wired into the workflow are left alone: they are only
-// ever run by hand, in the session, where that path is the one that works.
-const BAD = '/opt/node22/lib/node_modules/playwright';
-// An IMPORT of that path, not a mention of it. The first version tested
-// `src.includes(BAD)` and promptly failed on this file, which names the path
-// in the constant above and twice in the prose — a check that cannot describe
-// what it forbids without tripping over itself. Comments are free; resolving
-// through it is what breaks on a runner.
-const IMPORTS_BAD = new RegExp(String.raw`(?:\bfrom|\bimport\s*\()\s*['"][^'"]*${BAD}`);
+console.log('\n--- and none of them reach for a path that only exists in a session');
+// TWO PATHS, NOT ONE, and the first version of this guard only knew about the
+// first. It caught the import, shipped, and the very next run failed on the
+// same script for the OTHER one: chromium.launch({ executablePath:
+// '/opt/pw-browsers/chromium' }), the container's browser binary, which a
+// runner does not have either. Same class of mistake, same file, one step
+// later — a guard that covers half a class just moves the failure.
+//
+// Each is matched as the CONSTRUCT that uses it, never as a bare substring.
+// This file has to name what it forbids, and a substring test makes it fail on
+// itself — which is exactly what the import rule did on its first run here.
+// Prose and tables are free; resolving or launching through them is not.
+//
+// 19 of the browser tests import from _playwright.mjs and call
+// chromium.launch() with no options, and have always been fine in both
+// places. That is the shape to match.
+const SESSION_ONLY = [
+  { what: 'resolves playwright by the container path',
+    why:  'ERR_MODULE_NOT_FOUND on a runner, before the first assertion',
+    re:   /(?:\bfrom|\bimport\s*\()\s*['"][^'"]*\/opt\/node22\/lib\/node_modules\/playwright/ },
+  { what: 'launches the container browser binary',
+    why:  "the runner's chromium is wherever Playwright put it, not /opt",
+    re:   /executablePath\s*:\s*['"][^'"]*\/opt\/pw-browsers/ },
+];
 for (const s of scripts) {
   const src = readFileSync(root + '.github/scripts/' + s, 'utf8');
-  const hard = IMPORTS_BAD.test(src);
-  check(!hard, `${s} resolves playwright through _playwright.mjs`,
-        hard ? 'imports the container path directly — ERR_MODULE_NOT_FOUND on a runner' : undefined);
+  const hits = SESSION_ONLY.filter((r) => r.re.test(src));
+  check(hits.length === 0, `${s} uses nothing that only exists in a session`,
+        hits.length ? hits.map((h) => `${h.what} — ${h.why}`).join('; ') : undefined);
 }
 
 console.log('\n--- the shim itself still has both arms');
 const shim = readFileSync(root + '.github/scripts/_playwright.mjs', 'utf8');
 check(/import\(\s*['"]playwright['"]\s*\)/.test(shim), 'it tries the bare specifier first, which is the CI one');
-check(shim.includes(BAD), 'and falls back to the session path');
+check(/\/opt\/node22\/lib\/node_modules\/playwright/.test(shim), 'and falls back to the session path');
 check(/ERR_MODULE_NOT_FOUND/.test(shim), 'and only swallows a module-not-found, so a real error still surfaces');
 
 console.log(`\nFAILURES: ${fails.length}`);
