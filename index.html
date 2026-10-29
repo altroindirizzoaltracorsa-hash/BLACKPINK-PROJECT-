@@ -23113,8 +23113,12 @@ function _drawSupporterBadge(ctx, W, rightX, baselineY, opts) {
   // by the top / left / right edges). `leftX` pins the left edge instead, for a
   // card that has to keep its top-right corner clear.
   const pad = Math.round(W * 0.02);
-  const pillX = (opts.leftX != null) ? Math.max(pad, opts.leftX)
-                                     : Math.max(pad, rightX - pillW);
+  // `centerX` puts it on the card's middle line, for a background whose
+  // subject reaches BOTH top corners — there is no corner left to retreat to,
+  // so the pill takes the gap between them instead.
+  const pillX = opts.centerX ? Math.max(pad, Math.round((W - pillW) / 2))
+              : (opts.leftX != null) ? Math.max(pad, opts.leftX)
+              : Math.max(pad, rightX - pillW);
   let pillY = Math.round(baselineY - fontPx * 0.32 - pillH / 2);   // centre on the text row
   const topMargin = Math.round(H * 0.028);
   if (pillY < topMargin) pillY = topMargin;
@@ -23268,7 +23272,12 @@ function drawPresaveCard(canvas, d) {
     // instead.
     const stampOpts = { emblem: d.emblemImg || d.titleImg, tint: d.stampTint || '#020a0b',
                         pill: d.stampPill || '#ffe051', ink: d.stampInk || '#020a0b' };
-    if (d.stampStack) {
+    if (d.stampCenter) {
+      // Top centre. On the D-DAY cut the top-right is the cat ear and the pill
+      // sat across it; the left is the wordmark's column. The middle is the
+      // one place on that row with nothing in it.
+      _drawSupporterBadge(ctx, W, 0, topY, { ...stampOpts, centerX: true });
+    } else if (d.stampStack) {
       // One row below the wordmark, left-aligned with it. The row's height is
       // the pill's own, which it works out from its contents, so this asks for
       // it rather than assuming a fraction of the card.
@@ -23442,7 +23451,7 @@ async function openAddictedCard() {
     base: '#0b0618', scrimRGB: '11,6,24', focalBias: 0.5,
     // The lockup lives inside a centred heart; the name and the dates belong
     // on the same middle line, not against the left margin.
-    align: 'center',
+    align: ADDICTED_CARD_ALIGN,
     titleFrac: 0.72,   // the artwork IS the card here, not a column item
     stampTint: '#0b0618', stampPill: '#b6a3ff', stampInk: '#0b0618',
     accent: '#b6a3ff', claim: 'I pre-saved',
@@ -25282,6 +25291,11 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
 // Derived from the release instant, never typed a second time. Korea has no
 // DST, so UTC+9 is arithmetic on the instant rather than a named-timezone
 // lookup, and it cannot slide the way a local hour does at a changeover.
+// ADDICTED's own default for the bottom block, in ONE place: openAddictedCard
+// seeds the card with it and selectAddictedCardArt restores it for any pick
+// that does not override. Written twice, a picture that set `align` would
+// never give it back.
+const ADDICTED_CARD_ALIGN = 'center';
 const ADDICTED_DAY_MS = 24 * 3600e3;
 const ADDICTED_KST_MS = 9 * 3600e3;
 const ADDICTED_DDAY_FROM = Math.floor(
@@ -25321,8 +25335,13 @@ const ADDICTED_CARD_PICS = [
   // The D-DAY cut, same shape and the same two constraints. It takes over from
   // the one above at the instant that one expires, so exactly one of them is
   // ever on offer and there is no day with neither.
+  // stampCenter + align: this cut puts her face in the middle, a cat ear in
+  // the top-right where the pill goes, and the wordmark down the left. So the
+  // pill takes the top centre, and the claim goes under the wordmark rather
+  // than on the card's centre line where it would sit under her chin.
   { url: '/strips/addicted-7.jpg',               hasLockup: true, landscapeOnly: true,
-    from: ADDICTED_DDAY_FROM, until: ADDICTED_DDAY_UNTIL },
+    from: ADDICTED_DDAY_FROM, until: ADDICTED_DDAY_UNTIL,
+    stampCenter: true, align: 'left' },
 ];
 
 // What the ADDICTED picker shows right now. Format-dependent and clock-
@@ -25364,6 +25383,14 @@ async function selectAddictedCardArt(url, thumbEl) {
   // Always assigned, like photoWide and for the same reason: left set, the
   // previous picture's answer about its own corner would govern this one.
   _presaveCardData.stampStack = !!pick.stampStack;
+  // Always assigned, same reason as stampStack above: left set, the previous
+  // picture's answer would govern this one.
+  _presaveCardData.stampCenter = !!pick.stampCenter;
+  // Which side the bottom block sits on. ADDICTED centres by default, because
+  // its own lockup is a centred heart; a background with the wordmark already
+  // printed down the LEFT wants the claim under that wordmark instead, or
+  // "I pre-saved" floats in the middle of the card under nothing.
+  _presaveCardData.align = pick.align || ADDICTED_CARD_ALIGN;
   _presaveCardData.artHasLockup = pick.hasLockup;
   _presaveCardData.titleImg = pick.hasLockup ? null : (_adLogoImg || null);
   if (label) label.textContent = _presaveCardData.earned ? "I'M AN EARLY SUPPORTER" : 'ADDICTED · COUNTDOWN';

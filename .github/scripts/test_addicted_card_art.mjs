@@ -223,10 +223,18 @@ console.log('\n--- the Early Supporter pill keeps off a picture that says so');
     return n < 200 ? null : { x0: x0/c.width, x1: x1/c.width, y0: y0/c.height, y1: y1/c.height, n };
   }, PILL);
 
-  for (const [url, fmt, stacked] of [
-    [WITH.url,    'square',    true],
-    [WITH.url,    'landscape', true],
-    [WITHOUT.url, 'square',    false],
+  // A third placement, and the reason there is one: the D-DAY cut has her
+  // face in the middle, a cat ear in the top-right where the pill goes, and
+  // the wordmark down the left — so neither the corner nor the stacked-left
+  // row is free, and the pill takes the gap between them.
+  const CENTRED = await page.evaluate(() =>
+    (ADDICTED_CARD_PICS.find((p) => p.stampCenter) || {}).url || null);
+  check(!!CENTRED, 'a background asks for the pill in the top centre', CENTRED);
+  for (const [url, fmt, place] of [
+    [WITH.url,    'square',    'stack'],
+    [WITH.url,    'landscape', 'stack'],
+    [WITHOUT.url, 'square',    'right'],
+    ...(CENTRED ? [[CENTRED, 'landscape', 'centre']] : []),
   ]) {
     await page.unroute('**' + WITH.url).catch(() => {});
     await page.unroute('**' + WITH.wide).catch(() => {});
@@ -242,15 +250,71 @@ console.log('\n--- the Early Supporter pill keeps off a picture that says so');
     check(!!b, `${name}: the pill is on the card`, b ? `${b.n}px` : 'not found');
     if (!b) continue;
     check(b.x0 >= 0 && b.x1 <= 1 && b.y0 >= 0 && b.y1 <= 1, `${name}: and wholly inside it`);
-    if (stacked) {
+    if (place === 'stack') {
       // The corner it was asked to leave alone, and the row it was asked to
       // take instead. Checked as geometry rather than as a flag, because the
       // flag being read is not the thing that was wrong.
       check(b.x1 < 0.55, `${name}: it stays out of the right half`, `right edge ${Math.round(b.x1*100)}%`);
       check(b.y0 > 0.09, `${name}: and sits below the wordmark row`, `top ${Math.round(b.y0*100)}%`);
+    } else if (place === 'centre') {
+      // Centred on the card, and — the point of it — out of the top-right
+      // corner the ear occupies. Both, because a pill that merely left the
+      // corner could have gone anywhere.
+      const mid = (b.x0 + b.x1) / 2;
+      check(Math.abs(mid - 0.5) < 0.05, `${name}: it is on the card's middle line`,
+            `centre ${Math.round(mid * 100)}%`);
+      check(b.x1 < 0.8, `${name}: and out of the top-right corner`, `right edge ${Math.round(b.x1*100)}%`);
+      check(b.y1 < 0.2, `${name}: still on the top row`, `bottom ${Math.round(b.y1*100)}%`);
     } else {
       check(b.x1 > 0.8, `${name}: it is still in the top-right`, `right edge ${Math.round(b.x1*100)}%`);
     }
+  }
+}
+
+console.log('\n--- the claim sits under a wordmark the picture already has');
+// "I pre-saved" is centred by default, because ADDICTED's own lockup is a
+// centred heart and the claim belongs beneath it. The D-DAY cut has its
+// wordmark printed down the LEFT instead, and a centred claim there floats in
+// the middle of the card under her chin, under nothing.
+//
+// Measured off the canvas in the accent colour, not read off d.align: the
+// flag being set is not the thing anyone looks at.
+{
+  const ACCENT = [182, 163, 255];
+  const claimBox = () => page.evaluate((want) => {
+    const c = document.getElementById('card-canvas');
+    const top = Math.round(c.height * 0.45);
+    const d = c.getContext('2d').getImageData(0, top, c.width, c.height - top).data;
+    let x0 = 1e9, x1 = -1, n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (Math.abs(d[i]-want[0]) < 18 && Math.abs(d[i+1]-want[1]) < 18 && Math.abs(d[i+2]-want[2]) < 18) {
+        const x = ((i / 4) | 0) % c.width;
+        if (x < x0) x0 = x; if (x > x1) x1 = x; n++;
+      }
+    }
+    return n < 200 ? null : { x0: x0 / c.width, x1: x1 / c.width, n };
+  }, ACCENT);
+  const drawOn = async (url) => {
+    await page.evaluate(() => setCardFormat('landscape', document.getElementById('fmt-landscape')));
+    await page.evaluate((u) => selectAddictedCardArt(u), url);
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => { _presaveCardData.earned = true;
+      drawPresaveCard(document.getElementById('card-canvas'), _presaveCardData); });
+    await page.waitForTimeout(400);
+    return claimBox();
+  };
+  const lefty = await page.evaluate(() =>
+    (ADDICTED_CARD_PICS.find((p) => p.align === 'left') || {}).url || null);
+  check(!!lefty, 'a background asks for the claim on the left', lefty);
+  if (lefty) {
+    const a = await drawOn(lefty);
+    check(!!a && a.x0 < 0.12, 'on it, the claim starts at the left margin, under the wordmark',
+          a ? `left edge ${Math.round(a.x0 * 100)}%` : 'not found');
+    // The contrast. Without it, a card that centred everything would also
+    // "start at the left margin" as soon as the block grew wide enough.
+    const b = await drawOn(WITHOUT.url);
+    check(!!b && b.x0 > 0.15, 'and the default background still centres it',
+          b ? `left edge ${Math.round(b.x0 * 100)}%` : 'not found');
   }
 }
 
