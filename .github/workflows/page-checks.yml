@@ -93,6 +93,16 @@ jobs:
           npm install --no-save playwright@1.56.1
           npx playwright install --with-deps chromium
 
+      # FIRST, because it is about the steps below rather than about the site.
+      # A browser test that resolves Playwright by the session's absolute path
+      # dies on a runner with ERR_MODULE_NOT_FOUND before its first assertion —
+      # correct test, zero checks run, red step. test_mama_votes.mjs did that
+      # the day it was wired in here. This reads the workflow and refuses any
+      # script it runs that cannot start.
+      - name: Every check CI runs can actually start
+        if: always()
+        run: node .github/scripts/test_ci_can_start.mjs
+
       # Each runs regardless of the ones before it: three separate reports beat
       # one that stops at the first failure. The job still fails if any did.
       - name: The project board
