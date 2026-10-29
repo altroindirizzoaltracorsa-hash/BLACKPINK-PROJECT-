@@ -254,6 +254,84 @@ console.log('\n--- the Early Supporter pill keeps off a picture that says so');
   }
 }
 
+console.log('\n--- a picture that has no square cut is not offered in square');
+// The D-1 visual was published as a 16:9 and nothing else, and a square crop
+// of it cannot keep both the wordmark and her face — they are further apart
+// than a square window is wide. So the thumbnail is there in landscape and
+// gone in square.
+//
+// Both halves are tested, because either one alone passes while the feature is
+// broken: a thumbnail that is never offered at all also "is not offered in
+// square", and one that is always offered also "is offered in landscape".
+{
+  const only = await page.evaluate(() =>
+    ADDICTED_CARD_PICS.filter((p) => p.landscapeOnly).map((p) => p.url));
+  check(only.length >= 1, 'the page declares a landscape-only background', only.join(', '));
+  const thumbs = (fmt) => page.evaluate((f) => {
+    setCardFormat(f, document.getElementById('fmt-' + f));
+    return [...document.querySelectorAll('.release-pic-thumb')].map((t) => new URL(t.src).pathname);
+  }, fmt);
+
+  const inLand = await thumbs('landscape');
+  await page.waitForTimeout(600);
+  check(only.every((u) => inLand.includes(u)), 'it is offered in landscape',
+        `${inLand.length} thumbnails`);
+
+  const inSq = await thumbs('square');
+  await page.waitForTimeout(600);
+  check(only.every((u) => !inSq.includes(u)), 'and gone in square',
+        `${inSq.length} thumbnails`);
+  check(inSq.length === inLand.length - only.length,
+        'and nothing else left with it', `${inLand.length} → ${inSq.length}`);
+}
+
+console.log('\n--- and picking it, then switching to square, falls back');
+// The failure this exists to stop is not a missing thumbnail, it is the card
+// quietly drawing the crop the flag was added to prevent. So this asserts on
+// what the card is HOLDING after the switch, not on what the picker shows.
+{
+  const only = await page.evaluate(() =>
+    ADDICTED_CARD_PICS.find((p) => p.landscapeOnly).url);
+  await page.evaluate(() => setCardFormat('landscape', document.getElementById('fmt-landscape')));
+  await page.waitForTimeout(500);
+  await page.evaluate((u) => selectAddictedCardArt(u), only);
+  await page.waitForTimeout(1500);
+  check(await page.evaluate(() => _presaveCardArtUrl) === only,
+        'it is the active pick in landscape');
+  await page.evaluate(() => setCardFormat('square', document.getElementById('fmt-square')));
+  await page.waitForTimeout(1500);
+  const after = await page.evaluate(() => _presaveCardArtUrl);
+  check(after !== only, 'the square card is no longer holding it', after);
+  // And the picker agrees with the card. A fallback that redraws but leaves
+  // the old thumbnail lit is how a reader concludes the picture is broken.
+  const active = await page.evaluate(() =>
+    [...document.querySelectorAll('.release-pic-thumb')]
+      .filter((t) => t.classList.contains('active')).map((t) => new URL(t.src).pathname));
+  check(active.length === 1 && active[0] === after,
+        'and exactly one thumbnail is lit, the one it fell back to', active.join(', '));
+}
+
+console.log('\n--- the D-1 picture retires itself at release');
+// "D-1" is true for one day. The card outlives the countdown, so without this
+// the picker would still be offering a background that states a falsehood in
+// November. Pinned to ADDICTED_RELEASE_AT rather than a date of its own.
+{
+  const r = await page.evaluate(() => {
+    const dated = ADDICTED_CARD_PICS.filter((p) => p.until);
+    const real = Date.now;
+    const at = (t) => { try { Date.now = () => t; return addictedPickerPics('landscape').map((p) => p.url); }
+                        finally { Date.now = real; } };
+    const rel = Date.parse(ADDICTED_RELEASE_AT);
+    return { dated: dated.map((p) => p.url), until: dated.map((p) => p.until),
+             before: at(rel - 60e3), after: at(rel + 60e3) };
+  });
+  check(r.dated.length >= 1, 'a background declares an expiry', r.dated.join(', '));
+  check(r.until.every((u) => u === '2026-10-29T23:00:00Z'),
+        'and it is the release constant, not a second copy of the date', r.until.join(', '));
+  check(r.dated.every((u) => r.before.includes(u)), 'offered a minute before release');
+  check(r.dated.every((u) => !r.after.includes(u)), 'and gone a minute after');
+}
+
 console.log('\n--- nothing threw');
 check(errs.length === 0, 'no page errors', errs.join(' | '));
 

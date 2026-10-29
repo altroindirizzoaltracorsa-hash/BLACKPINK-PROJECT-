@@ -396,6 +396,13 @@ console.log('\n--- the panel');
   check(/public/i.test(rules) && /protected accounts are not counted/i.test(rules),
         'and a protected account is not counted at all');
   check(/capitals do not matter/i.test(rules), 'the artist tag is case-insensitive');
+  // THE THIRD CATEGORY IS APP-ONLY, and the page has to say so rather than
+  // leave it out. "Pick the Male or the Female category" was complete while
+  // those were the only two; beside a third category in the app it reads as
+  // an omission, and a reader who guesses wrong spends the day's only post on
+  // a vote that is not counted anywhere.
+  check(/X covers Male and Female only/i.test(rules) && /no X vote for it/i.test(rules),
+        'and that X does not cover Fans’ Choice of the Year — the app decides that one');
   check(/all three categories/i.test(rules) && /one vote in each/i.test(rules),
         'the Mnet Plus session rules are stated (all three categories, one vote each)');
   check(/one ID on one device/i.test(rules), 'as is its one-ID-one-device cap');

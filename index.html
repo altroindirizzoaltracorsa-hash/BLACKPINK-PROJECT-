@@ -11014,6 +11014,7 @@ const MAMA_RULES = [
     '<b>One vote per X account per day</b>, on the KST day — and it is the <b>first</b> voting post you make that day that is read, not the best or the last one. A post with the wrong tags still spends the day.',
     'A valid post carries <b>' + MAMA_TAG_CAMPAIGN + '</b> <i>and</i> the artist’s official hashtag, exactly as the official voting page lists it. Capitals do not matter.',
     '<b>One artist tag, one nominee.</b> Pick the Male or the Female category and name a single nominee — a post carrying several artist hashtags is <b>not counted at all</b>.',
+    '<b>X covers Male and Female only.</b> Fans’ Choice of the Year with Visa is decided in the app alone — there is no X vote for it, so do not spend your one post a day on it.',
     '<b>A repost of someone else’s valid post counts as your vote.</b> Your own post and a repost are worth the same one vote, so either is fine.',
     '<b>Your account has to be public.</b> Votes from protected accounts are not counted, and nor are posts that break X’s own rules.',
   ]},
@@ -20751,6 +20752,7 @@ let _msShareBlob   = null; // pre-generated blob for shareMilestoneCard
 let _goalCardPhoto = null; // pre-loaded BLACKPINK photo for goal hit card
 let _goalWalkersImg = null; // pre-loaded walking-members cutout for the goal card
 let _presaveCardData = null;      // { campaign, earned, ... } for the pre-save share card
+let _presaveCardArtUrl = null;    // which ADDICTED_CARD_PICS entry is picked; null = no picker
 let _faPhotoImg = null, _faPhotoRedImg = null, _faTitleImg = null, _faLogoImg = null, _faEmblemImg = null; // Fallen Angel assets (cached)
 let _lisaCardData = null;         // data for the LISA hellosawadika share card
 let _lisaHelloImg = null, _lisaSawImg = null; // cached HELLO + สวัสดีค่ะ SVGs
@@ -20909,6 +20911,23 @@ function setCardFormat(fmt, btn) {
   const canvas = document.getElementById('card-canvas');
   if (fmt === 'landscape') { canvas.width = 1200; canvas.height = 675; }
   else                     { canvas.width = 1080; canvas.height = 1080; }
+  // THE ADDICTED PICKER IS FORMAT-DEPENDENT. One of its pictures exists only
+  // as a 16:9 cut, so its thumbnail is there in landscape and gone in square.
+  // Rebuilt here rather than left alone, because a thumbnail you can still
+  // click in square would draw the crop the flag exists to prevent. If the
+  // picture that just left was the active one, the card falls back to the
+  // default instead of keeping a pick the format cannot honour.
+  //
+  // Gated on _presaveCardArtUrl, not on _cardType alone: the FA pre-save card
+  // is also type 'presave' and has no picker at all.
+  if (_cardType === 'presave' && _presaveCardArtUrl) {
+    const avail = addictedPickerPics(fmt);
+    buildPicPicker(avail.map(p => p.url), 'selectAddictedCardArt');
+    const i = avail.findIndex(p => p.url === _presaveCardArtUrl);
+    const thumbs = document.querySelectorAll('.release-pic-thumb');
+    if (i < 0) { selectAddictedCardArt(avail[0].url, thumbs[0]); return; }
+    thumbs.forEach((t, j) => t.classList.toggle('active', j === i));
+  }
   if (_cardType === 'lb') renderLbCard(_cardLogo);
   else if (_cardType === 'community' && _communityCardData) drawCommunityCard(canvas, _communityCardData, _cardLogo);
   else if (_cardType === 'vmawin' && _vmaWinCardData && window.BUWinCard) window.BUWinCard.draw(canvas, _vmaWinCardData, _vmaWinCardImg);
@@ -23339,6 +23358,10 @@ async function openPresaveCard(campaign = 'fa') {
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
   document.getElementById('release-pic-picker').style.display = 'none';
+  // No picker on this one (it is the FA pre-save card, not ADDICTED), and the
+  // null is what tells setCardFormat there is nothing to rebuild — otherwise
+  // the previous card's pick would govern a card that has no picker at all.
+  _presaveCardArtUrl = null;
   _cardType = 'presave';
   _cardTrackId = null;
   _cardFormat = 'landscape';
@@ -23390,7 +23413,8 @@ async function openAddictedCard() {
   overlay.style.display = 'flex';
   label.textContent = 'GENERATING…';
   document.getElementById('lb-card-range-toggle').style.display = 'none';
-  buildPicPicker(ADDICTED_CARD_PICS.map(pic => pic.url), 'selectAddictedCardArt');
+  buildPicPicker(addictedPickerPics('landscape').map(pic => pic.url), 'selectAddictedCardArt');
+  _presaveCardArtUrl = ADDICTED_CARD_PICS[0].url;
   _cardType = 'presave';
   _cardTrackId = null;
   _cardFormat = 'landscape';
@@ -25255,7 +25279,35 @@ const ADDICTED_CARD_PICS = [
   // left instead.
   { url: '/strips/addicted-4.jpg',               hasLockup: true, wide: '/strips/addicted-5.jpg',
     stampStack: true },
+  // LANDSCAPE ONLY, AND IT EXPIRES. Both flags describe the picture, not a
+  // shortcut taken with it.
+  //
+  // landscapeOnly: the D-1 visual was published as a 16:9 cut and nothing
+  // else. It is 1200x675 — the landscape canvas exactly — so landscape crops
+  // nothing at all. Square cannot have it: the wordmark starts at x≈110 and
+  // her face ends at x≈1050, so keeping both needs 940px of a 675px window.
+  // Every square crop loses one or the other, which is the same trade the
+  // entry above solves with an official wide cut; here there is no second cut
+  // to solve it with. So the thumbnail leaves with the format rather than
+  // offering a crop that throws away half the point of the picture.
+  //
+  // until: "D-1" is a claim about one day. A card generated in November
+  // carrying it is just wrong, and wrong in the way this repo keeps finding —
+  // a label that was true when it was written and silently stops being true.
+  // Pinned to ADDICTED_RELEASE_AT because that is the moment D-1 expires, not
+  // a date typed out a second time.
+  { url: '/strips/addicted-6.jpg',               hasLockup: true,
+    landscapeOnly: true, until: ADDICTED_RELEASE_AT, stampStack: true },
 ];
+
+// What the ADDICTED picker shows right now. Format-dependent and clock-
+// dependent, so it is a function rather than a list built once at open.
+function addictedPickerPics(fmt) {
+  const now = Date.now();
+  return ADDICTED_CARD_PICS.filter(p =>
+    (!p.until || now < Date.parse(p.until)) &&
+    (!p.landscapeOnly || fmt === 'landscape'));
+}
 
 async function selectAddictedCardArt(url, thumbEl) {
   document.querySelectorAll('.release-pic-thumb').forEach(t => t.classList.remove('active'));
@@ -25264,6 +25316,7 @@ async function selectAddictedCardArt(url, thumbEl) {
   const label  = document.getElementById('card-box-label');
   if (label) label.textContent = 'GENERATING…';
   const pick = ADDICTED_CARD_PICS.find(pic => pic.url === url) || ADDICTED_CARD_PICS[0];
+  _presaveCardArtUrl = pick.url;
   // BOTH faces are loaded here, not on the format switch. setCardFormat redraws
   // synchronously — it resizes the canvas and calls the draw — so a file
   // fetched at that moment would arrive after the frame it was wanted for, and
