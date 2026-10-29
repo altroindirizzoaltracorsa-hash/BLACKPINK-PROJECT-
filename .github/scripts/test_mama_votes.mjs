@@ -24,7 +24,7 @@
 // Supabase is stubbed and the clock is injected, so this needs no database, no
 // network and no waiting until November.
 import { readFileSync, existsSync } from 'node:fs';
-import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs';
+import { chromium } from './_playwright.mjs';
 
 const root = new URL('../../', import.meta.url).pathname;
 let fails = [];

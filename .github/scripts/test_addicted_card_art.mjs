@@ -328,23 +328,30 @@ console.log('\n--- a picture that has no square cut is not offered in square');
 // broken: a thumbnail that is never offered at all also "is not offered in
 // square", and one that is always offered also "is offered in landscape".
 //
-// THE CLOCK IS PINNED for this section and the next. The landscape-only
-// backgrounds are also the dated ones, so against the real clock these checks
-// would pass today, pass differently tomorrow and fail outright the day after,
-// when both teasers have expired and there is nothing landscape-only left to
-// assert about. Pinned an hour into the D-DAY window, they test the behaviour
-// instead of the date the suite happens to run on.
-await page.evaluate(() => {
-  window.__realNow = Date.now;
-  const t = ADDICTED_DDAY_FROM + 3600e3;
-  Date.now = () => t;
-});
+// No clock anywhere in here any more. These backgrounds used to be dated as
+// well as landscape-only, so this section had to pin Date.now or it would
+// have passed today, differed tomorrow and failed outright once the windows
+// closed. The windows are gone — every teaser is offered from the day it is
+// added — so what is left is a property of the picture, not of the date the
+// suite runs on.
 {
-  const only = await page.evaluate(() => {
-    const live = new Set(addictedPickerPics('landscape').map((p) => p.url));
-    return ADDICTED_CARD_PICS.filter((p) => p.landscapeOnly && live.has(p.url)).map((p) => p.url);
-  });
-  check(only.length >= 1, 'a landscape-only background is on offer', only.join(', '));
+  const only = await page.evaluate(() =>
+    ADDICTED_CARD_PICS.filter((p) => p.landscapeOnly).map((p) => p.url));
+  // NAMED, not counted. Dropping the flag from one of two leaves the other
+  // satisfying every check below — the set still has a member, it still
+  // behaves — so the mutation passed and the square card quietly went back to
+  // cropping a picture that cannot survive it.
+  //
+  // These two files are the fact being recorded: both were published as 16:9
+  // and nothing else, each with the wordmark down the left and her face right
+  // of centre, which is what no square window can hold. Nothing on the page
+  // can see that, and no rule derived from the image can either — addicted-2
+  // and addicted-3 are the same ratio with a lockup and ARE offered square,
+  // because theirs sits where a square crop keeps it. So it is written down.
+  const MUST = ['/strips/addicted-6.jpg', '/strips/addicted-7.jpg'];
+  const missing = MUST.filter((u) => !only.includes(u));
+  check(missing.length === 0, 'both 16:9-only teasers are declared landscape-only',
+        missing.length ? `not flagged: ${missing.join(', ')}` : only.join(', '));
   const thumbs = (fmt) => page.evaluate((f) => {
     setCardFormat(f, document.getElementById('fmt-' + f));
     return [...document.querySelectorAll('.release-pic-thumb')].map((t) => new URL(t.src).pathname);
@@ -387,59 +394,6 @@ console.log('\n--- and picking it, then switching to square, falls back');
       .filter((t) => t.classList.contains('active')).map((t) => new URL(t.src).pathname));
   check(active.length === 1 && active[0] === after,
         'and exactly one thumbnail is lit, the one it fell back to', active.join(', '));
-}
-
-// Clock back to real. The section below does its own stubbing, per sample.
-await page.evaluate(() => { Date.now = window.__realNow; });
-
-console.log('\n--- the dated teasers hand over at KST midnight, not at the release hour');
-// THE BUG THIS REPLACES. The D-1 background first shipped with its expiry
-// pinned to ADDICTED_RELEASE_AT, and that check asserted exactly that, so it
-// went green on it. But "D-1" stops being true at KST midnight and the single
-// drops at 8AM KST: for those eight hours the picker offered a D-1 card on a
-// day that was already D-DAY in Korea.
-//
-// So the boundary is what is measured now, sampled on both sides of it AND on
-// both sides of the release hour. The second pair is the one that would have
-// caught the original: under the old anchor the handover sat there instead.
-{
-  const r = await page.evaluate(() => {
-    const real = Date.now;
-    const at = (t) => { try { Date.now = () => t; return addictedPickerPics('landscape').map((p) => p.url); }
-                        finally { Date.now = real; } };
-    const rel = Date.parse(ADDICTED_RELEASE_AT);
-    const windowed = ADDICTED_CARD_PICS.filter((p) => p.from != null || p.until != null);
-    return {
-      urls: windowed.map((p) => p.url),
-      dday: ADDICTED_DDAY_FROM, until: ADDICTED_DDAY_UNTIL, rel,
-      beforeBoundary: at(ADDICTED_DDAY_FROM - 60e3),
-      afterBoundary:  at(ADDICTED_DDAY_FROM + 60e3),
-      beforeRelease:  at(rel - 60e3),
-      afterRelease:   at(rel + 60e3),
-      endOfDay:       at(ADDICTED_DDAY_UNTIL + 60e3),
-    };
-  });
-  check(r.urls.length >= 2, 'two backgrounds carry a time window', r.urls.join(', '));
-  // Derived, not typed: KST is UTC+9 with no DST, so the boundary is exactly
-  // 8h before a release that is at 8AM KST.
-  check(r.rel - r.dday === 8 * 3600e3,
-        'the handover is the KST midnight the single lands on, 8h before the drop',
-        `${new Date(r.dday).toISOString()} → ${new Date(r.rel).toISOString()}`);
-  check(r.until - r.dday === 24 * 3600e3, 'and D-DAY runs exactly one day from it');
-
-  const d1 = r.urls[0], dday = r.urls[1];
-  check(r.beforeBoundary.includes(d1) && !r.beforeBoundary.includes(dday),
-        'a minute before the boundary, D-1 is offered and D-DAY is not');
-  check(!r.afterBoundary.includes(d1) && r.afterBoundary.includes(dday),
-        'a minute after it, they have swapped');
-  // THE REGRESSION. Under the old anchor D-1 was still on offer here and
-  // D-DAY was not — eight hours into the day it is named after.
-  check(!r.beforeRelease.includes(d1) && r.beforeRelease.includes(dday),
-        'an hour before the drop it is D-DAY, not D-1 — the gap the first version got wrong',
-        r.beforeRelease.join(', '));
-  check(!r.afterRelease.includes(d1), 'and D-1 is certainly gone once the song is out');
-  check(!r.endOfDay.includes(d1) && !r.endOfDay.includes(dday),
-        'and the day after, neither is offered at all', r.endOfDay.join(', '));
 }
 
 console.log('\n--- nothing threw');
