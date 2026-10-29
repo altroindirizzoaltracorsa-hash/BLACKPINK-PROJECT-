@@ -890,21 +890,23 @@ console.log('\n--- the panel');
     const fallbackCap = (guide.match(/<pre id="caption-fallback"[^>]*>([\s\S]*?)<\/pre>/) || [])[1];
     check(fallbackCap === cap.t, 'as is the copy shown when the clipboard is refused');
 
-    // THERE ARE TWO CUTS AND THEY ARE DIFFERENT NUMBERS. Round 1 sends its
-    // **top 20** through; of those, round 2's **top 10** take the award. Each
-    // is written out by hand in more than one place, none derived from the
-    // others.
+    // THE CUT THE SITE STATES IS THE LIVE ROUND'S, AND ONLY THAT ONE.
     //
-    // This check used to be "every statement of the cut names the same
-    // number", which is wrong in a way worth recording: told the cut was ten,
-    // I put ten on round 1's advancement line as well, and that check went
-    // green — four copies agreeing on one wrong fact is exactly what it was
-    // asking for. A test that compares copies to each other guards DRIFT, not
-    // truth, and the two have to be kept apart or the first failure of the
-    // second kind reads as a pass.
+    // Round 1 (closed 22 Oct) sent its top 20 through. Round 2 is the final
+    // round and its **top 10** take the award. Round 1 is over, so its cut is
+    // history and the site does not carry it: every copy now names one number,
+    // the live one.
     //
-    // So: the two cuts are collected separately, each has to be internally
-    // consistent, and they have to stay distinct.
+    // CHECKED AGAINST THE CONSTANT BELOW, NOT AGAINST EACH OTHER. This check
+    // used to be "every statement of the cut names the same number", and that
+    // is wrong in a way worth recording: told the cut was ten, I put ten on
+    // round 1's advancement line too, and the check went green — four copies
+    // agreeing on one wrong fact is exactly what it was asking for. A test
+    // that compares copies to each other guards DRIFT, not truth. So the fact
+    // is written down once, here, and the copies are measured against it; when
+    // the fact changes you change this line and the copies go red until they
+    // follow.
+    const TAKES_CUT = '10';
     {
       // Deduped by where the match starts: two patterns written to catch the
       // same sentence would otherwise count it twice and inflate the tally
@@ -923,35 +925,30 @@ console.log('\n--- the panel');
         }
         return out;
       };
-      // Scoped to MAMA's own phrasing: a looser pattern caught BreakTudo's
-      // "Top 20 advance to the next round", a different award with its own
-      // cut, which is not a disagreement at all.
-      const advance = grab([/top\s+(\d+)<\/b>[^.<]{0,60}go through/gi,
-                            /makes the top\s+(\d+)/gi,
-                            /Round 1’s <b>top\s+(\d+)<\/b>/gi]);
       // One pattern, not two. `<b>top 10</b> take it` is matched by both a
       // pattern anchored at "top" and one anchored at "<b>", at different
       // offsets — so the dedupe above cannot tell they are the same sentence
       // and the tally doubled. The broader one already covers the narrower.
-      const takes   = grab([/top\s+(\d+)<\/b>\s*take it/gi]);
+      // The gap allows for the poster's "on this ballot" between the two.
+      const takes = grab([/top\s+(\d+)<\/b>[^.<]{0,40}take it/gi]);
+      // The advancement phrasings, which should now find NOTHING: the final
+      // round has nobody to send through, so a sentence in this shape means
+      // the superseded round-1 cut has come back onto the page. Scoped to
+      // MAMA's own wording — a looser pattern caught BreakTudo's "Top 20
+      // advance to the next round", a different award with its own cut.
+      const stale = grab([/top\s+(\d+)<\/b>[^.<]{0,60}go through/gi,
+                          /Round 1’s <b>top\s+(\d+)<\/b>/gi]);
 
-      const uniq = (xs) => [...new Set(xs.map((x) => x.n))];
-      check(advance.length >= 3, `${advance.length} statements of who ADVANCES from round 1`,
-            advance.map((f) => `${f.file}:${f.n}`).join(', '));
-      check(uniq(advance).length === 1, 'and they agree',
-            uniq(advance).length === 1 ? `top ${uniq(advance)[0]}`
-                                       : advance.map((f) => `${f.file}: ${f.at}`).join(' | '));
-      check(takes.length >= 2, `${takes.length} statements of who TAKES it in round 2`,
+      const off = takes.filter((f) => f.n !== TAKES_CUT);
+      check(takes.length >= 3, `${takes.length} statements of who TAKES it in the live round`,
             takes.map((f) => `${f.file}:${f.n}`).join(', '));
-      check(uniq(takes).length === 1, 'and they agree too',
-            uniq(takes).length === 1 ? `top ${uniq(takes)[0]}`
-                                     : takes.map((f) => `${f.file}: ${f.at}`).join(' | '));
-      // The one that bit: the round-2 cut written onto round 1's line, or the
-      // reverse. Equal numbers here means one of them has been overwritten
-      // with the other.
-      check(uniq(advance)[0] !== uniq(takes)[0],
-            'and the two cuts are still different numbers',
-            `advance ${uniq(advance)[0]}, takes ${uniq(takes)[0]}`);
+      check(off.length === 0, `and every one of them says top ${TAKES_CUT}`,
+            off.length ? off.map((f) => `${f.file}: ${f.at}`).join(' | ') : `top ${TAKES_CUT}`);
+      // Round 1 closed on 22 Oct. Its cut is not a second opinion to reconcile
+      // with this one, it is last month's rule, and the way the earlier bug
+      // returns is one of these numbers reappearing beside the live one.
+      check(stale.length === 0, 'and the closed round’s cut is stated nowhere',
+            stale.length ? stale.map((f) => `${f.file}: ${f.at}`).join(' | ') : 'no advancement line');
     }
     const dl = guide.match(/<a[^>]+class="dl-btn"[^>]*>/) || [];
     check(dl[0] && /download="[^"]*\.png"/.test(dl[0]) && /href="\/mama-guide\.png"/.test(dl[0]),
