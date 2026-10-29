@@ -768,9 +768,32 @@ console.log('\n--- the panel');
     const plain = copy.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
     check(plain === tweet, `the copy-paste post matches the site's button (“${plain}” vs “${tweet}”)`);
     // The deadline, in the one place on the poster that shouts it.
-    const closes = new Date(await page.evaluate(() => MAMA_ROUNDS[0].to));
-    const kst = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' }).format(closes);
-    check(guide.includes(kst), `and the deadline block says round 1's real close date (${kst})`);
+    //
+    // Read against the round the POSTER SAYS IT IS FOR, not against round 1.
+    // Pinning it to MAMA_ROUNDS[0] was right only while round 1 was the
+    // current one; the day the poster was re-pointed at round 2 the check
+    // failed for being out of date itself. Taking the round from the poster's
+    // own header makes it self-consistent instead — whichever round it claims,
+    // its date has to be that round's real close — so it survives the next
+    // rollover without an edit.
+    const says = Number((guide.match(/Round\s+(\d+)\s*[··]/i) || [])[1]);
+    check(says >= 1, `the poster names the round it is for (round ${says})`);
+    const rounds = await page.evaluate(() => MAMA_ROUNDS.map((r) => ({ n: r.n, to: r.to })));
+    const mine = rounds.find((r) => r.n === says);
+    check(!!mine, 'and that round exists in MAMA_ROUNDS', String(says));
+    const kst = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Seoul', month: 'short', day: 'numeric' })
+      .format(new Date(mine.to));
+    check(guide.includes(kst), `and its deadline block says that round's real close date (${kst})`);
+    // And it is the round people can actually vote in. A poster that is
+    // internally consistent about a round that shut last week is still a
+    // poster telling blinks to vote in a closed ballot.
+    const live = await page.evaluate(() => {
+      const now = Date.now();
+      const open = MAMA_ROUNDS.find((r) => now >= r.from && now <= r.to);
+      const next = MAMA_ROUNDS.find((r) => now < r.from);
+      return (open || next || MAMA_ROUNDS[MAMA_ROUNDS.length - 1]).n;
+    });
+    check(says === live, `and it is the round that is open or next (${live})`, `poster says ${says}`);
     check(/90%/.test(guide) && /10%/.test(guide), 'the two weights are on it');
     // The rules that cost a vote. If one of these ever leaves the site's rule
     // list it has to leave the poster too — and vice versa.
@@ -867,34 +890,68 @@ console.log('\n--- the panel');
     const fallbackCap = (guide.match(/<pre id="caption-fallback"[^>]*>([\s\S]*?)<\/pre>/) || [])[1];
     check(fallbackCap === cap.t, 'as is the copy shown when the clipboard is refused');
 
-    // HOW MANY ADVANCE IS ONE FACT IN FOUR PLACES — two sentences on the site
-    // and two on the poster, all hand-written, none derived from the others.
-    // Mnet changed it from 20 to 10 and every copy had to be found by hand;
-    // the one that gets missed is on a poster people download and post, where
-    // it outlives the correction.
+    // THERE ARE TWO CUTS AND THEY ARE DIFFERENT NUMBERS. Round 1 sends its
+    // **top 20** through; of those, round 2's **top 10** take the award. Each
+    // is written out by hand in more than one place, none derived from the
+    // others.
     //
-    // Not checked against a number written here, which would be a fifth copy
-    // to go stale. Checked for AGREEMENT: pull every statement of the cut out
-    // of both files and require them to say the same thing.
+    // This check used to be "every statement of the cut names the same
+    // number", which is wrong in a way worth recording: told the cut was ten,
+    // I put ten on round 1's advancement line as well, and that check went
+    // green — four copies agreeing on one wrong fact is exactly what it was
+    // asking for. A test that compares copies to each other guards DRIFT, not
+    // truth, and the two have to be kept apart or the first failure of the
+    // second kind reads as a pass.
+    //
+    // So: the two cuts are collected separately, each has to be internally
+    // consistent, and they have to stay distinct.
     {
-      // Scoped to MAMA's own phrasing. A looser pattern caught BreakTudo's
-      // "Top 20 advance to the next round" — a different award, with its own
-      // cut, which is not a disagreement at all. The count floor is what keeps
-      // the narrowing honest: reword one of these and it drops out of the
-      // match, the count falls, and this fails rather than passing on three
-      // copies that happen to agree.
-      const cuts = [/top\s+(\d+)<\/b>[^.<]{0,40}go through/gi, /makes the top\s+(\d+)/gi];
-      const found = [];
-      for (const [file, text] of [['index.html', site], ['mama-guide.html', guide]]) {
-        for (const re of cuts) {
-          for (const m of text.matchAll(re)) found.push({ file, n: m[1], at: m[0].replace(/\s+/g, ' ') });
+      // Deduped by where the match starts: two patterns written to catch the
+      // same sentence would otherwise count it twice and inflate the tally
+      // this check relies on.
+      const grab = (res) => {
+        const seen = new Set(), out = [];
+        for (const [file, text] of [['index.html', site], ['mama-guide.html', guide]]) {
+          for (const re of res) {
+            for (const m of text.matchAll(re)) {
+              const at = `${file}:${m.index}`;
+              if (seen.has(at)) continue;
+              seen.add(at);
+              out.push({ file, n: m[1], at: m[0].replace(/\s+/g, ' ') });
+            }
+          }
         }
-      }
-      check(found.length === 4, `found ${found.length} statements of the advancement cut, expected 4`,
-            found.map((f) => `${f.file}:${f.n}`).join(', '));
-      const ns = [...new Set(found.map((f) => f.n))];
-      check(ns.length === 1, 'and they all name the same number',
-            ns.length === 1 ? `top ${ns[0]}` : found.map((f) => `${f.file}: ${f.at}`).join(' | '));
+        return out;
+      };
+      // Scoped to MAMA's own phrasing: a looser pattern caught BreakTudo's
+      // "Top 20 advance to the next round", a different award with its own
+      // cut, which is not a disagreement at all.
+      const advance = grab([/top\s+(\d+)<\/b>[^.<]{0,60}go through/gi,
+                            /makes the top\s+(\d+)/gi,
+                            /Round 1’s <b>top\s+(\d+)<\/b>/gi]);
+      // One pattern, not two. `<b>top 10</b> take it` is matched by both a
+      // pattern anchored at "top" and one anchored at "<b>", at different
+      // offsets — so the dedupe above cannot tell they are the same sentence
+      // and the tally doubled. The broader one already covers the narrower.
+      const takes   = grab([/top\s+(\d+)<\/b>\s*take it/gi]);
+
+      const uniq = (xs) => [...new Set(xs.map((x) => x.n))];
+      check(advance.length >= 3, `${advance.length} statements of who ADVANCES from round 1`,
+            advance.map((f) => `${f.file}:${f.n}`).join(', '));
+      check(uniq(advance).length === 1, 'and they agree',
+            uniq(advance).length === 1 ? `top ${uniq(advance)[0]}`
+                                       : advance.map((f) => `${f.file}: ${f.at}`).join(' | '));
+      check(takes.length >= 2, `${takes.length} statements of who TAKES it in round 2`,
+            takes.map((f) => `${f.file}:${f.n}`).join(', '));
+      check(uniq(takes).length === 1, 'and they agree too',
+            uniq(takes).length === 1 ? `top ${uniq(takes)[0]}`
+                                     : takes.map((f) => `${f.file}: ${f.at}`).join(' | '));
+      // The one that bit: the round-2 cut written onto round 1's line, or the
+      // reverse. Equal numbers here means one of them has been overwritten
+      // with the other.
+      check(uniq(advance)[0] !== uniq(takes)[0],
+            'and the two cuts are still different numbers',
+            `advance ${uniq(advance)[0]}, takes ${uniq(takes)[0]}`);
     }
     const dl = guide.match(/<a[^>]+class="dl-btn"[^>]*>/) || [];
     check(dl[0] && /download="[^"]*\.png"/.test(dl[0]) && /href="\/mama-guide\.png"/.test(dl[0]),
