@@ -396,8 +396,8 @@ console.log('\n--- the panel');
   check(/public/i.test(rules) && /protected accounts are not counted/i.test(rules),
         'and a protected account is not counted at all');
   check(/capitals do not matter/i.test(rules), 'the artist tag is case-insensitive');
-  check(/both Male and Female/i.test(rules) && /1 to 3 teams/i.test(rules),
-        'the Mnet Plus session rules are stated (both categories, 1–3 teams)');
+  check(/all three categories/i.test(rules) && /one vote in each/i.test(rules),
+        'the Mnet Plus session rules are stated (all three categories, one vote each)');
   check(/one ID on one device/i.test(rules), 'as is its one-ID-one-device cap');
   // The two halves have different rules, so the page must say which half each
   // rule belongs to. A flat list mixes "1 to 3 teams" (Mnet Plus) with "one
@@ -706,8 +706,8 @@ console.log('\n--- the panel');
   check(cap.weighted <= 280, `and fits in a post without a subscription (${cap.weighted} weighted chars)`);
   const kstClose = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Seoul', day: 'numeric', month: 'short' }).format(new Date(cap.close));
   check(cap.t.includes(kstClose), `the deadline in it is the real one from MAMA_ROUNDS (${kstClose})`);
-  check(/90%/.test(cap.t) && /10%/.test(cap.t) && /both/i.test(cap.t) && /FIRST/.test(cap.t),
-        'and it carries the four things worth knowing: the split, both categories, first post only');
+  check(/90%/.test(cap.t) && /10%/.test(cap.t) && /all 3/i.test(cap.t) && /FIRST/.test(cap.t),
+        'and it carries the four things worth knowing: the split, all three categories, first post only');
 
   // NO MARKUP IN ANY CAPTION. The rules render as HTML on the cards, and the
   // generic caption pasted them in raw — Kids' Choice was shipping fourteen
@@ -802,7 +802,8 @@ console.log('\n--- the panel');
       [/one artist tag only/i, 'one artist tag only'],
       [/public/i, 'public accounts only'],
       [/repost/i, 'a repost counts'],
-      [/both categories/i, 'both Male and Female to submit'],
+      [/all three categories/i, 'all three categories to submit'],
+      [/Fans’ Choice of the Year/i, 'the third category, Fans’ Choice of the Year'],
     ]) check(re.test(guide), `and it carries: ${what}`);
     // It must not pick up the language picker: every other page loads i18n.js,
     // and a floating picker would be baked into the middle of the image.
@@ -949,6 +950,19 @@ console.log('\n--- the panel');
       // returns is one of these numbers reappearing beside the live one.
       check(stale.length === 0, 'and the closed round’s cut is stated nowhere',
             stale.length ? stale.map((f) => `${f.file}: ${f.at}`).join(' | ') : 'no advancement line');
+      // ROUND 2 ALSO CHANGED THE BALLOT, and that is the more expensive half
+      // to get wrong. Round 1 took 1 to 3 teams per side across two
+      // categories; round 2 takes ONE vote each across three — Male, Female
+      // and Fans' Choice of the Year with Visa. Same failure shape as the cut
+      // above, last month's rule surviving on this month's page, but a reader
+      // who believes this one goes hunting for a second and third pick that
+      // the ballot does not offer, or stops after two categories and never
+      // submits at all.
+      const oldBallot = grab([/(1) to 3 teams/gi, /(1)–3 in Male/gi,
+                              /same artist cannot be (p)icked twice/gi]);
+      check(oldBallot.length === 0, 'and round 1’s 1-to-3 ballot is gone from both files',
+            oldBallot.length ? oldBallot.map((f) => `${f.file}: ${f.at}`).join(' | ')
+                             : 'one vote per category, three categories');
     }
     const dl = guide.match(/<a[^>]+class="dl-btn"[^>]*>/) || [];
     check(dl[0] && /download="[^"]*\.png"/.test(dl[0]) && /href="\/mama-guide\.png"/.test(dl[0]),

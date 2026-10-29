@@ -9822,9 +9822,9 @@ function mamaShareText() {
   return [
     MAMA_TWEET,
     '',
-    `🗳️ 2026 MAMA Fans’ Choice — round ${to.n}, how it works:`,
-    '📱 Mnet Plus = 90% · once a day, 1–3 in Male AND Female (both, or it won’t submit)',
-    '𝕏 = 10% · one post a day, and only your FIRST one counts',
+    `🗳️ MAMA Fans’ Choice — round ${to.n}, how it works:`,
+    '📱 Mnet Plus = 90% · daily, 1 vote each in Male, Female + Of the Year (all 3 or it won’t submit)',
+    '𝕏 = 10% · one post a day, only your FIRST counts',
     `⏰ Ends ${close}, 23:59 KST`,
     'blinksunited.com/voting',
   ].join('\n');
@@ -10003,9 +10003,9 @@ const VOTE_CAMPAIGNS = [
       return { handle: MAMA_X_HANDLE, text: MAMA_TWEET, url: mamaRepostUrl(), pinned: mamaHasPin(),
                own: 'https://x.com/intent/post?text=' + encodeURIComponent(MAMA_TWEET) };
     },
-    alert: '<b>Mnet Plus is 90% of this.</b> X is the other 10% — if you only do one thing, vote in the app, and remember a session does not submit until you have voted in <b>both</b> Male and Female.',
+    alert: '<b>Mnet Plus is 90% of this.</b> X is the other 10% — if you only do one thing, vote in the app, and remember a session does not submit until you have voted in <b>all three</b>: Male, Female and Fans’ Choice of the Year.',
     rules: [
-      '<b>Mnet Plus app — 90%.</b> Once a day from one ID on one device. Pick <b>1 to 3 teams</b> in Male <i>and</i> 1 to 3 in Female; the same artist cannot be picked twice, and nothing submits until both sides are filled in',
+      '<b>Mnet Plus app — 90%.</b> Once a day from one ID on one device. <b>One vote each</b> in Male, Female and <b>Fans’ Choice of the Year with Visa</b> — nothing submits until all three are filled in. Vote <b>BLACKPINK</b> in Female <i>and</i> in Fans’ Choice of the Year',
       '<b>X — 10%.</b> One post a day carrying <b>#2026MAMAVOTE</b> and <b>#BLACKPINK</b>. Only your <b>first</b> voting post of the day is read, so get it right first time — a repost of someone else’s valid post counts just the same',
       'Your X account has to be <b>public</b>, and a post naming several artists is <b>not counted at all</b>',
       '<b>Round 2 is open now</b> — 28 Oct 18:00 – 8 Nov 23:59 KST. This is the final round: only the <b>top 10</b> take it',
@@ -11019,8 +11019,8 @@ const MAMA_RULES = [
   ]},
   { head: 'On Mnet Plus — the other 90%', items: [
     'Once a day, from <b>one ID on one device</b>, on the KST day. It is worth <b>nine times</b> an X vote — if you only do one thing, do this one.',
-    '<b>You have to vote in both Male and Female to complete a session.</b> Filling in one side only does not submit a vote.',
-    'Each side takes <b>1 to 3 teams</b>, and the same artist cannot be picked twice.',
+    '<b>You have to vote in all three categories to complete a session.</b> Male, Female and Fans’ Choice of the Year with Visa — leaving any of them empty does not submit a vote.',
+    '<b>One vote in each</b>, not a list of three. Vote <b>BLACKPINK</b> in Female <i>and</i> again in Fans’ Choice of the Year — they are separate categories, and one does not spend the other.',
     'The artist’s official hashtag is listed on the voting page in the <b>Mnet Plus app</b> — that is the same list the X rule above points at.',
   ]},
   { head: 'Dates', items: [
