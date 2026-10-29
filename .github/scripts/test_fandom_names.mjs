@@ -143,6 +143,24 @@ async function openPage(opts = {}) {
 
 const sbLog = (p) => p.evaluate(() => window.__sbLog);
 
+// Wait for a picker to be POPULATED before counting its chips.
+//
+// openPage waits a flat 1200ms after domcontentloaded and the chips are
+// rendered by script after that, so on a busy runner the count was read from
+// an empty picker: "the sign-in card offers every side" went red on main with
+// 0 chips against 3 sides, on a commit that touched neither the page nor this
+// test. It passes every time locally, which is exactly the shape of a race.
+//
+// The timeout is SWALLOWED on purpose. If the chips genuinely never arrive
+// that is a real regression, and the check below should report it as 0 against
+// 3 — a named failure with a count in it — rather than as a playwright
+// timeout from inside a helper. The wait removes the race, not the assertion.
+async function waitForChips(p, sel) {
+  try {
+    await p.waitForFunction((s) => document.querySelectorAll(s).length > 0, sel, { timeout: 10000 });
+  } catch {}
+}
+
 // Signed in, the sign-in card is hidden and the picker a person actually meets
 // is the one in Settings → Account. Open it the way the site does, then make
 // sure its ancestors are on screen so the click is a real click rather than a
@@ -163,6 +181,7 @@ async function openSettings(p) {
 console.log('--- the question is asked before signing in');
 {
   const { p, ctx, errs } = await openPage();
+  await waitForChips(p, '#fandom-picker-login .fandom-chip');
   const chips = await p.$$eval('#fandom-picker-login .fandom-chip',
     (els) => els.map((e) => ({ key: e.getAttribute('data-fandom'), on: e.classList.contains('on'), label: e.textContent })));
   // Counted from the page's own list rather than typed: ">= 3" went red the day
@@ -182,6 +201,7 @@ console.log('--- the question is asked before signing in');
 
   await p.click('#fandom-picker-login [data-fandom="bloom"]');
   await p.waitForTimeout(100);
+  await waitForChips(p, '#fandom-picker-login .fandom-chip');
   const after = await p.$$eval('#fandom-picker-login .fandom-chip',
     (els) => els.filter((e) => e.classList.contains('on')).map((e) => e.getAttribute('data-fandom')));
   check(after.length === 1 && after[0] === 'bloom', 'clicking a side marks it, and only it', after.join(', '));
@@ -319,6 +339,7 @@ console.log('\n--- the account outranks this browser');
   };
   const { p, ctx, errs } = await openPage({ user, rpc: { reissue_fan_name: other + '3' } });
   await openSettings(p);
+  await waitForChips(p, '#fandom-picker-settings .fandom-chip');
   const on = await p.$$eval('#fandom-picker-settings .fandom-chip',
     (els) => els.filter((e) => e.classList.contains('on')).map((e) => e.getAttribute('data-fandom')));
   check(on.length === 1 && on[0] === other, 'Settings shows the side the account holds', on.join(', '));
