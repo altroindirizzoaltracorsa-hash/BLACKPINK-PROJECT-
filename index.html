@@ -25268,6 +25268,26 @@ function drawReleaseCard(canvas, logo, art, wordmark) {
 // crops nothing at all. Both faces of an entry must agree about hasLockup,
 // since the flag is read once at pick time for whichever one the format asks
 // for; these do.
+
+// THE DAY A TEASER COUNTS IN IS THE KST DAY, NOT THE RELEASE HOUR.
+//
+// "D-1" stops being true at KST midnight. The single drops at 8AM KST, so for
+// the eight hours between those two instants it is already D-DAY in Korea
+// while the song is not out yet. Pinning D-1's expiry to ADDICTED_RELEASE_AT
+// looked right and was wrong by exactly that gap: the picker went on offering
+// a D-1 background through the small hours of release day, which is the same
+// shape as every day-boundary bug in this repo — a label anchored to an hour
+// that is near the boundary instead of to the boundary.
+//
+// Derived from the release instant, never typed a second time. Korea has no
+// DST, so UTC+9 is arithmetic on the instant rather than a named-timezone
+// lookup, and it cannot slide the way a local hour does at a changeover.
+const ADDICTED_DAY_MS = 24 * 3600e3;
+const ADDICTED_KST_MS = 9 * 3600e3;
+const ADDICTED_DDAY_FROM = Math.floor(
+  (Date.parse(ADDICTED_RELEASE_AT) + ADDICTED_KST_MS) / ADDICTED_DAY_MS) * ADDICTED_DAY_MS - ADDICTED_KST_MS;
+const ADDICTED_DDAY_UNTIL = ADDICTED_DDAY_FROM + ADDICTED_DAY_MS;
+
 const ADDICTED_CARD_PICS = [
   { url: '/addicted/addicted-bg-clouds-v1.webp', hasLockup: false },
   { url: '/strips/addicted-1.webp',              hasLockup: false },
@@ -25294,18 +25314,29 @@ const ADDICTED_CARD_PICS = [
   // until: "D-1" is a claim about one day. A card generated in November
   // carrying it is just wrong, and wrong in the way this repo keeps finding —
   // a label that was true when it was written and silently stops being true.
-  // Pinned to ADDICTED_RELEASE_AT because that is the moment D-1 expires, not
-  // a date typed out a second time.
+  // Pinned to ADDICTED_DDAY_FROM, the KST midnight the single lands on, which
+  // is NOT the release hour; see that constant for why the difference bites.
   { url: '/strips/addicted-6.jpg',               hasLockup: true,
-    landscapeOnly: true, until: ADDICTED_RELEASE_AT, stampStack: true },
+    landscapeOnly: true, until: ADDICTED_DDAY_FROM, stampStack: true },
+  // The D-DAY cut, same shape and the same two constraints. It takes over from
+  // the one above at the instant that one expires, so exactly one of them is
+  // ever on offer and there is no day with neither.
+  { url: '/strips/addicted-7.jpg',               hasLockup: true, landscapeOnly: true,
+    from: ADDICTED_DDAY_FROM, until: ADDICTED_DDAY_UNTIL },
 ];
 
 // What the ADDICTED picker shows right now. Format-dependent and clock-
 // dependent, so it is a function rather than a list built once at open.
 function addictedPickerPics(fmt) {
   const now = Date.now();
+  // Accepts a timestamp or an ISO string, so a window can be derived (as the
+  // D-1/D-DAY pair are) or written out where that reads better.
+  const at = (v) => (typeof v === 'number' ? v : Date.parse(v));
+  // `== null` on purpose: a `from` of 0 is a real instant, and `!p.from` would
+  // throw that window away.
   return ADDICTED_CARD_PICS.filter(p =>
-    (!p.until || now < Date.parse(p.until)) &&
+    (p.from == null || now >= at(p.from)) &&
+    (p.until == null || now < at(p.until)) &&
     (!p.landscapeOnly || fmt === 'landscape'));
 }
 
