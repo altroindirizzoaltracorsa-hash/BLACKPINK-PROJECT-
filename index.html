@@ -2337,6 +2337,12 @@
     color: rgba(255,255,255,0.82); text-decoration: none; padding: 0.5rem 0.2rem; border-bottom: 1px solid rgba(255,255,255,0.08); transition: color 0.15s; }
   .cd-pl-note { margin: 0 0.2rem 0.3rem; font-size: 0.64rem; line-height: 1.5; letter-spacing: 0.02em;
     text-transform: none; color: rgba(255,255,255,0.6); }
+  .cd-pl-share { display: block; width: calc(100% - 0.4rem); margin: 0.6rem 0.2rem 0.1rem;
+    padding: 0.52rem 0.6rem; font-family: inherit; font-size: 0.62rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: rgba(255,255,255,0.88); background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.18); border-radius: 10px; cursor: pointer;
+    transition: background 0.15s, border-color 0.15s; }
+  .cd-pl-share:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.32); }
   .cd-playlists .cd-times-body a:last-child { border-bottom: none; }
   .cd-playlists .cd-times-body a:hover { color: #1DB954; }
   .cd-card-jisoo .js-park { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
@@ -4174,6 +4180,7 @@
                 <a href="https://open.spotify.com/playlist/3qcYmgWzGmjjdEnjRFGWgU" target="_blank" rel="noopener">ADDICTED FOCUSED →</a>
                 <a href="https://open.spotify.com/playlist/5hskZkTdeVFb5NgVuin2W4" target="_blank" rel="noopener">ADDICTED x PINKS →</a>
                 <a href="https://open.spotify.com/playlist/7nUhd0sH32lh4wWkdREGFe" target="_blank" rel="noopener">ADDICTED x BP →</a>
+                <button class="cd-pl-share" onclick="shareAddictedPlaylists()">🎧 Share these playlists</button>
               </div>
             </details>
           </div>
@@ -18881,6 +18888,41 @@ function saveAddicted() {
     refreshSupporterChips();
   }
   countPresaveOnce(ADDICTED_COUNTED_LS, 'addicted_save', renderAddictedSaveCount);
+}
+
+// The ADDICTED playlists as a post: every title with its link under it.
+//
+// READ OFF THE CARD, not from a second copy of the ids. Three 22-character
+// strings typed twice is how a post ends up advertising a playlist the card
+// does not have, and neither copy looks wrong on its own. PRESS PLAY's
+// equivalent says the same thing for the same reason.
+//
+// The trailing link comes from PRESAVE_CARD_LINKS, which already holds this
+// campaign's url for the share card — a second copy here would be one more
+// place to forget.
+function _addictedPlaylistPost() {
+  const links = [...document.querySelectorAll('.cd-card-addicted .cd-playlists .cd-times-body a')];
+  if (!links.length) return null;
+  const rows = links.map(a =>
+    `▶ ${a.textContent.replace(/\s*→\s*$/, '').trim()}\n${a.href}`).join('\n\n');
+  return 'BLINKs — our ADDICTED playlists 🎧\n'
+       + 'JISOO’s single is out. Put one on and let it run.\n\n'
+       + rows + '\n\n' + PRESAVE_CARD_LINKS.addicted;
+}
+
+async function shareAddictedPlaylists() {
+  const post = _addictedPlaylistPost();
+  if (!post) { _showShareToast('Playlists not loaded — try again'); return; }
+  // CLIPBOARD FIRST, inside the tap gesture. Instagram, X and TikTok drop the
+  // share `text` when anything else rides along, and a write attempted after
+  // the share sheet opens has lost the user gesture that permits it. Copying
+  // here means the fan can always paste the post, whatever the target does.
+  let copied = false;
+  try { await navigator.clipboard?.writeText(post); copied = true; } catch {}
+  // Text only, like PRESS PLAY's: there is no picture of three links, and
+  // attaching one would make the targets that drop `text` swallow the post.
+  if (navigator.share) navigator.share({ title: 'JISOO — ADDICTED playlists', text: post }).catch(() => {});
+  else _showShareToast(copied ? 'Playlists copied — paste them anywhere ✨' : 'Copy failed — try again');
 }
 
 // ── JISOO "ADDICTED" sky ─────────────────────────────────────────────────────
