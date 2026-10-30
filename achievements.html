@@ -565,7 +565,10 @@
   // them would be a share that quotes the site incorrectly, with both copies
   // looking fine on their own. Everything shared is pulled from the rendered
   // row: the line, its year, its source, and whose section it sits in.
-  const ACH_SHARE_CAP = 12;
+  // Governs BOTH the post and the card — they must list the same
+  // achievements, and the card is also what keeps it low: twelve entries drew
+  // a 2,100px-tall image, which no feed shows in full.
+  const ACH_SHARE_CAP = 8;
   const ACH_URL = 'https://www.blinksunited.com/achievements';
   const achRows = () => [...document.querySelectorAll('.rec-item, .ms-row')];
   const achPicked = () => achRows().filter((r) => r.classList.contains('ach-picked'));
@@ -645,6 +648,7 @@
       n === rows.length ? "picked — that's all of them" : 'picked';
     document.getElementById('ach-bar').hidden = n === 0;
     document.body.classList.toggle('ach-bar-open', n > 0);
+    achRenderCard();
   }
 
   function achToggle(row, on) {
@@ -666,22 +670,207 @@
     });
   });
 
-  // CLIPBOARD FIRST, inside the tap gesture — the same reason the playlist
-  // shares give: Instagram, X and TikTok drop the share `text` when anything
-  // else rides along, and a write attempted after the sheet has opened has
-  // lost the gesture that permits it. So the post is on the clipboard either
-  // way and the link lives inside the text rather than in a `url` field.
-  async function achShare() {
+  // ── The card ───────────────────────────────────────────────────────────────
+  //
+  // A picked achievement shares as a PICTURE, with the text as the caption.
+  // Text alone is what a link preview already does; the thing worth posting is
+  // the record itself, legible in a feed without anyone tapping through.
+  //
+  // Drawn rather than screenshotted, in the page's own palette, so it is the
+  // same card whatever the row looked like on screen — and still built from
+  // the rows, through the same achParts() the text uses. One source for what
+  // an achievement says, two renderings of it.
+  const CARD_W = 1080, CARD_PAD = 90;
+  const C = { bg: '#070407', blush: '#EEE6EE', pink: '#FF0080', gold: '#C8A84B', dim: '#906878', rose: '#8B1C4A' };
+  const FACE = '"Arial Black", Impact, sans-serif';
+  const BODY = 'system-ui, -apple-system, sans-serif';
+
+  function achWrap(ctx, text, maxW) {
+    const words = String(text).split(' ');
+    const lines = [];
+    let cur = '';
+    for (const w of words) {
+      const next = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(next).width > maxW && cur) { lines.push(cur); cur = w; }
+      else cur = next;
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
+
+  // Laid out in one pass that only measures, so the canvas can be made exactly
+  // as tall as the content needs. A fixed frame would either crop twelve
+  // achievements or strand a single one in a field of black.
+  function achCardLayout(ctx, parts, over) {
+    const maxW = CARD_W - CARD_PAD * 2 - 52;
+    const solo = parts.length === 1;
+    const size = solo ? 50 : 33;
+    const lead = solo ? 68 : 45;
+    const items = parts.map((p) => {
+      ctx.font = `600 ${size}px ${BODY}`;
+      const who = p.owner === 'BLACKPINK' ? '' : p.owner + ' — ';
+      const lines = achWrap(ctx, who + p.line, maxW);
+      ctx.font = `400 ${solo ? 26 : 22}px ${BODY}`;
+      const srcLines = solo && p.src ? achWrap(ctx, p.src, maxW) : [];
+      return { lines, srcLines, year: p.year };
+    });
+    const head = 430;
+    const body = items.reduce((a, it) =>
+      a + it.lines.length * lead + (it.srcLines.length ? 24 + it.srcLines.length * 34 : 0) + (solo ? 0 : 36), 0);
+    // The last entry's trailing gap is not floor space — without removing it
+    // the card ends on a visible hole above the footer rule.
+    const tail = solo ? 0 : 36;
+    return { items, size, lead, solo, maxW, head, height: head + body - tail + (over ? 44 : 0) + 170 };
+  }
+
+  function achCardCanvas(rows) {
+    // Capped like the post, and for the same reason — an uncapped card drew
+    // 10,205px of black for a "select all" of 65. The remainder is counted on
+    // the card too, so the picture does not claim to be the whole list.
+    const over = Math.max(0, rows.length - ACH_SHARE_CAP);
+    const parts = rows.slice(0, ACH_SHARE_CAP).map(achParts);
+    const cv = document.createElement('canvas');
+    cv.width = CARD_W;
+    let ctx = cv.getContext('2d');
+    const L = achCardLayout(ctx, parts, over);
+    cv.height = Math.round(L.height);          // resets the context, so re-fetch it
+    ctx = cv.getContext('2d');
+
+    ctx.fillStyle = C.bg;
+    ctx.fillRect(0, 0, cv.width, cv.height);
+
+    // The hero's rule, as the card's top edge.
+    const g = ctx.createLinearGradient(0, 0, CARD_W, 0);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.35, C.pink);
+    g.addColorStop(0.65, C.gold); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, CARD_W, 7);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = C.gold;
+    ctx.font = `400 21px ${BODY}`;
+    try { ctx.letterSpacing = '7px'; } catch (e) {}
+    ctx.fillText('✦  EVERY RECORD. EVERY FIRST.  ✦', CARD_W / 2, 140);
+    try { ctx.letterSpacing = '0px'; } catch (e) {}
+
+    ctx.fillStyle = C.blush;
+    ctx.font = `900 92px ${FACE}`;
+    ctx.fillText('BLACKPINK', CARD_W / 2, 250);
+    ctx.fillStyle = C.pink;
+    ctx.font = `900 40px ${FACE}`;
+    try { ctx.letterSpacing = '10px'; } catch (e) {}
+    ctx.fillText('ACHIEVEMENTS', CARD_W / 2, 310);
+    try { ctx.letterSpacing = '0px'; } catch (e) {}
+
+    ctx.fillStyle = '#1C0D15';
+    ctx.fillRect(CARD_PAD, 362, CARD_W - CARD_PAD * 2, 1);
+
+    ctx.textAlign = 'left';
+    let y = L.head;
+    for (const it of L.items) {
+      const top = y;
+      ctx.fillStyle = C.pink;
+      ctx.font = `400 ${L.solo ? 30 : 22}px ${BODY}`;
+      ctx.fillText('◆', CARD_PAD, y);
+      ctx.fillStyle = C.blush;
+      ctx.font = `600 ${L.size}px ${BODY}`;
+      let lastW = 0;
+      it.lines.forEach((ln, i) => {
+        ctx.fillText(ln, CARD_PAD + 52, y + i * L.lead);
+        if (i === it.lines.length - 1) lastW = ctx.measureText(ln).width;
+      });
+      y += (it.lines.length - 1) * L.lead;
+      // The year trails the last line where it fits, and drops to its own line
+      // where it does not — the same place it sits on the page.
+      if (it.year) {
+        ctx.fillStyle = C.dim;
+        ctx.font = `400 ${L.solo ? 28 : 21}px ${BODY}`;
+        const yw = ctx.measureText(it.year).width;
+        if (CARD_PAD + 52 + lastW + 18 + yw <= CARD_W - CARD_PAD) {
+          ctx.fillText(it.year, CARD_PAD + 52 + lastW + 18, y);
+        } else { y += L.lead; ctx.fillText(it.year, CARD_PAD + 52, y); }
+      }
+      y += L.lead;
+      if (it.srcLines.length) {
+        y += 24;
+        ctx.fillStyle = C.dim;
+        ctx.font = `400 26px ${BODY}`;
+        it.srcLines.forEach((ln, i) => ctx.fillText(ln, CARD_PAD + 52, y + i * 34));
+        y += it.srcLines.length * 34;
+      }
+      if (!L.solo) y += 36;
+      // A hairline down the left of each entry, the way a picked row is marked.
+      ctx.fillStyle = 'rgba(200,168,75,0.35)';
+      ctx.fillRect(CARD_PAD + 10, top - 26, 1, y - top - (L.solo ? 20 : 48));
+    }
+
+    if (over) {
+      ctx.fillStyle = C.dim;
+      ctx.font = `400 ${L.solo ? 28 : 24}px ${BODY}`;
+      ctx.fillText(`…and ${over} more`, CARD_PAD + 52, y - 4);
+    }
+
+    const fy = cv.height - 92;
+    ctx.fillStyle = '#1C0D15';
+    ctx.fillRect(CARD_PAD, fy - 44, CARD_W - CARD_PAD * 2, 1);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = C.rose;
+    ctx.font = `400 25px ${BODY}`;
+    try { ctx.letterSpacing = '4px'; } catch (e) {}
+    ctx.fillText('BLINKSUNITED.COM/ACHIEVEMENTS', CARD_W / 2, fy);
+    try { ctx.letterSpacing = '0px'; } catch (e) {}
+    return cv;
+  }
+
+  // Rendered the moment the selection changes, NOT when Share is tapped.
+  // canvas.toBlob is async, and an await between the tap and navigator.share
+  // loses the gesture that permits the sheet on iOS — the same reason the
+  // card shares in the main app keep a pre-generated blob around.
+  let _achCardBlob = null, _achCardFor = '';
+  function achRenderCard() {
+    const rows = achPicked();
+    const key = rows.map((r) => achRows().indexOf(r)).join(',');
+    if (key === _achCardFor) return;
+    _achCardFor = key; _achCardBlob = null;
+    if (!rows.length) return;
+    try {
+      achCardCanvas(rows).toBlob((b) => { if (_achCardFor === key) _achCardBlob = b; }, 'image/png');
+    } catch (e) {}
+  }
+
+  function achDownload(blob) {
+    try {
+      const u = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = u; a.download = 'BLACKPINK-achievements.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(u), 1000);
+      achToast('🖼 Card saved — caption copied ✓');
+    } catch (e) { achToast('Could not share — try again'); }
+  }
+
+  // SYNCHRONOUS FROM THE TAP DOWN. The clipboard write is fired and not
+  // awaited, and the blob is already made, so navigator.share is reached
+  // inside the gesture. The caption rides along as `text` for the targets
+  // that keep it; the clipboard is the reliable copy for the ones that drop
+  // it once a file is attached, which is most of them.
+  function achShare() {
     const rows = achPicked();
     if (!rows.length) return;
     const text = achShareText(rows);
-    let copied = false;
-    try { await navigator.clipboard?.writeText(text); copied = true; } catch (e) {}
-    if (navigator.share) {
-      navigator.share({ title: 'BLACKPINK — Achievements', text }).catch(() => {});
-    } else {
-      achToast(copied ? 'Copied — paste it anywhere ✨' : 'Copy failed — try again');
+    navigator.clipboard?.writeText(text).catch(() => {});
+    const blob = _achCardBlob;
+    const file = blob ? new File([blob], 'BLACKPINK-achievements.png', { type: 'image/png' }) : null;
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      achToast('📋 Caption copied — paste it with your post');
+      navigator.share({ files: [file], text })
+        .catch((e) => { if (!e || e.name !== 'AbortError') achDownload(blob); });
+      return;
     }
+    // No file sharing (most desktops): the card is still the deliverable, so
+    // it is saved rather than quietly downgraded to a text post.
+    if (blob) { achDownload(blob); return; }
+    if (navigator.share) { navigator.share({ title: 'BLACKPINK — Achievements', text }).catch(() => {}); return; }
+    achToast('Copied — paste it anywhere ✨');
   }
 
   document.getElementById('ach-share').addEventListener('click', achShare);
@@ -702,5 +891,7 @@
   });
 
   window.achShareText = achShareText;   // the checks build the post the page builds
+  window.achCardCanvas = achCardCanvas; // and draw the card the page draws
+  window.achCardReady = () => !!_achCardBlob;   // the pre-render the gesture depends on
   window.ACH_SHARE_CAP = ACH_SHARE_CAP;
 </script>
