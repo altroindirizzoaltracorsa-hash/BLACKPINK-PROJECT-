@@ -215,6 +215,64 @@ console.log('\n--- the community playlists');
         'and the note asks people to play them, not to pre-save a released song');
 }
 
+console.log('\n--- the playlists are shareable');
+// Built in a real browser from the real card, because the point of this post
+// is that it is NOT a second copy of the ids — it reads the anchors off the
+// panel. A source-level check would pass on a function that returns a
+// hand-typed list, which is the failure it exists to prevent.
+{
+  const { createServer } = await import('node:http');
+  const { chromium } = await import('./_playwright.mjs');
+  const TY = { html:'text/html', js:'text/javascript', css:'text/css', json:'application/json',
+    png:'image/png', jpg:'image/jpeg', webp:'image/webp', svg:'image/svg+xml', mp4:'video/mp4' };
+  const srv = createServer(async (req, res) => {
+    const u = decodeURIComponent(req.url.split('?')[0]);
+    if (u === '/sw.js') { res.writeHead(404); res.end(''); return; }
+    const f = u === '/' ? '/index.html' : u;
+    try { const b = await (await import('node:fs/promises')).readFile(root + f.slice(1));
+      res.writeHead(200, { 'content-type': TY[f.split('.').pop()] || 'application/octet-stream' }); res.end(b); }
+    catch { res.writeHead(404); res.end(''); }
+  });
+  await new Promise((r) => srv.listen(0, r));
+  const br = await chromium.launch();
+  const pg = await br.newPage({ viewport: { width: 414, height: 900 } });
+  await pg.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen','1');
+    localStorage.setItem('ltal_reminder_dismissed_v1','1'); localStorage.setItem('ext_update_dismissed_1.9.8','1'); } catch (e) {} });
+  await pg.goto(`http://127.0.0.1:${srv.address().port}/`, { waitUntil: 'domcontentloaded' });
+  await pg.waitForFunction(() => typeof window.shareAddictedPlaylists === 'function', null, { timeout: 30000 }).catch(() => {});
+
+  const r = await pg.evaluate(() => {
+    const card = document.querySelector('.cd-card-addicted');
+    const btn = card && card.querySelector('.cd-pl-share');
+    const hrefs = [...card.querySelectorAll('.cd-playlists .cd-times-body a')].map(a => a.href);
+    return { hasBtn: !!btn, onclick: btn ? btn.getAttribute('onclick') : '',
+             post: (window._addictedPlaylistPost && window._addictedPlaylistPost()) || null, hrefs };
+  });
+
+  check(r.hasBtn, 'the playlists block has a share button', r.onclick);
+  check(!!r.post, 'and it builds a post');
+  if (r.post) {
+    // Every link on the panel is in the post, and nothing else is.
+    const inPost = r.hrefs.filter((h) => r.post.includes(h));
+    check(inPost.length === r.hrefs.length,
+          `all ${r.hrefs.length} playlists are in it`, `${inPost.length} found`);
+    const extra = [...r.post.matchAll(/https:\/\/open\.spotify\.com\/playlist\/[A-Za-z0-9]+/g)]
+      .map((m) => m[0]).filter((u) => !r.hrefs.includes(u));
+    check(extra.length === 0, 'and no playlist the card does not have', extra.join(' '));
+    // The titles travel with the links; a bare list of urls says nothing.
+    check(/ADDICTED FOCUSED/.test(r.post) && /ADDICTED x PINKS/i.test(r.post) && /ADDICTED x BP/i.test(r.post),
+          'each one is named, not just linked');
+    check(r.post.includes('blinksunited.com/countdowns/addicted'),
+          'and the post carries the campaign link');
+    check(!/[?&](si|utm_source|is|obrf)=/.test(r.post),
+          'and no share-tracking parameter rides along',
+          (r.post.match(/\S*[?&](si|utm_source)=\S*/g) || []).join(' '));
+    // It is out. The PRESS PLAY post asks for a pre-save; this one cannot.
+    check(!/pre-?save/i.test(r.post), 'and it does not ask anyone to pre-save a released single');
+  }
+  await br.close(); srv.close();
+}
+
 console.log(`\nFAILURES: ${fails.length}`);
 for (const f of fails) console.log('  - ' + f);
 process.exit(fails.length ? 1 : 0);
