@@ -60,6 +60,75 @@ for (const [name, src, re] of SUMS) {
           : `${got.length} tracks`);
 }
 
+console.log('\n--- and the heading over the bar names them all');
+// THE FOURTH COPY, and the only one a reader sees. The three sums above can
+// agree perfectly while the sentence over the bar lists eight other things,
+// which is exactly what shipped: ADDICTED counted, heading silent.
+//
+// Checked in a browser against CAMPAIGN_TOTAL_IDS, not against the string.
+// A track is "named" by its own title, or by the EP label of the release it
+// belongs to — EP_RELEASES is the same membership list the leaderboard and My
+// Badges read, so SaWaDiKa counts as named by "PRESS PLAY EP".
+{
+  const { createServer } = await import('node:http');
+  const { readFile } = await import('node:fs/promises');
+  const { chromium } = await import('./_playwright.mjs');
+  const TY = { html:'text/html', js:'text/javascript', css:'text/css', json:'application/json',
+    png:'image/png', jpg:'image/jpeg', webp:'image/webp', svg:'image/svg+xml', mp4:'video/mp4' };
+  const srv = createServer(async (q, r) => {
+    const u = decodeURIComponent(q.url.split('?')[0]);
+    if (u === '/sw.js') { r.writeHead(404); r.end(''); return; }
+    const f = u === '/' ? '/index.html' : u;
+    try { const b = await readFile(root + f.slice(1));
+      r.writeHead(200, { 'content-type': TY[f.split('.').pop()] || 'application/octet-stream' }); r.end(b); }
+    catch { r.writeHead(404); r.end(''); }
+  });
+  await new Promise((r) => srv.listen(0, r));
+  const br = await chromium.launch();
+  const pg = await br.newPage();
+  await pg.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen','1');
+    localStorage.setItem('ltal_reminder_dismissed_v1','1'); localStorage.setItem('ext_update_dismissed_1.9.8','1'); } catch (e) {} });
+  await pg.goto(`http://127.0.0.1:${srv.address().port}/`, { waitUntil: 'domcontentloaded' });
+  await pg.waitForFunction(() => typeof window.communityGoalLabel === 'function', null, { timeout: 30000 }).catch(() => {});
+
+  const r = await pg.evaluate(() => ({
+    label: (typeof communityGoalLabel === 'function') ? communityGoalLabel() : null,
+    ids: (typeof CAMPAIGN_TOTAL_IDS !== 'undefined') ? CAMPAIGN_TOTAL_IDS.slice() : [],
+    eps: (typeof EP_RELEASES !== 'undefined') ? EP_RELEASES.map((g) => ({ label: g.label, songs: g.songs })) : [],
+    titles: (typeof TRACKS !== 'undefined') ? Object.fromEntries(TRACKS.map((t) => [t.id, t.title])) : {},
+  }));
+
+  // AND THE PAGE ACTUALLY PUTS IT THERE. The first version of this check
+  // collected the rendered heading and never asserted it, so disabling the one
+  // line that fills the element passed: a perfect builder nothing calls.
+  // loadCommunityGoal is invoked directly and its rejection ignored — the fill
+  // happens before the fetch precisely so the heading is right even when no
+  // number arrives, and that ordering is what this proves.
+  const shown = await pg.evaluate(async () => {
+    try { await loadCommunityGoal(); } catch (e) {}
+    return (document.getElementById('community-goal-label') || {}).textContent || '';
+  });
+
+  check(!!r.label, 'the heading is built, not typed', r.label);
+  if (r.label) {
+    const unnamed = r.ids.filter((id) => {
+      const ep = r.eps.find((g) => g.songs.includes(id));
+      return !r.label.includes(ep ? ep.label : (r.titles[id] || id));
+    });
+    check(unnamed.length === 0, `every counted track is named in it (${r.ids.length} counted)`,
+          unnamed.length ? `missing ${unnamed.join(', ')}` : r.label.replace(/^\/\/\s*/, ''));
+    // The markup's inert fallback must not carry a list of its own — a stale
+    // one there would be worse than none, since it only shows when the script
+    // that would have corrected it did not run.
+    const raw = readFileSync(root + 'index.html', 'utf8');
+    const span = (raw.match(/<span class="goal-tracker-label" id="community-goal-label">([^<]*)<\/span>/) || [])[1] || '';
+    check(!span.includes('+'), 'and the static fallback lists no tracks of its own', span.trim());
+    check(shown === r.label, 'and the page renders the built heading, not the fallback',
+          shown === r.label ? 'rendered' : `showing ${shown.trim()}`);
+  }
+  await br.close(); srv.close();
+}
+
 console.log(`\nFAILURES: ${fails.length}`);
 for (const f of fails) console.log('  - ' + f);
 process.exit(fails.length ? 1 : 0);
