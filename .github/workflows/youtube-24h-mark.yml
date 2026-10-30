@@ -21,6 +21,16 @@ name: YouTube 24h Mark Capture
 #   passed   2026-09-05T04:00Z  JISOO CLICK MV
 #   pending  2026-10-24T04:00Z  -5ZXrO_lYSA Tarantino MV 24h
 #   pending  2026-10-30T04:00Z  -5ZXrO_lYSA Tarantino MV 7-day
+#   pending  2026-10-30T23:00:09Z  Pksr9T8m_aA ADDICTED MV 24h
+#
+# That last one is NOT on the hour, and deliberately. /api/youtube-stats
+# reports the MV's publishedAt as 2026-10-29T23:00:09Z — nine seconds after
+# the single's own release instant — so twenty-four hours after it is
+# 23:00:09Z, and pinning the round hour would stop nine seconds short of a
+# day. Read from the API rather than assumed from the release time, because
+# the two are not the same number.
+# The 22:35 and 22:55 slots already reach it: a mark is in window from 5h
+# before, so they need no new cron.
 #
 # KEEP THIS LIST CURRENT. A mark that is not here is not captured precisely —
 # the job finds nothing in window, exits 0 green, and the pin silently falls
@@ -65,7 +75,7 @@ jobs:
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BASE: https://www.blinksunited.com
-          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-10-24T04:00:00Z,2026-10-30T04:00:00Z' }}
+          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-10-24T04:00:00Z,2026-10-30T04:00:00Z,2026-10-30T23:00:09Z' }}
         run: |
           set -u
           now=$(date -u +%s)
