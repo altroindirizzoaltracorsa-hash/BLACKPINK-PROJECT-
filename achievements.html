@@ -115,6 +115,53 @@
   .footer-copy { font-size: 0.62rem; color: var(--rose); letter-spacing: 0.08em; }
 
   @media (prefers-reduced-motion: reduce) { .reveal { transition: none; } }
+
+  /* ── Sharing ──────────────────────────────────────────────────────────────
+     Every record row and every milestone row is selectable. The picked state
+     is drawn with an inset box-shadow and a background, never a border or an
+     inserted element, because both row types are CSS grids with fixed first
+     columns (2.6rem / 4rem) and anything that takes up space reflows the text
+     beside it — a list that nudges sideways as you tap down it. */
+  .rec-item, .ms-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .rec-item:focus-visible, .ms-row:focus-visible { outline: 2px solid var(--pink); outline-offset: -2px; }
+  .ach-picked { background: rgba(255,0,128,0.07) !important; box-shadow: inset 3px 0 0 var(--pink); }
+  .ach-picked .rec-gem, .ach-picked .ms-year { color: var(--gold); }
+
+  .ach-hint {
+    font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--dim); text-align: center; margin-top: 0.2rem;
+  }
+  .ach-hint b { color: var(--pink); font-weight: 600; }
+
+  /* The bar sits above the iOS home indicator rather than under it. */
+  .ach-bar {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 300;
+    display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
+    gap: 0.5rem 0.9rem;
+    padding: 0.8rem 1rem calc(0.8rem + env(safe-area-inset-bottom, 0px));
+    background: rgba(7,4,7,0.95); border-top: 1px solid var(--rose);
+    backdrop-filter: blur(8px);
+  }
+  .ach-bar[hidden] { display: none; }
+  /* The bar is fixed, so it sits ON TOP of whatever is at the bottom of the
+     page. Without this, picking a row while near the end hides the footer
+     links behind the bar — and on a short phone, the last achievement too. */
+  body.ach-bar-open { padding-bottom: 6.5rem; }
+  .ach-bar-n { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
+  .ach-bar-n b { color: var(--pink); font-family: 'Arial Black', Impact, sans-serif; font-size: 0.85rem; }
+  .ach-bar-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+  .ach-btn {
+    font: inherit; font-size: 0.72rem; letter-spacing: 0.08em; cursor: pointer;
+    color: var(--blush); background: transparent; border: 1px solid var(--rose);
+    padding: 0.48rem 1rem; transition: border-color 0.2s, color 0.2s, background 0.2s;
+  }
+  .ach-btn:hover { border-color: var(--pink); color: var(--pink); background: rgba(255,0,128,0.06); }
+  .ach-btn-main { border-color: var(--pink); color: var(--pink); font-weight: 600; }
+  .ach-btn-main:hover { background: rgba(255,0,128,0.14); }
+  /* De-emphasised, but --faint (#1C0D15) is all but invisible on --bg and the
+     button read as floating text with no edge. Rose at low opacity keeps it
+     secondary without hiding that it is a button. */
+  .ach-btn-ghost { color: var(--dim); border-color: rgba(139,28,74,0.55); }
 </style>
 
 <a href="/leaderboard" class="back">← Blinks United</a>
@@ -125,6 +172,7 @@
     <p class="sect-eye" style="margin:0">✦ Every record. Every first. ✦</p>
     <h1 class="hero-title">BLACKPINK<br><em>Achievements</em></h1>
     <p class="hero-sub">Official Guinness World Records, chart firsts, and streaming milestones — as a group and as individuals.</p>
+    <p class="ach-hint">Tap any achievement to pick it — then share <b>one</b>, <b>some</b>, or <b>all</b></p>
     <div class="hero-stats">
       <div>
         <div class="hero-stat-n">19</div>
@@ -402,6 +450,16 @@
   </div>
 </section>
 
+<div class="ach-bar" id="ach-bar" hidden>
+  <span class="ach-bar-n"><b id="ach-count">0</b> <span id="ach-count-word">picked</span></span>
+  <div class="ach-bar-btns">
+    <button type="button" class="ach-btn ach-btn-main" id="ach-share">Share</button>
+    <button type="button" class="ach-btn" id="ach-copy">Copy text</button>
+    <button type="button" class="ach-btn" id="ach-all">Select all</button>
+    <button type="button" class="ach-btn ach-btn-ghost" id="ach-clear">Clear</button>
+  </div>
+</div>
+
 <footer>
   <div class="footer-links">
     <a href="/10years.html" class="footer-link">10 Years of BLACKPINK</a>
@@ -416,4 +474,158 @@
     { threshold: 0.07 }
   );
   document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+
+  // ── Share an achievement, several, or all of them ──────────────────────────
+  //
+  // A TAP PICKS, IT DOES NOT SHARE. Every row on this page is tappable, so a
+  // tap that went straight to the OS share sheet would fire on every stray
+  // touch while reading — and the same gesture has to serve picking several,
+  // which would otherwise need a mode toggle. So one tap arms the bar, and the
+  // bar's button shares. A single achievement is two taps, and nothing
+  // irreversible happens on the first.
+  //
+  // THE TEXT IS READ OFF THE PAGE, never kept as a second copy. There are 71
+  // achievements here and their wording changes — three times in one afternoon,
+  // in the case of the row above this comment — so any hand-written list of
+  // them would be a share that quotes the site incorrectly, with both copies
+  // looking fine on their own. Everything shared is pulled from the rendered
+  // row: the line, its year, its source, and whose section it sits in.
+  const ACH_SHARE_CAP = 12;
+  const ACH_URL = 'https://www.blinksunited.com/achievements';
+  const achRows = () => [...document.querySelectorAll('.rec-item, .ms-row')];
+  const achPicked = () => achRows().filter((r) => r.classList.contains('ach-picked'));
+
+  // One extractor for both row types. `.year` lives INSIDE `.rec-text` while
+  // `.ms-year` is a sibling of `.ms-text`, and both bodies end with a source
+  // span, so the body is cloned and the parts that are not the achievement are
+  // removed from the clone — the rendered row is never touched.
+  function achParts(row) {
+    const body = row.querySelector('.rec-text, .ms-text');
+    const clone = body.cloneNode(true);
+    clone.querySelectorAll('.rec-src, .ms-src, .year').forEach((n) => n.remove());
+    const sec = row.closest('section');
+    const member = sec && sec.querySelector('.member-name');
+    return {
+      line: (clone.textContent || '').replace(/\s+/g, ' ').trim(),
+      year: (row.querySelector('.year, .ms-year')?.textContent || '').replace(/\s+/g, ' ').trim(),
+      src:  (row.querySelector('.rec-src, .ms-src')?.textContent || '').replace(/\s+/g, ' ').trim(),
+      owner: member ? member.textContent.trim() : 'BLACKPINK',
+    };
+  }
+
+  function achLine(p) {
+    const who = p.owner === 'BLACKPINK' ? '' : p.owner + ' — ';
+    return `◆ ${who}${p.line}${p.year ? ` (${p.year})` : ''}`;
+  }
+
+  function achShareText(rows) {
+    const parts = rows.map(achParts);
+    const out = [];
+    if (parts.length === 1) {
+      // The source rides along for a single pick: one achievement on its own
+      // invites "says who?", and the citation is the answer. It is left off a
+      // multi-pick because these sources run to whole sentences — the GWR
+      // subscriber row alone carries three comparison figures — and a dozen of
+      // them turns a shareable post into a wall.
+      out.push('🏆 BLACKPINK — Achievements', '', achLine(parts[0]));
+      if (parts[0].src) out.push('   ' + parts[0].src);
+    } else {
+      out.push(`🏆 BLACKPINK — ${parts.length} achievements`, '');
+      parts.slice(0, ACH_SHARE_CAP).forEach((p) => out.push(achLine(p)));
+      // The overflow is STATED, not silently dropped. "Share all" on 71 rows
+      // is a post no target will show in full, so the ones that do not fit are
+      // counted in the text and the link carries the rest.
+      const over = parts.length - ACH_SHARE_CAP;
+      if (over > 0) out.push(`…and ${over} more`);
+    }
+    out.push('', ACH_URL);
+    return out.join('\n');
+  }
+
+  function achToast(msg) {
+    let el = document.getElementById('ach-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'ach-toast';
+      el.style.cssText = 'position:fixed;left:50%;bottom:calc(5.5rem + env(safe-area-inset-bottom,0px));'
+        + 'transform:translateX(-50%) translateY(8px);background:rgba(20,20,20,0.94);color:#fff;'
+        + 'padding:10px 20px;border-radius:24px;font-size:13px;z-index:400;opacity:0;'
+        + 'transition:opacity .2s,transform .2s;pointer-events:none;max-width:90vw;text-align:center';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.style.opacity = '1';
+    el.style.transform = 'translateX(-50%) translateY(0)';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => {
+      el.style.opacity = '0';
+      el.style.transform = 'translateX(-50%) translateY(8px)';
+    }, 3000);
+  }
+
+  function achSync() {
+    const rows = achRows(), n = rows.filter((r) => r.classList.contains('ach-picked')).length;
+    document.getElementById('ach-count').textContent = String(n);
+    document.getElementById('ach-count-word').textContent =
+      n === rows.length ? "picked — that's all of them" : 'picked';
+    document.getElementById('ach-bar').hidden = n === 0;
+    document.body.classList.toggle('ach-bar-open', n > 0);
+  }
+
+  function achToggle(row, on) {
+    const next = on === undefined ? !row.classList.contains('ach-picked') : on;
+    row.classList.toggle('ach-picked', next);
+    row.setAttribute('aria-pressed', next ? 'true' : 'false');
+  }
+
+  achRows().forEach((row) => {
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('aria-pressed', 'false');
+    row.addEventListener('click', () => { achToggle(row); achSync(); });
+    row.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault();          // Space would scroll the page away from the row
+      achToggle(row);
+      achSync();
+    });
+  });
+
+  // CLIPBOARD FIRST, inside the tap gesture — the same reason the playlist
+  // shares give: Instagram, X and TikTok drop the share `text` when anything
+  // else rides along, and a write attempted after the sheet has opened has
+  // lost the gesture that permits it. So the post is on the clipboard either
+  // way and the link lives inside the text rather than in a `url` field.
+  async function achShare() {
+    const rows = achPicked();
+    if (!rows.length) return;
+    const text = achShareText(rows);
+    let copied = false;
+    try { await navigator.clipboard?.writeText(text); copied = true; } catch (e) {}
+    if (navigator.share) {
+      navigator.share({ title: 'BLACKPINK — Achievements', text }).catch(() => {});
+    } else {
+      achToast(copied ? 'Copied — paste it anywhere ✨' : 'Copy failed — try again');
+    }
+  }
+
+  document.getElementById('ach-share').addEventListener('click', achShare);
+  document.getElementById('ach-copy').addEventListener('click', async () => {
+    const rows = achPicked();
+    if (!rows.length) return;
+    let ok = false;
+    try { await navigator.clipboard?.writeText(achShareText(rows)); ok = true; } catch (e) {}
+    achToast(ok ? `Copied ${rows.length} ${rows.length === 1 ? 'achievement' : 'achievements'} ✨` : 'Copy failed — try again');
+  });
+  document.getElementById('ach-all').addEventListener('click', () => {
+    achRows().forEach((r) => achToggle(r, true));
+    achSync();
+  });
+  document.getElementById('ach-clear').addEventListener('click', () => {
+    achRows().forEach((r) => achToggle(r, false));
+    achSync();
+  });
+
+  window.achShareText = achShareText;   // the checks build the post the page builds
+  window.ACH_SHARE_CAP = ACH_SHARE_CAP;
 </script>
