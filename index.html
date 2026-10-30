@@ -4123,21 +4123,24 @@
                  TikTok is the vt.tiktok.com short form as supplied — those do
                  expire, so if it dead-ends, swap in the full
                  www.tiktok.com/@user/video/<id> url. -->
-            <!-- The official teaser, replacing the audio snippet. One link, so
-                 no chooser: the snippet lived on three platforms and this is a
-                 YouTube video.
+            <!-- The MV, which replaces the teaser the way the teaser replaced
+                 the audio snippet. One link, so no chooser.
 
-                 LINKED, NOT EMBEDDED, for the reason the snippet was: a player
-                 that cannot start on its own is a player sitting there looking
-                 broken, and browsers refuse audio before a gesture, so an
-                 autoplaying teaser would have to be muted — no use for a teaser.
+                 The teaser is GONE rather than kept beside it. It was the thing
+                 to watch while there was nothing else; now there is the video
+                 it was cut from, and offering both asks a reader to pick
+                 between a trailer and the film.
+
+                 LINKED, NOT EMBEDDED, for the reason the snippet was: browsers
+                 refuse audio before a gesture, so anything starting on its own
+                 would have to be muted — no use for a music video.
 
                  The ?is= token is stripped. It identifies whoever copied the
                  link, does nothing for the video, and would be handed to every
                  visitor alike. -->
             <div class="ad-snippet">
-              <a class="cd-btn ad-btn ad-btn-ghost ad-teaser" href="https://youtu.be/ZKupyV0lgqg"
-                 target="_blank" rel="noopener">▶ Watch the teaser ↗</a>
+              <a class="cd-btn ad-btn ad-btn-ghost ad-teaser" href="https://youtu.be/Pksr9T8m_aA"
+                 target="_blank" rel="noopener">▶ Watch the MV ↗</a>
             </div>
             <div class="cd-links">
               <a class="cd-btn ad-btn" href="https://jisoo.lnk.to/addicted" target="_blank" rel="noopener" onclick="saveAddicted()">Pre-save ↗</a>
@@ -4152,6 +4155,26 @@
               <a class="ad-timetable" href="/strips/addicted-3.jpg" target="_blank" rel="noopener">
                 <img src="/strips/addicted-3.jpg" loading="lazy" alt="ADDICTED release timetable — fourteen cities"></a>
               <div class="cd-times-body" data-times-for="2026-10-29T23:00:00Z"></div>
+            </details>
+            <!-- Community playlists, same block as PRESS PLAY's and in the same
+                 order — FOCUSED, then x PINKS, then x BP — so the two cards
+                 read alike rather than each in the order its links happened to
+                 be sent in.
+                 The note differs because the situation does: PRESS PLAY's asks
+                 for a pre-save because that card was counting down. ADDICTED is
+                 out, so there is nothing to pre-save and the thing to do is
+                 play one.
+                 The ?si= tokens are stripped, as everywhere else here. Each is
+                 tied to whoever copied the link and would be handed to every
+                 visitor alike. -->
+            <details class="cd-times cd-playlists">
+              <summary>🎧 Community Playlists</summary>
+              <div class="cd-times-body">
+                <p class="cd-pl-note">ADDICTED is out — open one and let it run.</p>
+                <a href="https://open.spotify.com/playlist/3qcYmgWzGmjjdEnjRFGWgU" target="_blank" rel="noopener">ADDICTED FOCUSED →</a>
+                <a href="https://open.spotify.com/playlist/5hskZkTdeVFb5NgVuin2W4" target="_blank" rel="noopener">ADDICTED x PINKS →</a>
+                <a href="https://open.spotify.com/playlist/7nUhd0sH32lh4wWkdREGFe" target="_blank" rel="noopener">ADDICTED x BP →</a>
+              </div>
             </details>
           </div>
           <!-- JENNIE — "Someone to Hold", the song she wrote for Netflix's

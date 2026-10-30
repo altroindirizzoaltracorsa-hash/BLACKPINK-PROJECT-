@@ -135,19 +135,25 @@ console.log('\n--- the assets, where each one belongs');
   }
 }
 
-console.log('\n--- the teaser is linked, not embedded');
-// The audio snippet across three platforms was replaced by the official
-// teaser, which is one YouTube video — so one link and no chooser.
+console.log('\n--- the MV is linked, not embedded');
+// Three platforms of audio snippet became one teaser, and now the teaser has
+// become the MV — one YouTube video each time, so one link and no chooser.
 //
 // The rule it inherits is the one the snippet was built on, and it is the same
 // rule for the same reason: a player that cannot start on its own is a player
-// sitting there looking broken. Browsers refuse audio before a gesture, so an
-// autoplaying teaser would have to be muted, which is no use for a teaser.
+// sitting there looking broken. Browsers refuse audio before a gesture, so
+// anything autoplaying would have to be muted, which is no use for a video.
 {
   const page = readFileSync(root + 'index.html', 'utf8');
   const card = (page.match(/<div class="cd-card cd-card-addicted"[\s\S]*?(?=<div class="cd-card )/) || [''])[0];
   const block = (card.match(/<div class="ad-snippet">[\s\S]*?<\/div>/) || [''])[0];
-  check(!!block, 'the card has a teaser block');
+  check(!!block, 'the card has a video block');
+  // The teaser is SUPERSEDED, not kept beside the MV. Offering both asks a
+  // reader to choose between a trailer and the film, and the trailer is the
+  // one that stops being the point the moment the film exists. Named by id
+  // because that is what a well-meant "put the teaser back" would restore.
+  check(!card.includes('ZKupyV0lgqg'),
+        'and the pre-release teaser is no longer linked from it');
 
   const hrefs = [...block.matchAll(/href="([^"]*)"/g)].map(m => m[1]);
   check(hrefs.length === 1, `it has ${hrefs.length} link(s), not a chooser`, hrefs.join(' '));
@@ -169,6 +175,44 @@ console.log('\n--- the teaser is linked, not embedded');
   // left behind styles nothing and reads as a feature that is still there.
   check(!/ad-snippet-summary|ad-snippet-links/.test(page),
         'the old three-platform chooser is fully removed, markup and CSS');
+}
+
+console.log('\n--- the community playlists');
+// Same block, same order and the same rules as PRESS PLAY's, which is the
+// point: two campaign cards side by side that list their playlists in
+// whatever order the links arrived read as two different features.
+//
+// Checked in ORDER rather than as a set. A set passes while FOCUSED sits
+// third, and the order is the only thing distinguishing these three to
+// someone scanning the card.
+{
+  const page = readFileSync(root + 'index.html', 'utf8');
+  const card = (page.match(/<div class="cd-card cd-card-addicted"[\s\S]*?(?=<div class="cd-card )/) || [''])[0];
+  const block = (card.match(/<details class="cd-times cd-playlists">[\s\S]*?<\/details>/) || [''])[0];
+  check(!!block, 'the card has a playlists block');
+
+  const WANT = [
+    ['ADDICTED FOCUSED',  '3qcYmgWzGmjjdEnjRFGWgU'],
+    ['ADDICTED x PINKS',  '5hskZkTdeVFb5NgVuin2W4'],
+    ['ADDICTED x BP',     '7nUhd0sH32lh4wWkdREGFe'],
+  ];
+  const links = [...block.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)]
+    .map((m) => [m[2].replace(/\s*→\s*$/, '').trim(), m[1]]);
+  check(links.length === WANT.length, `${links.length} playlists listed`,
+        links.map((l) => l[0]).join(', '));
+  WANT.forEach(([name, id], i) => {
+    const got = links[i] || [];
+    check(got[0] === name && got[1] === `https://open.spotify.com/playlist/${id}`,
+          `  ${i + 1}. ${name}`, got[0] ? `got ${got[0]} → ${got[1]}` : 'missing');
+  });
+  // Each arrived carrying ?si=, which identifies whoever copied the link.
+  check(!/[?&]si=/.test(block), 'and none carries a share-tracking parameter',
+        (block.match(/[^"]*[?&]si=[^"]*/g) || []).join(' '));
+  // ADDICTED is out. "Pre-save them" is PRESS PLAY's note, for a card that was
+  // still counting down, and copying it here would ask for something that is
+  // no longer possible.
+  check(/class="cd-pl-note"/.test(block) && !/pre-save/i.test(block),
+        'and the note asks people to play them, not to pre-save a released song');
 }
 
 console.log(`\nFAILURES: ${fails.length}`);
