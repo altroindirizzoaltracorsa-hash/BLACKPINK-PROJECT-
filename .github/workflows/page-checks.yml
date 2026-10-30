@@ -126,6 +126,15 @@ jobs:
         if: always()
         run: node .github/scripts/test_nav_menu_scroll.mjs
 
+      # The share post is built FROM the achievement rows, so this compares it
+      # against what they render rather than against a copy of the wording. 65
+      # achievements whose text moves (the 10M-followers line was reworded
+      # three times in one afternoon) is exactly the case where a hand-written
+      # expectation would quote the site wrongly and still pass.
+      - name: Achievements can be shared — one, some, or all
+        if: always()
+        run: node .github/scripts/test_achievements_share.mjs
+
       - name: The front door
         if: always()
         run: node .github/scripts/test_awards_page.mjs
