@@ -164,6 +164,16 @@ jobs:
         if: always()
         run: node .github/scripts/test_track_wiring.mjs
 
+      # The community goal's daily total is added up in three places — the bar,
+      # the nightly recompute and the live read — and ADDICTED reached two of
+      # them. Nothing failed: each copy is valid, each returns a plausible
+      # number, and they differ by one song. Measured against
+      # CAMPAIGN_TOTAL_IDS, which is where the site declares what counts, so
+      # three copies agreeing on the wrong set still fails.
+      - name: The community goal counts the same tracks everywhere
+        if: always()
+        run: node .github/scripts/test_community_goal_ids.mjs
+
       # A campaign can be registered with no goals and a mount that does not
       # exist, and nothing throws — the renderer returns early on both. PRESS
       # PLAY sat like that while the admin picker said "no goals yet".
