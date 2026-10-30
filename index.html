@@ -4143,7 +4143,7 @@
                  target="_blank" rel="noopener">▶ Watch the MV ↗</a>
             </div>
             <div class="cd-links">
-              <a class="cd-btn ad-btn" href="https://jisoo.lnk.to/addicted" target="_blank" rel="noopener" onclick="saveAddicted()">Pre-save ↗</a>
+              <a class="cd-btn ad-btn" href="https://jisoo.lnk.to/ADDICTED" target="_blank" rel="noopener" onclick="saveAddicted()">Listen ↗</a>
               <a class="cd-btn ad-btn ad-btn-ghost" href="https://www.jisoo.io" target="_blank" rel="noopener">jisoo.io ↗</a>
               <button class="cd-btn ad-btn ad-btn-ghost" onclick="openAddictedCard()">📸 Share</button>
             </div>
@@ -5336,6 +5336,7 @@
         <button class="lb-subtab" id="lb-subtab-faep" style="display:none" onclick="openFaEpLeaderboard(this)">FALLEN ANGEL EP ▾</button>
         <button class="lb-subtab" id="lb-subtab-pressplay" onclick="openPressPlayLeaderboard(this)">PRESS PLAY EP ▾</button>
         <button class="lb-subtab" onclick="switchLbSong('click', this)">CLICK</button>
+        <button class="lb-subtab" onclick="switchLbSong('addicted', this)">ADDICTED</button>
         <button class="lb-subtab" id="lb-subtab-newtrick" style="display:none" onclick="switchLbSong('newtrick', this)">NEW TRICK</button>
       </div>
       <!-- Nested per-track row for PRESS PLAY — shown only when that tab is open.
@@ -9635,6 +9636,10 @@ const TRACKS = [
   { id: 'tarantino',   title: 'TARANTINO',         artist: 'LISA',   track: 'Tarantino',          year: '2026', era: 'PRESS PLAY',   spotify: 'https://open.spotify.com/track/3bgnrHHwyYRtz3ykzAVImy' },
   { id: 'cutuoff',     title: 'CUT U OFF',         artist: 'LISA',   track: 'Cut U Off',          year: '2026', era: 'PRESS PLAY',   spotify: 'https://open.spotify.com/track/4NOZnyEKqujVEhHYobZfrk' },
   { id: 'sweat',       title: 'SWEAT',             artist: 'LISA',   track: 'Sweat',              year: '2026', era: 'PRESS PLAY',   spotify: 'https://open.spotify.com/track/2dvKssoXPLt3RwTEGCIdGd' },
+  // JISOO solo single (2026-10-30). Matched under the JISOO member branch, like
+  // CLICK above. `track` is the Spotify spelling because that is what the
+  // scrobble matchers key on, and api/cron-scrobbles.js carries it verbatim.
+  { id: 'addicted',    title: 'ADDICTED',          artist: 'JISOO',  track: 'ADDICTED',           year: '2026', era: 'ADDICTED',     spotify: 'https://open.spotify.com/track/0SqDNsDiJyvrbXGsIvt0hN' },
 ];
 
 // Display name for a leaderboard sub-tab, taken from TRACKS rather than typed
@@ -9694,7 +9699,7 @@ const EP_TRACK_IDS = ['ltal', 'fallenangel', 'heaven'];
 // STAMP stays campaign-only — see CAMPAIGN_TRACK_IDS above).
 // PRESS PLAY's other five join SaWaDiKa here: the EP counts toward the
 // community goal, the way the Fallen Angel EP does.
-const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'sawadika', 'click', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat'];
+const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'sawadika', 'click', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted'];
 function campaignTotalOf(tp) { return CAMPAIGN_TOTAL_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
 
 // ── MOMENTARY: Fallen Angel EP push ──────────────────────────
@@ -12640,6 +12645,8 @@ const DAILY_TIERS = {
   tarantino:   makeTiers(30, 'TARANTINO'),
   cutuoff:     makeTiers(30, 'CUT U OFF'),
   sweat:       makeTiers(30, 'SWEAT'),
+  // JISOO solo single — 40, the singles' bar, as CLICK and SAWADIKA have.
+  addicted:    makeTiers(40, 'ADDICTED'),
 };
 
 const WEEKLY_TIERS = {
@@ -12661,6 +12668,8 @@ const WEEKLY_TIERS = {
   tarantino:   makeTiers(30 * 7, 'TARANTINO', '/wk'),
   cutuoff:     makeTiers(30 * 7, 'CUT U OFF', '/wk'),
   sweat:       makeTiers(30 * 7, 'SWEAT', '/wk'),
+  // JISOO solo single — 40, the singles' bar, as CLICK and SAWADIKA have.
+  addicted:    makeTiers(40 * 7, 'ADDICTED', '/wk'),
 };
 
 function getDailyBadge(trackId, count) {
@@ -12955,6 +12964,7 @@ function countLbByTrack(listens) {
       else if (PRESS_PLAY_KEYS.includes(k)) counts[k]++;
     } else if (_lbMemberKey(l.track_metadata?.artist_name) === 'jisoo') {
       if (k === 'click') counts.click++;
+      else if (k === 'addicted') counts.addicted++;
     } else if (_lbMemberKey(l.track_metadata?.artist_name) === 'rose') {
       if (k === 'newtrick') counts.newtrick++;
     }
@@ -15624,7 +15634,7 @@ function computeDailyCommunityTotal(users) {
     // Heaven) and PRESS PLAY (SaWaDiKa + the five new tracks) — so a
     // release lifts the community goal — mirrors CAMPAIGN_TOTAL_IDS / daily_all.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_newtrick || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_newtrick || 0) + (s.daily_addicted || 0);
   }, 0);
 }
 
@@ -15722,6 +15732,10 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       // campaignTotalOf/CAMPAIGN_TOTAL_IDS) and the community goal, and drives its
       // own CLICK leaderboard tab.
       overall_click:    totalPlays.click    || 0,
+      // JISOO solo single ADDICTED — same three reasons as CLICK above, and
+      // posted for the reason newtrick must be: the server stores what this
+      // payload carries, so a field left out is not "unchanged", it is zero.
+      overall_addicted: totalPlays.addicted || 0,
       // Fallen Angel EP tracks — submitted so the per-track boards fill live from
       // badges visits (the daily cron only recomputes them once at 01:15 UTC). Kept
       // out of overall_all/daily_all/weekly_all so they never inflate campaign totals.
@@ -15754,6 +15768,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       daily_go:         todayCounts.go       || 0,
       daily_sawadika:   todayCounts.sawadika || 0,
       daily_click:      todayCounts.click    || 0,
+      daily_addicted:   todayCounts.addicted || 0,
       daily_fallenangel: todayCounts.fallenangel || 0,
       daily_heaven:      todayCounts.heaven      || 0,
       daily_newtrick:    todayCounts.newtrick    || 0,
@@ -15767,6 +15782,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       weekly_go:        weekCounts.go       || 0,
       weekly_sawadika:  weekCounts.sawadika || 0,
       weekly_click:     weekCounts.click    || 0,
+      weekly_addicted:  weekCounts.addicted || 0,
       weekly_fallenangel: weekCounts.fallenangel || 0,
       weekly_heaven:      weekCounts.heaven      || 0,
       weekly_newtrick:    weekCounts.newtrick    || 0,
@@ -18844,7 +18860,20 @@ async function addictedEarlySupporterEarned() {
 
 // Fires when a blink takes the pre-save link; does not block the navigation.
 // The badge and the count have separate guards on purpose — see countPresaveOnce.
+// THE BADGE IS A CLAIM ABOUT TIMING, SO IT STOPS BEING EARNABLE AT RELEASE.
+//
+// This button was "Pre-save ↗" and is now "Listen ↗", because the single is
+// out and there is nothing left to pre-save. The handler did not know that:
+// it still fired "🏆 Badge unlocked: ADDICTED Early Supporter!" and set
+// addicted_early_supporter, for a badge whose own description reads "Pre-saved
+// before release". Renaming the button alone would have made that worse — tap
+// Listen, receive Early Supporter.
+//
+// Anyone who already earned it keeps it: this only refuses NEW grants, and the
+// flag is already in localStorage and on the account for everyone who pre-saved.
+// The link still opens either way; only the badge is gated.
 function saveAddicted() {
+  if (Date.now() >= new Date(ADDICTED_RELEASE_AT).getTime()) return;
   if (!localStorage.getItem(ADDICTED_SAVE_LS)) {
     localStorage.setItem(ADDICTED_SAVE_LS, '1');
     _showShareToast(_buSignedIn ? '🏆 Badge unlocked: ADDICTED Early Supporter!' : '✅ Pre-saved! Sign in on My Badges to claim your Early Supporter badge.');

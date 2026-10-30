@@ -83,6 +83,34 @@ const page = await browser.newPage({ viewport: { width: 414, height: 900 } });
 const errs = []; page.on('pageerror', e => errs.push(e.message));
 await page.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen','1');
   localStorage.setItem('ltal_reminder_dismissed_v1','1'); localStorage.setItem('ext_update_dismissed_1.9.8','1'); } catch (e) {} });
+
+// THE CLOCK IS PINNED AN HOUR BEFORE RELEASE for everything below.
+//
+// This section is about the PRE-SAVE card: a goal bar filling, a countdown in
+// jisoo.io's face, a chip that stays hidden until earned. All three stop
+// existing when the single lands — renderAddictedSaveCount hides the bar past
+// ADDICTED_RELEASE_AT and the timer becomes "OUT NOW ✨" — so against the real
+// clock these checks passed for weeks and then went red at 23:00 UTC on the
+// 29th, for a page doing exactly what it should.
+//
+// Same rollover the MAMA round checks hit: a test that encodes one side of a
+// deadline is a test with an expiry date on it. The pre-release behaviour is
+// tested before the deadline, the released behaviour after it, and neither
+// depends on when the suite happens to run.
+//
+// Taken from the page's own constant, never typed here, so moving the release
+// moves both halves of this test with it.
+const RELEASE_AT = Date.parse(
+  (await readFile(ROOT + '/index.html', 'utf8')
+    .then(t => (t.match(/const ADDICTED_RELEASE_AT = '([^']+)'/) || [])[1])) || '');
+if (!RELEASE_AT) { fails++; console.log('  FAIL could not read ADDICTED_RELEASE_AT from the page'); }
+const pinClock = (pg, at) => pg.addInitScript((t) => {
+  const Real = Date;
+  // Only now() is frozen. new Date(...) with arguments must keep working, or
+  // every date the page parses becomes this instant.
+  Date.now = () => t;
+}, at);
+await pinClock(page, RELEASE_AT - 3600e3);
 await page.goto(`http://127.0.0.1:${server.address().port}/countdowns/addicted`, { waitUntil: 'load' });
 // Wait for the page to have FILLED IN, not for a number of seconds. The bar
 // arrives over a fetch, and the card now also pulls three.js and a 933KB
@@ -337,6 +365,64 @@ for (const [ls, name] of [['ADDICTED_SAVE_LS', 'addicted'], ['JISOO_SAVE_LS', 'j
   : bad('ADDICTED has a row on My Badges');
 
 if (errs.length) { console.log('    page errors: ' + errs.slice(0,3).join(' | ')); fails += errs.length; }
+// ── ADDICTED, ONCE IT IS OUT ────────────────────────────────────────────────
+// The other side of the deadline the section above is pinned before. Nothing
+// covered this, which is why the release turned three green checks red with
+// no code change: the suite only knew the campaign while it was counting down.
+console.log('\n--- ADDICTED after release');
+{
+  const pg = await browser.newPage({ viewport: { width: 414, height: 900 } });
+  await pg.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen','1');
+    localStorage.setItem('ltal_reminder_dismissed_v1','1'); localStorage.setItem('ext_update_dismissed_1.9.8','1'); } catch (e) {} });
+  await pinClock(pg, RELEASE_AT + 3600e3);
+  await pg.goto(`http://127.0.0.1:${server.address().port}/countdowns/addicted`, { waitUntil: 'load' });
+  await pg.waitForFunction(() => typeof window.saveAddicted === 'function', null, { timeout: 30000 }).catch(() => {});
+
+  const after = await pg.evaluate(() => {
+    const card = document.querySelector('.cd-card-addicted');
+    const btn = [...(card ? card.querySelectorAll('.cd-btn') : [])]
+      .find(b => /saveAddicted/.test(b.getAttribute('onclick') || ''));
+    // THE KEY COMES FROM THE PAGE. The first version typed 'bu_addicted_saved'
+    // and the real constant is 'bu_jisoo_addicted_saved', so it cleared and
+    // read a key nothing ever writes: the badge check passed whatever the
+    // handler did, and removing the guard it exists to test went green.
+    const LS = ADDICTED_SAVE_LS;
+    // Clear it first so what we read back is this click's doing, not a leftover.
+    try { localStorage.removeItem(LS); } catch (e) {}
+    let before = null, got = null;
+    try { before = localStorage.getItem(LS); } catch (e) {}
+    try { window.saveAddicted(); } catch (e) {}
+    try { got = localStorage.getItem(LS); } catch (e) {}
+    return {
+      goalShown: document.getElementById('addicted-goal')?.style.display,
+      label: btn ? btn.textContent.trim() : '(no button)',
+      href: btn ? btn.getAttribute('href') : '',
+      before, got, key: LS,
+    };
+  });
+
+  // The bar is a pre-save goal. There is nothing left to pre-save.
+  after.goalShown === 'none'
+    ? ok('the pre-save goal bar is gone', after.goalShown)
+    : bad('the pre-save goal bar is gone', JSON.stringify(after.goalShown));
+  // "Pre-save" past the release is an instruction that cannot be followed.
+  !/pre-?save/i.test(after.label)
+    ? ok('and the button no longer says pre-save', after.label)
+    : bad('and the button no longer says pre-save', after.label);
+  after.href && /lnk\.to/i.test(after.href)
+    ? ok('and still goes to the release link', after.href)
+    : bad('and still goes to the release link', after.href || '(none)');
+  // THE ONE THAT MATTERS. Early Supporter reads "Pre-saved before release".
+  // Renaming the button without this would mean: tap Listen, receive a badge
+  // that claims you did something you did not do.
+  after.got === null
+    ? ok('and clicking it no longer grants Early Supporter')
+    : bad('and clicking it no longer grants Early Supporter',
+          `${after.key} became ${after.got}`);
+  await pg.close();
+}
+
 await browser.close(); server.close();
+
 console.log(fails ? `\n${fails} failure(s)` : '\nall good');
 process.exit(fails ? 1 : 0);
