@@ -43,7 +43,16 @@ await page.addInitScript(() => {
     configurable: true,
     value: { writeText: (t) => { window.__copied.push(t); return Promise.resolve(); } },
   });
-  navigator.share = (d) => { window.__shared.push(d); return Promise.resolve(); };
+  // canShare has to be stubbed too, or the file branch never runs and the
+  // check quietly measures the text-only fallback instead of what ships.
+  navigator.canShare = () => true;
+  navigator.share = (d) => {
+    window.__shared.push({
+      text: d.text, url: d.url, title: d.title,
+      files: (d.files || []).map((f) => ({ name: f.name, type: f.type, size: f.size })),
+    });
+    return Promise.resolve();
+  };
 });
 await page.goto(base + '/achievements.html', { waitUntil: 'domcontentloaded' });
 await page.waitForFunction(() => typeof window.achShareText === 'function', null, { timeout: 30000 }).catch(() => {});
@@ -128,21 +137,63 @@ check(two.post.includes(one.line) && two.post.includes(two.line),
 // sentence carrying its citation would put it back in.
 check(!two.post.includes(one.src), 'and the long sources are left out of a multi-pick post');
 
-console.log('\n--- sharing hands the clipboard and the sheet the same post');
+console.log('\n--- what gets shared is a PICTURE, with the post as its caption');
+// The blob is rendered when the selection changes rather than when Share is
+// tapped, because an await between the tap and navigator.share loses the
+// gesture on iOS. So the check waits for that pre-render — and the wait is
+// itself the assertion that it happens at selection time at all.
+const cardReady = await page.waitForFunction(() => window.achCardReady && window.achCardReady(), null, { timeout: 15000 })
+  .then(() => true).catch(() => false);
+check(cardReady, 'the card is rendered on picking, before anything is tapped');
+
 const shared = await page.evaluate(async () => {
   document.getElementById('ach-share').click();
-  await new Promise((r) => setTimeout(r, 120));
+  await new Promise((r) => setTimeout(r, 200));
   return { copied: window.__copied, shared: window.__shared };
 });
 check(shared.copied.length === 1, 'the post is written to the clipboard first', `${shared.copied.length} write(s)`);
 check(shared.shared.length === 1, 'and the share sheet is opened', `${shared.shared.length} call(s)`);
-check(shared.shared[0] && shared.shared[0].text === shared.copied[0],
-      'both get the identical text — the clipboard is the fallback, not a variant');
-// A `url` field makes Instagram, X and TikTok drop `text` entirely, which is
-// why the link lives inside the post. This is the house rule the playlist
-// shares already follow.
-check(shared.shared[0] && !shared.shared[0].url, 'nothing rides along beside the text');
+const sent = shared.shared[0] || {};
+check(sent.files && sent.files.length === 1, 'a file goes with it', `${(sent.files || []).length} file(s)`);
+check(sent.files && sent.files[0] && sent.files[0].type === 'image/png',
+      'and it is a PNG, not a text blob', sent.files && sent.files[0] && sent.files[0].type);
+// A card that drew nothing is still a valid PNG. Anything this small is an
+// empty canvas, which is how an image share silently becomes a black square.
+check(sent.files && sent.files[0] && sent.files[0].size > 10000,
+      'and it has a card in it, not an empty canvas',
+      sent.files && sent.files[0] ? `${Math.round(sent.files[0].size / 1024)} KB` : 'no file');
+check(sent.text === shared.copied[0],
+      'the caption rides along and matches the clipboard copy exactly');
+// `url` is the field that makes Instagram, X and TikTok drop `text`; `files`
+// is the point of the share. So the rule is no url, not "nothing else".
+check(!sent.url, 'no url field, which is what makes those targets drop the caption');
 check(shared.copied[0].includes('blinksunited.com/achievements'), 'and the link is inside the post itself');
+
+console.log('\n--- the card is drawn from the rows too, and capped like the post');
+const card = await page.evaluate(() => {
+  const rows = [...document.querySelectorAll('.rec-item, .ms-row')];
+  const one = window.achCardCanvas([rows[3]]);
+  const all = window.achCardCanvas(rows);
+  const ctx = one.getContext('2d');
+  // Scan the BAND between the header rule and the footer rule — where the
+  // achievement itself is drawn. A single sampled line misses the gaps
+  // between lines of text and reports an empty card that is not empty, which
+  // is what the first version of this did. Sampling the whole image would
+  // have the opposite fault: the title alone would satisfy it.
+  let lit = 0;
+  for (let y = 400; y < one.height - 140; y += 6) {
+    const d = ctx.getImageData(0, y, one.width, 1).data;
+    for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 140) lit++;
+  }
+  return { w: one.width, h: one.height, allH: all.height, lit, rows: rows.length };
+});
+check(card.w === 1080, 'the card is 1080 wide', `${card.w}px`);
+check(card.lit > 2000, "and the achievement itself is drawn on it, not just a background", `${card.lit} lit pixels in the content band`);
+// The uncapped version drew 10,205px of black for a "select all" of 65. The
+// bound is derived from the cap, not a number typed here.
+const perItem = (card.allH - card.h) / rowInfo.cap;
+check(card.allH < 2200, 'select all does not draw a mile of card', `${card.allH}px for ${card.rows} picked`);
+check(perItem < 200, 'because it lists the cap, like the post does', `~${Math.round(perItem)}px per entry`);
 
 console.log('\n--- select all, and the overflow is stated rather than dropped');
 const all = await page.evaluate(() => {
