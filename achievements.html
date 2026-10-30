@@ -117,51 +117,87 @@
   @media (prefers-reduced-motion: reduce) { .reveal { transition: none; } }
 
   /* ── Sharing ──────────────────────────────────────────────────────────────
-     Every record row and every milestone row is selectable. The picked state
-     is drawn with an inset box-shadow and a background, never a border or an
-     inserted element, because both row types are CSS grids with fixed first
-     columns (2.6rem / 4rem) and anything that takes up space reflows the text
-     beside it — a list that nudges sideways as you tap down it. */
+     Built out of the page's own vocabulary rather than generic UI: hairlines
+     at 1px, micro-caps at 0.55–0.62rem with wide tracking, gold for anything
+     that marks a record, and the hero's gradient rule reused as the bar's top
+     edge. The first pass used outlined boxes and a pink wash, which read as
+     chunky against a page whose heaviest line anywhere is 1px.
+
+     The picked state is a box-shadow and a background, never a border or an
+     inserted tick, because both row types are grids with fixed first columns
+     (2.6rem / 4rem): anything that occupies space reflows the text beside it
+     and the list nudges sideways as you tap down it. */
   .rec-item, .ms-row { cursor: pointer; -webkit-tap-highlight-color: transparent; }
-  .rec-item:focus-visible, .ms-row:focus-visible { outline: 2px solid var(--pink); outline-offset: -2px; }
-  .ach-picked { background: rgba(255,0,128,0.07) !important; box-shadow: inset 3px 0 0 var(--pink); }
-  .ach-picked .rec-gem, .ach-picked .ms-year { color: var(--gold); }
-
-  .ach-hint {
-    font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
-    color: var(--dim); text-align: center; margin-top: 0.2rem;
+  .rec-item:focus-visible, .ms-row:focus-visible { outline: 1px solid var(--pink); outline-offset: -1px; }
+  /* A gold hairline and a fade, not a slab. The tint is carried by a gradient
+     that dies out by halfway, so the row is marked at its edge and the text
+     still sits on the page's own black. */
+  .ach-picked {
+    background: linear-gradient(90deg, rgba(200,168,75,0.10), rgba(200,168,75,0) 52%) !important;
+    box-shadow: inset 1px 0 0 var(--gold);
   }
-  .ach-hint b { color: var(--pink); font-weight: 600; }
+  .ach-picked .rec-gem { color: var(--gold); transform: scale(1.15); }
+  .ach-picked .ms-year { color: var(--gold); }
+  .rec-gem { transition: color 0.2s, transform 0.2s; }
 
-  /* The bar sits above the iOS home indicator rather than under it. */
+  .ach-hint { font-size: 0.55rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); text-align: center; }
+  .ach-hint em { font-style: normal; color: var(--gold); }
+
   .ach-bar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 300;
     display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
-    gap: 0.5rem 0.9rem;
-    padding: 0.8rem 1rem calc(0.8rem + env(safe-area-inset-bottom, 0px));
-    background: rgba(7,4,7,0.95); border-top: 1px solid var(--rose);
-    backdrop-filter: blur(8px);
+    gap: 0.35rem 1.4rem;
+    /* Half the height of the first version — this is a status strip, not a toolbar. */
+    padding: 0.62rem 1.1rem calc(0.62rem + env(safe-area-inset-bottom, 0px));
+    background: rgba(7,4,7,0.9); backdrop-filter: blur(10px);
+    border-top: 1px solid var(--faint);
+  }
+  /* The hero's own top rule, reused: it is what this page uses to mark an
+     edge, so the bar belongs to the page instead of sitting on top of it. */
+  .ach-bar::before {
+    content: ''; position: absolute; top: -1px; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--pink) 35%, var(--gold) 65%, transparent);
   }
   .ach-bar[hidden] { display: none; }
   /* The bar is fixed, so it sits ON TOP of whatever is at the bottom of the
      page. Without this, picking a row while near the end hides the footer
      links behind the bar — and on a short phone, the last achievement too. */
-  body.ach-bar-open { padding-bottom: 6.5rem; }
-  .ach-bar-n { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); }
-  .ach-bar-n b { color: var(--pink); font-family: 'Arial Black', Impact, sans-serif; font-size: 0.85rem; }
-  .ach-bar-btns { display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center; }
+  body.ach-bar-open { padding-bottom: 5rem; }
+
+  .ach-bar-n { font-size: 0.55rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
+  .ach-bar-n::before { content: '◆'; color: var(--gold); margin-right: 0.5em; font-size: 0.85em; letter-spacing: 0; }
+  .ach-bar-n b { color: var(--gold); font-weight: 600; }
+  .ach-bar-btns { display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap; justify-content: center; }
+
+  /* The secondary actions are type, not boxes — four outlined rectangles in a
+     row was most of the chunkiness. They carry a hairline underline on hover
+     instead, which is the lightest affordance this page's palette allows. */
   .ach-btn {
-    font: inherit; font-size: 0.72rem; letter-spacing: 0.08em; cursor: pointer;
-    color: var(--blush); background: transparent; border: 1px solid var(--rose);
-    padding: 0.48rem 1rem; transition: border-color 0.2s, color 0.2s, background 0.2s;
+    font: inherit; font-size: 0.58rem; letter-spacing: 0.2em; text-transform: uppercase;
+    cursor: pointer; color: var(--dim); background: transparent; border: 0;
+    padding: 0.3rem 0; border-bottom: 1px solid transparent; transition: color 0.2s, border-color 0.2s;
   }
-  .ach-btn:hover { border-color: var(--pink); color: var(--pink); background: rgba(255,0,128,0.06); }
-  .ach-btn-main { border-color: var(--pink); color: var(--pink); font-weight: 600; }
-  .ach-btn-main:hover { background: rgba(255,0,128,0.14); }
-  /* De-emphasised, but --faint (#1C0D15) is all but invisible on --bg and the
-     button read as floating text with no edge. Rose at low opacity keeps it
-     secondary without hiding that it is a button. */
-  .ach-btn-ghost { color: var(--dim); border-color: rgba(139,28,74,0.55); }
+  .ach-btn:hover { color: var(--blush); border-bottom-color: var(--rose); }
+  .ach-btn:focus-visible { outline: 1px solid var(--pink); outline-offset: 3px; }
+  /* Share is the one action with an edge, so the eye lands on it without the
+     others having to compete. */
+  .ach-btn-main {
+    color: var(--pink); border: 1px solid var(--pink); padding: 0.42rem 1.15rem;
+    transition: background 0.2s, color 0.2s;
+  }
+  .ach-btn-main:hover { background: var(--pink); color: var(--bg); border-color: var(--pink); }
+
+  /* Tightened rather than relabelled: at the roomier spacing "Select all"
+     wrapped the bar onto a second line on a phone, and shortening it to "All"
+     next to "Copy" and "Clear" left three words that no longer said what they
+     did. The tracking is what gives, not the wording. */
+  @media (max-width: 430px) {
+    .ach-bar { gap: 0.3rem 0.8rem; padding-left: 0.7rem; padding-right: 0.7rem; }
+    .ach-bar-btns { gap: 0.75rem; }
+    .ach-btn { letter-spacing: 0.12em; }
+    .ach-btn-main { padding: 0.42rem 0.85rem; }
+    .ach-bar-n { letter-spacing: 0.14em; }
+  }
 </style>
 
 <a href="/leaderboard" class="back">← Blinks United</a>
@@ -172,7 +208,7 @@
     <p class="sect-eye" style="margin:0">✦ Every record. Every first. ✦</p>
     <h1 class="hero-title">BLACKPINK<br><em>Achievements</em></h1>
     <p class="hero-sub">Official Guinness World Records, chart firsts, and streaming milestones — as a group and as individuals.</p>
-    <p class="ach-hint">Tap any achievement to pick it — then share <b>one</b>, <b>some</b>, or <b>all</b></p>
+    <p class="ach-hint">Tap any achievement to pick it <em>·</em> share one, some or all</p>
     <div class="hero-stats">
       <div>
         <div class="hero-stat-n">19</div>
@@ -454,9 +490,9 @@
   <span class="ach-bar-n"><b id="ach-count">0</b> <span id="ach-count-word">picked</span></span>
   <div class="ach-bar-btns">
     <button type="button" class="ach-btn ach-btn-main" id="ach-share">Share</button>
-    <button type="button" class="ach-btn" id="ach-copy">Copy text</button>
+    <button type="button" class="ach-btn" id="ach-copy">Copy</button>
     <button type="button" class="ach-btn" id="ach-all">Select all</button>
-    <button type="button" class="ach-btn ach-btn-ghost" id="ach-clear">Clear</button>
+    <button type="button" class="ach-btn" id="ach-clear">Clear</button>
   </div>
 </div>
 
