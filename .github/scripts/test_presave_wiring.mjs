@@ -422,6 +422,44 @@ console.log('\n--- ADDICTED after release');
   await pg.close();
 }
 
+// ── new trick, out since 17 September ───────────────────────────────────────
+// The same bug ADDICTED had, six weeks older: the button still said Pre-save
+// and the handler still granted "ROSÉ Early Supporter" to anyone who tapped
+// it. Gated on newtrickLive(), which the badges grid already uses, so there
+// is one source for "is it out" rather than a second copy of the date.
+console.log('\n--- new trick after release');
+{
+  const pg = await browser.newPage({ viewport: { width: 414, height: 900 } });
+  await pg.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen','1');
+    localStorage.setItem('ltal_reminder_dismissed_v1','1'); localStorage.setItem('ext_update_dismissed_1.9.8','1'); } catch (e) {} });
+  await pg.goto(`http://127.0.0.1:${server.address().port}/`, { waitUntil: 'load' });
+  await pg.waitForFunction(() => typeof window.saveNewTrick === 'function', null, { timeout: 30000 }).catch(() => {});
+
+  const r2 = await pg.evaluate(() => {
+    const btn = [...document.querySelectorAll('[onclick]')]
+      .find(b => /saveNewTrick/.test(b.getAttribute('onclick') || ''));
+    const LS = NEWTRICK_SAVE_LS;   // from the page, never typed here
+    try { localStorage.removeItem(LS); } catch (e) {}
+    try { window.saveNewTrick(); } catch (e) {}
+    let got = null; try { got = localStorage.getItem(LS); } catch (e) {}
+    return { live: newtrickLive(), label: btn ? btn.textContent.trim() : '(no button)',
+             href: btn ? btn.getAttribute('href') : '', got, key: LS };
+  });
+
+  r2.live ? ok('new trick reads as released', 'newtrickLive() is true')
+          : bad('new trick reads as released', 'newtrickLive() is false — the rest of this means nothing');
+  !/pre-?save/i.test(r2.label)
+    ? ok('and the button no longer says pre-save', r2.label)
+    : bad('and the button no longer says pre-save', r2.label);
+  r2.href && /lnk\.to/i.test(r2.href)
+    ? ok('and still goes to the release link', r2.href)
+    : bad('and still goes to the release link', r2.href || '(none)');
+  r2.got === null
+    ? ok('and clicking it no longer grants ROSÉ Early Supporter')
+    : bad('and clicking it no longer grants ROSÉ Early Supporter', `${r2.key} became ${r2.got}`);
+  await pg.close();
+}
+
 await browser.close(); server.close();
 
 console.log(fails ? `\n${fails} failure(s)` : '\nall good');

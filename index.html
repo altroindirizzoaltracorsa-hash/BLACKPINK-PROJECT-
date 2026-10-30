@@ -4367,7 +4367,7 @@
               <div class="cd-goal-bar"><div class="cd-goal-fill" id="newtrick-goal-fill" style="width:0%"></div></div>
             </div>
             <div class="cd-links">
-              <a class="cd-btn nt-btn" href="https://rosesarerosie.lnk.to/newtrick" target="_blank" rel="noopener" onclick="saveNewTrick()">Pre-save ↗</a>
+              <a class="cd-btn nt-btn" href="https://rosesarerosie.lnk.to/newtrick" target="_blank" rel="noopener" onclick="saveNewTrick()">Listen ↗</a>
               <a class="cd-btn nt-btn" href="https://www.youtube.com/watch?v=Lufa9QAFFeY" target="_blank" rel="noopener">▶ Watch MV ↗</a>
               <button class="cd-btn nt-btn" onclick="openNewTrickCard()">📸 Share</button>
             </div>
@@ -19224,7 +19224,14 @@ async function newtrickEarlySupporterEarned() {
   } catch {}
   return localFlag || metaFlag;
 }
+// Out since 2026-09-17, so the badge is closed, exactly as ADDICTED's is.
+// "ROSÉ Early Supporter" is a claim about having pre-saved; granting it six
+// weeks after release would make it mean nothing. Gated on newtrickLive(),
+// which already exists and is the same instant the badges grid uses to decide
+// the track is out — one source, not a second copy of the date.
+// Existing holders keep it; only new grants stop. The link opens either way.
 function saveNewTrick() {
+  if (newtrickLive()) return;
   if (!localStorage.getItem(NEWTRICK_SAVE_LS)) {
     localStorage.setItem(NEWTRICK_SAVE_LS, '1');
     _showShareToast(_buSignedIn ? '🏆 Badge unlocked: ROSÉ Early Supporter!' : '✅ Pre-saved “new trick”! Sign in on My Badges to claim your ROSÉ Early Supporter badge.');
