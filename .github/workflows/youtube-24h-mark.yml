@@ -22,6 +22,7 @@ name: YouTube 24h Mark Capture
 #   pending  2026-10-24T04:00Z  -5ZXrO_lYSA Tarantino MV 24h
 #   pending  2026-10-30T04:00Z  -5ZXrO_lYSA Tarantino MV 7-day
 #   pending  2026-10-30T23:00:09Z  Pksr9T8m_aA ADDICTED MV 24h
+#   pending  2026-11-05T23:00:09Z  Pksr9T8m_aA ADDICTED MV 7-day
 #
 # That last one is NOT on the hour, and deliberately. /api/youtube-stats
 # reports the MV's publishedAt as 2026-10-29T23:00:09Z — nine seconds after
@@ -75,7 +76,7 @@ jobs:
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BASE: https://www.blinksunited.com
-          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-10-24T04:00:00Z,2026-10-30T04:00:00Z,2026-10-30T23:00:09Z' }}
+          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-10-24T04:00:00Z,2026-10-30T04:00:00Z,2026-10-30T23:00:09Z,2026-11-05T23:00:09Z' }}
         run: |
           set -u
           now=$(date -u +%s)
