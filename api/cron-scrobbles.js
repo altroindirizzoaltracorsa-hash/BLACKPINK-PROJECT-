@@ -32,7 +32,7 @@ function communityGoalTotal(users, todayDDMM) {
     // Whole campaign incl. the Fallen Angel EP — matches computeDailyCommunityTotal
     // (client) and the record-goal path in leaderboard.js so all three agree.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_newtrick || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_newtrick || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_addicted || 0);
   }, 0);
 }
 
@@ -76,6 +76,7 @@ const TRACKS = [
   { id: 'tarantino',  artist: 'LISA',   track: 'Tarantino' },
   { id: 'cutuoff',    artist: 'LISA',   track: 'Cut U Off' },
   { id: 'sweat',      artist: 'LISA',   track: 'Sweat' },
+  { id: 'addicted',   artist: 'JISOO',  track: 'ADDICTED' },
 ];
 
 // Less Than a Lover leaves the campaign at the reset cutoff. Per-track ltal values
@@ -322,7 +323,7 @@ async function extensionCountsForUsers(sb, appUserIds, dayFrom, dayTo, weekFrom,
   // Includes the Fallen Angel EP ids so the extension's per-song plays fold into
   // overall_fallenangel / overall_heaven (the EP boards). They're excluded from
   // campaignTotal / *_all above, so this never inflates the campaign totals.
-  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0 });
+  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0 });
   const out = { total: empty(), week: empty(), today: empty() };
   if (!sb || !appUserIds || !appUserIds.length) return out;
   // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
@@ -400,10 +401,10 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
   const { from: dayFrom, to: dayTo }   = getDayBounds();
   const { from: weekFrom, to: weekTo } = getWeekBounds();
 
-  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0 };
+  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0 };
   let artistPlays   = 0;
-  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0 };
-  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0 };
+  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0 };
+  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0 };
   let lastScrobbleAt = entry.lastScrobbleAt || null;
   // Per-scrobbler split of TODAY's counts, for the personal history calendar. Each
   // key is a human label ("Last.fm · Alice9629", "BU Extension", "Musicat / Stats.fm")
@@ -422,7 +423,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       // return scrobbles newest-first, so today's counts, the weekly counts,
       // and the most recent BLACKPINK scrobble can all be derived from one
       // paginated range instead of re-fetching/re-paginating once per day.
-      const [ap, jumpPlays, shutdownPlays, ddududuPlays, ltalPlays, goPlays, swPlays, clPlays, faPlays, heavenPlays, ntPlays, v12Plays, cobraPlays, tarantinoPlays, cutuoffPlays, sweatPlays, weekSc] = await Promise.all([
+      const [ap, jumpPlays, shutdownPlays, ddududuPlays, ltalPlays, goPlays, swPlays, clPlays, faPlays, heavenPlays, ntPlays, v12Plays, cobraPlays, tarantinoPlays, cutuoffPlays, sweatPlays, addictedPlays, weekSc] = await Promise.all([
         fetchArtistPlays(u, 'BLACKPINK', fetchFn),
         fetchTrackPlays(u, 'BLACKPINK', 'JUMP', fetchFn),
         fetchTrackPlays(u, 'BLACKPINK', 'Shut Down', fetchFn),
@@ -439,6 +440,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         fetchTrackPlays(u, 'LISA', 'Tarantino', fetchFn),
         fetchTrackPlays(u, 'LISA', 'Cut U Off', fetchFn),
         fetchTrackPlays(u, 'LISA', 'Sweat', fetchFn),
+        fetchTrackPlays(u, 'JISOO', 'ADDICTED', fetchFn),
         fetchRecentScrobbles(u, weekFrom, dayTo, 50, fetchFn),
       ]);
       artistPlays        += ap;
@@ -457,6 +459,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       totalPlays.tarantino    += tarantinoPlays;
       totalPlays.cutuoff    += cutuoffPlays;
       totalPlays.sweat    += sweatPlays;
+      totalPlays.addicted += addictedPlays;
 
       const todaySc = weekSc.filter(s => {
         const ts = parseInt(s.date?.uts || '0', 10);
@@ -478,6 +481,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       todayCounts.tarantino    += dc.tarantino    || 0;
       todayCounts.cutuoff    += dc.cutuoff    || 0;
       todayCounts.sweat    += dc.sweat    || 0;
+      todayCounts.addicted += dc.addicted || 0;
       todayBySource[`${acct.type === 'librefm' ? 'Libre.fm' : 'Last.fm'} · ${u}`] = {
         jump: dc.jump || 0, shutdown: dc.shutdown || 0, ddududu: dc.ddududu || 0, ltal: dc.ltal || 0, go: dc.go || 0,
       };
@@ -498,6 +502,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       weekCounts.tarantino    += wdc.tarantino    || 0;
       weekCounts.cutuoff    += wdc.cutuoff    || 0;
       weekCounts.sweat    += wdc.sweat    || 0;
+      weekCounts.addicted += wdc.addicted || 0;
 
       // "blackpink" alone misses activity on Jennie's solo campaign track
       // (Less Than a Lover), which would otherwise wrongly flag an actively-
@@ -535,6 +540,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         totalPlays.tarantino    += lbTotals.tarantino    || 0;
         totalPlays.cutuoff    += lbTotals.cutuoff    || 0;
         totalPlays.sweat    += lbTotals.sweat    || 0;
+        totalPlays.addicted += lbTotals.addicted || 0;
 
         const todayListens = weekListens.filter(l => l.listened_at >= dayFrom && l.listened_at < dayTo);
         const lbTodayCounts = countLbByTrack(todayListens);
@@ -553,6 +559,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         todayCounts.tarantino    += lbTodayCounts.tarantino    || 0;
         todayCounts.cutuoff    += lbTodayCounts.cutuoff    || 0;
         todayCounts.sweat    += lbTodayCounts.sweat    || 0;
+        todayCounts.addicted += lbTodayCounts.addicted || 0;
         todayBySource[`ListenBrainz · ${u}`] = {
           jump: lbTodayCounts.jump || 0, shutdown: lbTodayCounts.shutdown || 0, ddududu: lbTodayCounts.ddududu || 0, ltal: lbTodayCounts.ltal || 0, go: lbTodayCounts.go || 0,
         };
@@ -573,6 +580,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
         weekCounts.tarantino    += lbWeekCounts.tarantino    || 0;
         weekCounts.cutuoff    += lbWeekCounts.cutuoff    || 0;
         weekCounts.sweat    += lbWeekCounts.sweat    || 0;
+        weekCounts.addicted += lbWeekCounts.addicted || 0;
 
         // ListenBrainz never fed lastScrobbleAt before -- a fan scrobbling only
         // through LB (e.g. after moving off Last.fm) would drift towards a
@@ -682,7 +690,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
   // Whole campaign incl. the Fallen Angel EP (LTAL + Fallen Angel + Heaven) so a
   // new release lifts the board. Mirrors CAMPAIGN_TOTAL_IDS / rankTids on the client
   // + leaderboard.js. (Per-track EP boards stay separate via overall_fallenangel/heaven.)
-  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go + totalPlays.sawadika + totalPlays.click + totalPlays.fallenangel + totalPlays.heaven + totalPlays.newtrick + totalPlays.v12 + totalPlays.cobra + totalPlays.tarantino + totalPlays.cutuoff + totalPlays.sweat;
+  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go + totalPlays.sawadika + totalPlays.click + totalPlays.fallenangel + totalPlays.heaven + totalPlays.newtrick + totalPlays.v12 + totalPlays.cobra + totalPlays.tarantino + totalPlays.cutuoff + totalPlays.sweat + totalPlays.addicted;
 
   return {
     username:      displayName,
@@ -719,8 +727,9 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       overall_tarantino:    totalPlays.tarantino,
       overall_cutuoff:    totalPlays.cutuoff,
       overall_sweat:    totalPlays.sweat,
+      overall_addicted: totalPlays.addicted,
       overall_artist:   artistPlays,
-      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0) + (todayCounts.sawadika || 0) + (todayCounts.click || 0) + (todayCounts.fallenangel || 0) + (todayCounts.heaven || 0) + (todayCounts.newtrick || 0) + (todayCounts.v12 || 0) + (todayCounts.cobra || 0) + (todayCounts.tarantino || 0) + (todayCounts.cutuoff || 0) + (todayCounts.sweat || 0),
+      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0) + (todayCounts.sawadika || 0) + (todayCounts.click || 0) + (todayCounts.fallenangel || 0) + (todayCounts.heaven || 0) + (todayCounts.newtrick || 0) + (todayCounts.v12 || 0) + (todayCounts.cobra || 0) + (todayCounts.tarantino || 0) + (todayCounts.cutuoff || 0) + (todayCounts.sweat || 0) + (todayCounts.addicted || 0),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
       daily_ddududu:    todayCounts.ddududu  || 0,
@@ -736,8 +745,9 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       daily_tarantino:    todayCounts.tarantino    || 0,
       daily_cutuoff:    todayCounts.cutuoff    || 0,
       daily_sweat:    todayCounts.sweat    || 0,
+      daily_addicted: todayCounts.addicted || 0,
       daily_date:       todayLabel,
-      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0) + (weekCounts.sawadika || 0) + (weekCounts.click || 0) + (weekCounts.fallenangel || 0) + (weekCounts.heaven || 0) + (weekCounts.newtrick || 0) + (weekCounts.v12 || 0) + (weekCounts.cobra || 0) + (weekCounts.tarantino || 0) + (weekCounts.cutuoff || 0) + (weekCounts.sweat || 0),
+      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0) + (weekCounts.sawadika || 0) + (weekCounts.click || 0) + (weekCounts.fallenangel || 0) + (weekCounts.heaven || 0) + (weekCounts.newtrick || 0) + (weekCounts.v12 || 0) + (weekCounts.cobra || 0) + (weekCounts.tarantino || 0) + (weekCounts.cutuoff || 0) + (weekCounts.sweat || 0) + (weekCounts.addicted || 0),
       weekly_jump:      weekCounts.jump     || 0,
       weekly_shutdown:  weekCounts.shutdown || 0,
       weekly_ddududu:   weekCounts.ddududu  || 0,
@@ -753,6 +763,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
       weekly_tarantino:    weekCounts.tarantino    || 0,
       weekly_cutuoff:    weekCounts.cutuoff    || 0,
       weekly_sweat:    weekCounts.sweat    || 0,
+      weekly_addicted: weekCounts.addicted || 0,
       weekly_start:     weekStartLabel,
     },
   };
@@ -989,6 +1000,7 @@ export default async function handler(req, res) {
             tarantino:    s.daily_tarantino    || 0,
             cutuoff:    s.daily_cutuoff    || 0,
             sweat:    s.daily_sweat    || 0,
+            addicted: s.daily_addicted || 0,
             by_source: Object.keys(bySrc).length ? bySrc : null,
           });
         }
