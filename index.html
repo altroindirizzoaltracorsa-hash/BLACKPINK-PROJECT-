@@ -4743,9 +4743,18 @@
       <div id="community-goal-home" style="display:none;margin-top:1.5rem;max-width:900px;width:calc(100% + 4rem);margin-left:-2rem;margin-right:-2rem;">
         <div class="goal-tracker-card">
           <div class="goal-tracker-top">
-            <!-- SaWaDiKa is not listed beside Press Play: it is track 1 of that
-                 EP, so naming both would count it twice to the reader's eye. -->
-            <span class="goal-tracker-label">// Today's Community Goal — JUMP + Shut Down + DDU-DU DDU-DU + GO + CLICK + Press Play EP + Fallen Angel EP + new trick</span>
+            <!-- The track list is FILLED IN by communityGoalLabel() from
+                 CAMPAIGN_TOTAL_IDS. It used to be typed here and went stale the
+                 day ADDICTED was added to all three sums: the bar counted it and
+                 this line still said the goal was eight other things.
+                 What is left in the markup is the inert fallback, and it is
+                 shorter on purpose — if the script never runs, a reader sees a
+                 true heading with no list rather than a confident wrong one.
+                 SaWaDiKa is not named beside Press Play: it is track 1 of that
+                 EP, so naming both would count it twice to the reader's eye.
+                 EP_RELEASES is what knows that, and it is the same membership
+                 list the leaderboard and My Badges read. -->
+            <span class="goal-tracker-label" id="community-goal-label">// Today's Community Goal</span>
             <span class="goal-tracker-right">
               <span class="goal-tracker-nums" id="community-goal-nums">0<span> / 15,000 scrobbles</span></span>
               <span class="goal-pct" id="community-goal-pct">0%</span>
@@ -15622,6 +15631,31 @@ async function fetchLbData(force = false) {
 // multi-account user (or a stray leftover duplicate) isn't counted twice.
 // Shared by the leaderboard page and the home page's Community Goal banner
 // so the two never disagree.
+// The sentence over the bar, written by the list that drives the bar.
+//
+// It was the FOURTH copy of "which tracks are in the community goal" — after
+// this function, the nightly recompute and the live read — and the only one a
+// reader sees. Three sums counting ADDICTED under a heading that does not
+// mention it is a number nobody can check.
+//
+// An id in no EP falls back to its own title. Forgetting to file a new track
+// under an EP therefore shows it by name, which is untidy; leaving it out of
+// the sentence altogether is the bug this replaces.
+function communityGoalLabel() {
+  // Campaign four first, then everything else in the order the goal sums it.
+  const order = [...CAMPAIGN_TRACK_IDS, ...CAMPAIGN_TOTAL_IDS];
+  const seenId = new Set(), seenEp = new Set(), singles = [], eps = [];
+  for (const id of order) {
+    if (seenId.has(id)) continue;
+    seenId.add(id);
+    const ep = EP_RELEASES.find(g => g.songs.includes(id));
+    if (ep) { if (!seenEp.has(ep.key)) { seenEp.add(ep.key); eps.push(ep.label); } continue; }
+    const t = TRACKS.find(x => x.id === id);
+    singles.push(t ? t.title : id);
+  }
+  return "// Today's Community Goal \u2014 " + [...singles, ...eps].join(' + ');
+}
+
 function computeDailyCommunityTotal(users) {
   const todayLabel = italyDateLabel();
   const secondaryKeys = new Set();
@@ -20499,6 +20533,9 @@ window.addEventListener('resize', () => {
 async function loadCommunityGoal() {
   const wrap = document.getElementById('community-goal-home');
   if (!wrap) return;
+  // Before the fetch: the heading is true whether or not the number arrives.
+  const labelEl = document.getElementById('community-goal-label');
+  if (labelEl) labelEl.textContent = communityGoalLabel();
   try {
     const data = await fetchLbData();
     const total = computeDailyCommunityTotal(data.users || {});
