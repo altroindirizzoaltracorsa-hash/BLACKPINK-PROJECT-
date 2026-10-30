@@ -117,6 +117,15 @@ jobs:
         if: always()
         run: node .github/scripts/test_itunes_peaks.mjs
 
+      # The nav collapses to a hamburger below 1560px, which is most desktop
+      # windows. The panel it opens is position:fixed, so items past the
+      # bottom of the viewport cannot be reached at all — it had no
+      # max-height and no overflow-y, and on a 1363x768 laptop the list ran
+      # out at "Achievements". Reported from a real desktop at 100% zoom.
+      - name: Every item in the collapsed nav can be reached
+        if: always()
+        run: node .github/scripts/test_nav_menu_scroll.mjs
+
       - name: The front door
         if: always()
         run: node .github/scripts/test_awards_page.mjs
