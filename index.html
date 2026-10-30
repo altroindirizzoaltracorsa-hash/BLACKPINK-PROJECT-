@@ -1028,15 +1028,34 @@
   @media (max-width: 1560px) {
     .nav-hamburger { display: flex; }
     .nav-links {
+      /* The bar's height, in ONE place: the panel hangs off the bottom of the
+         bar and its height is what is left below it, so `top` and `max-height`
+         have to move together. They were two numbers before and the second one
+         did not exist. */
+      --nav-h: 62px;
       display: none;
       position: fixed;
-      top: 62px;
+      top: var(--nav-h);
       left: 0; right: 0;
       background: rgba(8,8,8,0.97);
       border-bottom: 1px solid rgba(255,0,102,0.2);
       flex-direction: column;
       padding: 0.5rem 2rem 1.2rem;
       gap: 0;
+      /* FIXED, SO IT DOES NOT SCROLL WITH THE PAGE — anything past the bottom
+         of the viewport was unreachable, not merely offscreen. Fourteen items
+         at 100% zoom in a 768px-tall window ran out at "Achievements", so Our
+         Projects and Sign out could not be clicked at all. Capping the panel to
+         the space below the bar and letting it scroll is the whole fix.
+         dvh second so a phone's collapsing address bar cannot leave the last
+         item under the chrome; the vh line is the fallback where dvh is not
+         supported, and a browser that understands both takes the later one.
+         overscroll-behavior stops a flick at the end of the list from scrolling
+         the page underneath it. */
+      max-height: calc(100vh - var(--nav-h));
+      max-height: calc(100dvh - var(--nav-h));
+      overflow-y: auto;
+      overscroll-behavior: contain;
       z-index: 1000;
     }
     .nav-links.open { display: flex; }
@@ -1047,7 +1066,8 @@
   /* Above 900px the 18px root font + full nav padding kick back in, making
      the nav taller than the 62px the dropdown position above assumes. */
   @media (min-width: 901px) and (max-width: 1560px) {
-    .nav-links { top: 80px; }
+    /* Only the bar's height changes here; top and max-height both read it. */
+    .nav-links { --nav-h: 80px; }
   }
   @media (max-width: 600px) {
     .playlist-banner { top: 62px; }
