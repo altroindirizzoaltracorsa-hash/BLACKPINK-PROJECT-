@@ -58,7 +58,7 @@ function communityGoalTotalFromUsers(users, dayDDMM) {
     // Whole campaign incl. the Fallen Angel EP — matches computeDailyCommunityTotal
     // (client) and communityGoalTotal in cron-scrobbles.js so all three agree.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_newtrick || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_newtrick || 0) + (s.daily_addicted || 0);
   }, 0);
 }
 
