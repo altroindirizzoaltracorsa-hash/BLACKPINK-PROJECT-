@@ -4173,6 +4173,10 @@
               <a class="cd-btn ad-btn ad-btn-ghost" href="https://www.jisoo.io" target="_blank" rel="noopener">jisoo.io ↗</a>
               <button class="cd-btn ad-btn ad-btn-ghost" onclick="openAddictedCard()">📸 Share</button>
             </div>
+            <!-- Where reached goals surface, same as every other campaign's.
+                 Hidden until one is ticked: the list is win-only, so an empty
+                 block would be a heading over nothing. -->
+            <div class="cd-goals-block" id="ad-goals-list" style="display:none;"></div>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
               <!-- The official poster first, then the same instant in the
@@ -19793,6 +19797,46 @@ const CAMPAIGN_GOALS = [
       { id: 'pp_tt_ch_bb',      label: 'Billboard major charts · Debut' },
       { id: 'pp_tt_ch_uk',      label: 'UK charts · Debut' },
       { id: 'pp_tt_ch_entries', label: 'Official chart entries: 5+' },
+    ]},
+  ] },
+  // From the ADDICTED "STREAMING GOALS" poster, split by platform the way the
+  // poster is, so a row here is a line there and the two can be read against
+  // each other. Only REACHED goals render publicly, so listing all of them
+  // costs nothing on the card until one lands.
+  //
+  // THE POSTER'S OWN WORDING IS KEPT except for one thing: Apple Music reads
+  // "ENTERY" on it. That is a typo in the artwork, not a term, so the row says
+  // Entry — the poster is the source for the TARGETS, not for the spelling.
+  //
+  // The 1st-day Spotify block carries two lines (1.5M streams AND the Top 200
+  // global chart) and they are separate rows here: one is a number we track
+  // and the other is a chart placement, and a single row would be ticked when
+  // only half of it had happened.
+  { slug: 'addicted',     name: 'ADDICTED — JISOO',           releaseAt: '2026-10-29T23:00:00Z', mount: 'ad-goals-list', categories: [
+    { category: '🟢 Spotify', items: [
+      { id: 'ad_sp_d1_p',     label: '1st Day: 1.5M streams (Primary)' },
+      { id: 'ad_sp_d1_top200', label: '1st Day: Top 200 Global Chart' },
+      { id: 'ad_sp_w1',       label: '1st Week: 10M streams' },
+    ]},
+    { category: '▶️ YouTube', items: [
+      { id: 'ad_yt_d1_p', label: '1st Day: 5M views (Primary)' },
+      { id: 'ad_yt_d1_s', label: '1st Day: 10M views (Secondary)' },
+      { id: 'ad_yt_w1',   label: '1st Week: 20M views' },
+    ]},
+    { category: '💠 Shazam', items: [
+      { id: 'ad_sz_d1', label: '1st Day: 5K Shazams' },
+      { id: 'ad_sz_w1', label: '1st Week: 15K Shazams' },
+    ]},
+    { category: '🎵 iTunes', items: [
+      { id: 'ad_it_d1', label: '1st Day: #1 in 25 countries' },
+      { id: 'ad_it_w1', label: '1st Week: #1 in 35 countries' },
+    ]},
+    { category: '🍎 Apple Music', items: [
+      { id: 'ad_am_entry', label: 'Chart entry' },
+    ]},
+    { category: '📊 Billboard', items: [
+      { id: 'ad_bb_g200',  label: '1st Week: Billboard Global 200 — Entry' },
+      { id: 'ad_bb_gexus', label: '1st Week: Billboard Global Excl. U.S. — Top 100' },
     ]},
   ] },
   { slug: 'ltal',         name: 'Less Than a Lover — JENNIE', releaseAt: null,                   mount: 'ltal-goals-list',  categories: LTAL_GOALS },
