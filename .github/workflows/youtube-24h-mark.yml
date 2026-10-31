@@ -21,7 +21,7 @@ name: YouTube 24h Mark Capture
 #   passed   2026-09-05T04:00Z  JISOO CLICK MV
 #   pending  2026-10-24T04:00Z  -5ZXrO_lYSA Tarantino MV 24h
 #   pending  2026-10-30T04:00Z  -5ZXrO_lYSA Tarantino MV 7-day
-#   pending  2026-10-30T23:00:09Z  Pksr9T8m_aA ADDICTED MV 24h
+#   LOST     2026-10-30T23:00:09Z  Pksr9T8m_aA ADDICTED MV 24h  (see below)
 #   pending  2026-11-05T23:00:09Z  Pksr9T8m_aA ADDICTED MV 7-day
 #
 # That last one is NOT on the hour, and deliberately. /api/youtube-stats
@@ -32,6 +32,26 @@ name: YouTube 24h Mark Capture
 # the two are not the same number.
 # The 22:35 and 22:55 slots already reach it: a mark is in window from 5h
 # before, so they need no new cron.
+#
+# HOW THE ADDICTED 24H FIGURE WAS LOST, because the cron is the lesser half of
+# it. The id was put on vs.html and into MARK_UTC above and into NEITHER list
+# in api/youtube-history.js — no RELEASE entry, so no mark existed to freeze,
+# and not in DEFAULT_IDS, so ?snapshot=1 recorded nothing for it and the only
+# writes came from a visitor having vs.html open. Overnight that is nobody:
+# the stored series has a 15h50m hole with the mark inside it, 9h32m after the
+# last reading (5,382,933) and 6h18m before the next (9,394,949), 4,012,016
+# views apart. Nothing within the 95-minute tolerance, so the figure is gone
+# rather than late, and interpolating across that gap would be inventing it.
+#
+# And the crons did not fire near it either: GitHub shed every 22:xx-23:xx slot
+# on Oct 30 and ran them at 01:44-02:47 on Oct 31, about three hours past the
+# mark. Even on time they would have recorded nothing, because ?snapshot=1
+# takes DEFAULT_IDS and the id was not in it. BOTH had to be fixed.
+#
+# So for anything that matters: put the id in all three lists FIRST (the test
+# now fails if it is not), and DISPATCH THIS WORKFLOW BY HAND a few hours
+# ahead. A dispatched run is already allocated and sleeps to the instant; a
+# scheduled one is a lottery on this repo.
 #
 # KEEP THIS LIST CURRENT. A mark that is not here is not captured precisely —
 # the job finds nothing in window, exits 0 green, and the pin silently falls

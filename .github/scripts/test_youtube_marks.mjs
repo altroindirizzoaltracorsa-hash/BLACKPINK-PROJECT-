@@ -59,11 +59,57 @@ unrecorded.length
   ? bad('every video with a mark is recorded by the snapshot', unrecorded.join(', '))
   : ok('every video with a mark is recorded by the snapshot', `${marked.length} marked`);
 
-// Weaker, but the same family: a video drawn on the page with no points is an
-// empty chart. Reported rather than enforced — the page may legitimately show
-// something before it is worth recording.
+// SAME FAMILY, AND IT IS NOT THE WEAKER ONE. This was a console.log — "reported
+// rather than enforced, the page may legitimately show something before it is
+// worth recording" — and on 2026-10-31 it printed
+//
+//     on the page but not recorded: Pksr9T8m_aA
+//
+// and exited 0. ADDICTED had been on vs.html for two days with nothing
+// recording it, so its 24h figure was lost exactly the way Tarantino's was,
+// while the check written to stop that recurrence watched it happen and said
+// "all good". A rule that only prints is not a rule.
+//
+// The reason it was soft does not survive contact with what happened: a video
+// is put on this page BECAUSE someone is watching it, and the live series is
+// then written only while a visitor has the tab open — which is nobody,
+// overnight, exactly when a mark tends to fall. "On the page" is the signal
+// that it needs recording, not a reason to wait.
 const pageUnrecorded = pageIds.filter(id => !defaultIds.includes(id));
-console.log(`    on the page but not recorded: ${pageUnrecorded.join(', ') || 'none'}`);
+pageUnrecorded.length
+  ? bad('every video on the page is recorded by the snapshot', `${pageUnrecorded.join(', ')} — only a visitor with vs.html open writes points for these`)
+  : ok('every video on the page is recorded by the snapshot', `${pageIds.length} on the page`);
+
+// And the other direction, which is how ADDICTED slipped through: the capture
+// job's MARK_UTC list is a FOURTH place an instant can be named, and naming it
+// there without a matching mark in this file buys nothing. The job sleeps to
+// the instant, samples, finds no mark for anything, and exits 0 green.
+//
+// COMPARED AS INSTANTS, NOT AS IDS. The first version of this check asked only
+// whether the video had *a* mark somewhere, and both mutations that reproduce
+// the real bug walked straight through it: drop the RELEASE entry and the
+// 7-day mark still answers for the id, drop the 7-day mark and RELEASE does.
+// Each instant in MARK_UTC has to have its own mark at that instant.
+const job = await readFile(ROOT + '/.github/workflows/youtube-24h-mark.yml', 'utf8');
+const markUtcDefault = (job.match(/MARK_UTC:[^\n]*?\|\|\s*'([^']+)'/) || [])[1] || '';
+const jobInstants = markUtcDefault.split(',').map(s => s.trim()).filter(Boolean);
+
+const DAY = 86400000;
+const apiInstants = new Set();
+for (const m of (block(api, 'const RELEASE = {') || '').matchAll(/'([A-Za-z0-9_-]{11})':\s*'([^']+)'/g)) {
+  apiInstants.add(new Date(Date.parse(m[2]) + DAY).toISOString().replace('.000', ''));
+}
+for (const m of (block(api, 'const EXTRA_MARKS = {') || '').matchAll(/at:\s*'([^']+)'/g)) {
+  apiInstants.add(new Date(Date.parse(m[1])).toISOString().replace('.000', ''));
+}
+jobInstants.length
+  ? ok('the capture job names some instants', `${jobInstants.length}`)
+  : bad('the capture job names some instants — MARK_UTC did not parse');
+const orphans = jobInstants.filter(t => !apiInstants.has(new Date(Date.parse(t)).toISOString().replace('.000', '')));
+orphans.length
+  ? bad('every instant the job sleeps to has a mark to freeze',
+        `${orphans.join(', ')} — in MARK_UTC with no RELEASE+24h or EXTRA_MARKS entry at that instant`)
+  : ok('every instant the job sleeps to has a mark to freeze', `${jobInstants.length} instants`);
 
 // DEFAULT_IDS is sliced to 10 before use, so an 11th id is silently dropped —
 // and it would be dropped from the END, which is where a new release is added.
