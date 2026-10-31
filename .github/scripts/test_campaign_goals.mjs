@@ -89,6 +89,39 @@ const extra = Object.keys(ppCounts).filter(k => !(k in POSTER));
 wrong.length || extra.length
   ? bad('every PRESS PLAY section matches the poster', [...wrong, ...extra.map(e => `unexpected ${e}`)].join('; '))
   : ok('every PRESS PLAY section matches the poster', `${pp.ids.length} goals, 9 album + 19 title track`);
+
+// ADDICTED, against its own STREAMING GOALS poster, section by section for the
+// same reason: a right total can hide a row filed under the wrong platform.
+//
+// The two Spotify day-one lines are counted as TWO rows. The poster stacks
+// "Primary: 1.5M streams" and "TOP 200 GLOBAL CHART" under one 1ST DAY
+// bracket, and folding them into one row would tick a stream target when a
+// chart placement happened, or the reverse.
+const AD_POSTER = {
+  '🟢 Spotify': 3, '▶️ YouTube': 3, '💠 Shazam': 2,
+  '🎵 iTunes': 2, '🍎 Apple Music': 1, '📊 Billboard': 2,
+};
+const adCounts = await page.evaluate(() => Object.fromEntries(
+  CAMPAIGN_GOALS.find(c => c.slug === 'addicted').categories.map(c => [c.category, c.items.length])));
+const adWrong = Object.entries(AD_POSTER)
+  .filter(([k, n]) => adCounts[k] !== n)
+  .map(([k, n]) => `${k}: ${adCounts[k] ?? 'missing'} want ${n}`);
+const adExtra = Object.keys(adCounts).filter(k => !(k in AD_POSTER));
+adWrong.length || adExtra.length
+  ? bad('every ADDICTED section matches the poster', [...adWrong, ...adExtra.map(e => `unexpected ${e}`)].join('; '))
+  : ok('every ADDICTED section matches the poster', `${Object.values(AD_POSTER).reduce((a, b) => a + b, 0)} goals across ${Object.keys(AD_POSTER).length} platforms`);
+
+// The targets themselves, not just how many there are. A count check passes
+// happily on "5M views" typed where the poster says 20M, and the number is the
+// entire content of a goal.
+const AD_TARGETS = ['1.5M', 'Top 200', '10M streams', '5M views', '10M views', '20M views',
+                    '5K Shazams', '15K Shazams', '25 countries', '35 countries', 'Top 100'];
+const adLabels = await page.evaluate(() =>
+  CAMPAIGN_GOALS.find(c => c.slug === 'addicted').categories.flatMap(c => c.items.map(i => i.label)).join(' | '));
+const missingTargets = AD_TARGETS.filter(t => !adLabels.includes(t));
+missingTargets.length
+  ? bad("every number on the ADDICTED poster is in a goal", `missing ${missingTargets.join(', ')}`)
+  : ok("every number on the ADDICTED poster is in a goal", `${AD_TARGETS.length} targets`);
 const bothHalves = pp && pp.ids.some(i => i.startsWith('pp_ep_')) && pp.ids.some(i => i.startsWith('pp_tt_'));
 bothHalves ? ok('both halves present — album goals and title-track goals')
            : bad('both halves present — album goals and title-track goals');
