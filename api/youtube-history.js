@@ -37,7 +37,7 @@ const YT_API = 'https://www.googleapis.com/youtube/v3/videos';
 // to freeze. A release has to be in ALL THREE lists; test_youtube_marks.mjs
 // now fails if a marked video is missing from this one.
 const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc', 'FyS5dAywkEo', 'sf02ugzPFE4', 's466YCiHfKw', 'Lufa9QAFFeY',
-  '-5ZXrO_lYSA'];
+  '-5ZXrO_lYSA', 'Pksr9T8m_aA'];
 const MAX_POINTS = 2400;              // ~100 days at hourly — keep the full-life gain list
 const MIN_GAP_MS = 55 * 60 * 1000;    // don't store more than ~once an hour
 const key = id => `bu_yt_hist_${id}`;
@@ -90,6 +90,21 @@ const RELEASE = {
   // Bangkok, 1PM Seoul, 3PM Sydney (it says EST/AEST where the dates make it
   // EDT/AEDT — the clock times are what agree). → 24h mark Oct 24, 04:00Z.
   '-5ZXrO_lYSA': '2026-10-23T04:00:00Z',
+  // JISOO ADDICTED MV. :09 because /api/youtube-stats reports publishedAt as
+  // 23:00:09Z — nine seconds after the single's own instant — and the round
+  // hour would stop nine seconds short of a day.
+  //
+  // ADDED AFTER ITS 24H MARK WAS ALREADY LOST, and the loss is the reason this
+  // entry is here. The video went onto vs.html and into the capture job's
+  // MARK_UTC list and into NEITHER of this file's lists, so no mark existed to
+  // freeze and no automated path was recording points for it. The nearest
+  // stored readings either side of 2026-10-30T23:00:09Z are 9h32m before
+  // (5,382,933) and 6h18m after (9,394,949) — a 15h50m hole with 4,012,016
+  // views gained across it. Nothing inside the 95-minute tolerance, so the
+  // figure is gone rather than late, and interpolating across that gap would
+  // be inventing it. The 7-day mark below is still ahead, and this entry plus
+  // DEFAULT_IDS is what makes it recordable.
+  'Pksr9T8m_aA': '2026-10-29T23:00:09Z',
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -110,6 +125,7 @@ const EXTRA_MARKS = {
   'sf02ugzPFE4': [{ key: '7d', label: '7 DAYS', at: '2026-09-11T04:00:00Z' }], // JISOO MV — release + 7d
   'Lufa9QAFFeY': [{ key: '7d', label: '7 DAYS', at: '2026-09-24T23:00:00Z' }], // ROSÉ new trick — release + 7d
   '-5ZXrO_lYSA': [{ key: '7d', label: '7 DAYS', at: '2026-10-30T04:00:00Z' }], // LISA Tarantino — release + 7d
+  'Pksr9T8m_aA': [{ key: '7d', label: '7 DAYS', at: '2026-11-05T23:00:09Z' }], // JISOO ADDICTED — release + 7d
 };
 const marksOf = id => [
   ...(RELEASE[id] ? [{ key: '24h', label: '24H', at: Date.parse(RELEASE[id]) + DAY_MS }] : []),
