@@ -21,7 +21,7 @@ name: YouTube 24h Mark Capture
 #   passed   2026-09-05T04:00Z  JISOO CLICK MV
 #   pending  2026-10-24T04:00Z  -5ZXrO_lYSA Tarantino MV 24h
 #   pending  2026-10-30T04:00Z  -5ZXrO_lYSA Tarantino MV 7-day
-#   LOST     2026-10-30T23:00:09Z  Pksr9T8m_aA ADDICTED MV 24h  (see below)
+#   MANUAL   2026-10-30T23:00:09Z  Pksr9T8m_aA ADDICTED MV 24h  (not measured — see below)
 #   pending  2026-11-05T23:00:09Z  Pksr9T8m_aA ADDICTED MV 7-day
 #
 # That last one is NOT on the hour, and deliberately. /api/youtube-stats
@@ -47,6 +47,13 @@ name: YouTube 24h Mark Capture
 # on Oct 30 and ran them at 01:44-02:47 on Oct 31, about three hours past the
 # mark. Even on time they would have recorded nothing, because ?snapshot=1
 # takes DEFAULT_IDS and the id was not in it. BOTH had to be fixed.
+#
+# The 24h figure was supplied afterwards from reporting — 8.64M views, 854K
+# likes — and pinned with ?repin&v=, so it carries manual:true. It is a
+# ROUNDED, SECOND-HAND number standing in for one we failed to measure, not a
+# reading, and the flag is what keeps those two things apart. It sits where
+# our own series says it should: between 5,382,933 and 9,394,949 views, and
+# between 712,459 and 892,159 likes.
 #
 # So for anything that matters: put the id in all three lists FIRST (the test
 # now fails if it is not), and DISPATCH THIS WORKFLOW BY HAND a few hours
