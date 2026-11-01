@@ -135,6 +135,14 @@ jobs:
         if: always()
         run: node .github/scripts/test_achievements_share.mjs
 
+      # MMA is the first card with TWO ballots and only one button. Melon needs
+      # an identity-verified Korean ID; Berriz is the half open to everyone
+      # else, which is most of this site. Swapping them looks like a tidy-up
+      # and silently sends readers to a vote that will refuse them.
+      - name: The MMA 2026 card points at the ballot our readers can cast
+        if: always()
+        run: node .github/scripts/test_vote_mma.mjs
+
       - name: The front door
         if: always()
         run: node .github/scripts/test_awards_page.mjs

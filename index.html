@@ -10119,6 +10119,59 @@ const VOTE_CAMPAIGNS = [
     },
   },
   {
+    id: 'mma-2026',
+    platform: 'Melon Music Awards',
+    title: 'MMA 2026',
+    // BERRIZ, NOT MELON, is the button — and that is the whole decision on this
+    // card. Melon's vote needs an identity-verified Korean ID; Berriz is the
+    // half of it open to everyone outside South Korea, which is almost all of
+    // this site's readers. Sending them to Melon is sending them to a ballot
+    // they cannot cast. Melon is linked from the rules instead.
+    url: 'https://link.berriz.in/en/web/main/vote/mma2026/',
+    image: '/vote-blackpink-ot4.jpg',
+    // 23:59 KST on the last day of category voting (Oct 30 – Nov 13), which is
+    // also when unused bonus votes expire. NOT the ceremony on Nov 14–15 —
+    // voting shuts before it, same as every other card here.
+    deadline: '2026-11-13T14:59:00Z',
+    alert: '<b>Outside Korea? Use Berriz.</b> Melon’s ballot needs an identity-verified Korean ID — Berriz is the global half, and the two are combined <b>50/50</b> for the Global TOP10 voting score.',
+    rules: [
+      '<b>Two apps, half each.</b> <a href="https://link.berriz.in/en/web/main/vote/mma2026/" target="_blank" rel="noopener">Berriz</a> is global (overseas users who have joined K-Pop Square), <a href="https://m2.melon.com/en/mma/2026/" target="_blank" rel="noopener">Melon</a> is Korea — Global TOP10 votes from each platform count for <b>50%</b> of the voting result',
+      '<b>Berriz — one vote a day</b> per ID, refreshed at <b>00:00 KST</b>. It <b>cannot be cancelled or changed</b> once sent, so choose before you tap. Totals update every 10 min, and finishing a vote issues a daily certificate you can post',
+      '<b>Melon — 1 vote a day free, 3 for paid members</b>, reset 00:00 KST. <b>Bonus votes</b> are paid-only, unlock once you have cast every standard vote in a category, have <b>no daily cap</b>, and expire when voting closes',
+      '<b>The vote is 20% of Global TOP10.</b> The rest is the Melon Global-K Chart (60%) and judging (20%) — and the chart half was already settled over <b>11 May – 14 Oct</b>, so the vote is the only part still moving',
+      'Category voting runs <b>30 Oct – 13 Nov</b>. Winners at the ceremony, <b>14–15 Nov</b>, Gocheok Sky Dome',
+      'One ID a day, by hand — Melon excludes IDs with “abnormal activity” and Berriz restricts them',
+    ],
+    // ONLY WHAT WAS ACTUALLY SEEN. The nominee lists on both apps are rendered
+    // by script, so neither page gives them to a fetch (Berriz returns a 1.6KB
+    // shell, Melon 86KB of bundle with no names in it) — these come from
+    // screenshots of the live apps, which showed Melon's Global TOP10 ranks
+    // 25–30 plus its top 4, Berriz's ranks 22–27, and Best Solo Female's top 5.
+    //
+    // So this list is INCOMPLETE BY CONSTRUCTION rather than complete: LISA and
+    // JISOO may well be nominated further up a list that was never in frame, and
+    // other Melon categories (Artist / Album / Song of the Year, New Artist,
+    // Best Solo Male…) were only ever visible as tab labels. Adding a row for a
+    // nomination that does not exist is worse than a short list, so nothing is
+    // guessed here — but a missing row costs votes, so this wants checking
+    // against the apps rather than leaving as it stands.
+    categories: [
+      // Linked to Berriz for the same reason the button is.
+      { name: 'Global TOP10', thumb: '/vote-blackpink-ot4.jpg',
+        url: 'https://link.berriz.in/en/web/main/vote/mma2026/',
+        nominees: [
+          { name: 'BLACKPINK', us: true },
+          { name: 'JENNIE', us: true },
+          { name: 'ROSÉ', us: true },
+        ] },
+      // Melon-only: Berriz's guide says its ballot is Global TOP10 and nothing
+      // else, so this row would be a dead link pointed at Berriz.
+      { name: 'Best Solo Female', thumb: '/vote-jennie.jpg',
+        url: 'https://m2.melon.com/en/mma/2026/',
+        nominees: [{ name: 'JENNIE', us: true }] },
+    ],
+  },
+  {
     id: 'tiff-peoples-choice-2026',
     platform: 'TIFF · Toronto Int’l Film Festival',
     title: 'People’s Choice Award 2026',
