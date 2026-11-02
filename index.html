@@ -1910,6 +1910,23 @@
      .svg is 10736x1820, so with no height the chip drew it at intrinsic width
      and "Early Supporter" wrapped across the top of it. max-width as well as
      height, because a 5.9:1 wordmark is still 90px wide once it fits. */
+  /* With the official cover in place the hero IS the artwork: the glow, the
+     streaks and the hand-built lettering all stand down, because every one of
+     them was there to make a card that had no picture look like one. They are
+     only hidden, not deleted — .st-hero-art comes off if the cover fails to
+     load and the whole composition returns. */
+  .st-hero-art { padding: 0; background: #000; }
+  .st-hero-art::before, .st-hero-art::after { display: none; }
+  .st-hero-art .st-eyebrow, .st-hero-art .st-wordmark,
+  .st-hero-art .st-by, .st-hero-art .st-by-text { display: none; }
+  .st-cover { display: block; width: 100%; height: auto; }
+  /* The film's date is the one thing the artwork does not say, so it stays —
+     over a scrim, because the bottom of the cover is a bright ballroom floor. */
+  .st-hero-art .st-film {
+    position: absolute; left: 0; right: 0; bottom: 0; margin: 0; z-index: 2;
+    padding: 2.6rem 1.4rem 0.75rem; color: rgba(255,255,255,0.82);
+    background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.88) 100%);
+  }
   .cd-card-steps .cd-badge-chip.sth-locket img { height: 0.95rem; width: auto; max-width: 92px; object-fit: contain; display: block; }
   .cd-card-steps .cd-badge-chip.sth-locket { white-space: nowrap; }
   .st-note { font-size: 0.72rem; line-height: 1.65; color: rgba(245,240,240,0.66); margin-bottom: 1rem; }
@@ -4232,7 +4249,20 @@
                early. The two clocks in the announcement agree on one instant
                (05:00Z = 2PM KST), which is what confirms the offset. -->
           <div class="cd-card cd-card-steps" data-slug="steps" data-target="2026-11-06T05:00:00Z" data-live="OUT NOW ✨">
-            <div class="st-hero">
+            <div class="st-hero st-hero-art">
+              <!-- THE OFFICIAL COVER, and it replaces the lettering rather
+                   than sitting behind it: the artwork already carries STEPS,
+                   SOMEONE TO HOLD, JENNIE and the Netflix mark, so layering
+                   the hand-built wordmark over it would print the title
+                   twice. The wordmark below is kept as the FALLBACK — if the
+                   cover 404s, onerror drops the art class and the original
+                   composition comes back, which is why it is still in the
+                   markup rather than deleted.
+                   The vector is still in use: it is the Early Supporter chip's
+                   icon, on the card and on My Badges. -->
+              <img class="st-cover" src="/steps/someone-to-hold-cover.webp" width="1000" height="1000"
+                   alt="Someone to Hold — JENNIE, from the Netflix film Steps" loading="lazy"
+                   onerror="this.closest('.st-hero').classList.remove('st-hero-art'); this.remove();">
               <div class="st-eyebrow">Featuring an original song by</div>
               <img class="st-wordmark" src="/steps/someone-to-hold.svg" width="10736" height="1820"
                    alt="Someone to Hold" loading="lazy"
