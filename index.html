@@ -1905,6 +1905,13 @@
   /* Fallback if that SVG cannot be fetched. */
   .st-by-text { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.26em; text-transform: uppercase; color: #fff; margin-top: 0.7rem; }
   .st-film { font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.6); margin-top: 0.5rem; }
+  /* The Early Supporter chip's wordmark. EVERY locket variant needs one of
+     these and mine shipped without it for one render: /steps/someone-to-hold
+     .svg is 10736x1820, so with no height the chip drew it at intrinsic width
+     and "Early Supporter" wrapped across the top of it. max-width as well as
+     height, because a 5.9:1 wordmark is still 90px wide once it fits. */
+  .cd-card-steps .cd-badge-chip.sth-locket img { height: 0.95rem; width: auto; max-width: 92px; object-fit: contain; display: block; }
+  .cd-card-steps .cd-badge-chip.sth-locket { white-space: nowrap; }
   .st-note { font-size: 0.72rem; line-height: 1.65; color: rgba(245,240,240,0.66); margin-bottom: 1rem; }
   .st-note b { color: var(--white); font-weight: 500; }
   /* Says plainly what is not announced yet, so the missing buttons read as
