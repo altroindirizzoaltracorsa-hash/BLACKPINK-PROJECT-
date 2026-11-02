@@ -350,7 +350,8 @@ for (const f of art) {
 
 // 4. Each campaign's badge is wired into both places that show it.
 for (const [ls, name] of [['ADDICTED_SAVE_LS', 'addicted'], ['JISOO_SAVE_LS', 'jisoo'],
-                          ['NEWTRICK_SAVE_LS', 'newtrick'], ['FA_SAVE_LS', 'fa'], ['LISA_SAVE_LS', 'lisa']]) {
+                          ['NEWTRICK_SAVE_LS', 'newtrick'], ['FA_SAVE_LS', 'fa'], ['LISA_SAVE_LS', 'lisa'],
+                          ['STH_SAVE_LS', 'sth']]) {
   if (!ix.includes(`const ${ls}`)) continue;
   const inChips = new RegExp(`render${name[0].toUpperCase()}`, 'i');
   const earned = new RegExp(`${name}EarlySupporterEarned\\(\\)`, 'i');
@@ -363,6 +364,73 @@ for (const [ls, name] of [['ADDICTED_SAVE_LS', 'addicted'], ['JISOO_SAVE_LS', 'j
 /jisoo-addicted-presave/.test(ix) && /addictedEarlySupporterEarned\(\)/.test(ix)
   ? ok('ADDICTED has a row on My Badges')
   : bad('ADDICTED has a row on My Badges');
+
+// ── "Someone to Hold" — JENNIE (Steps OST) ──────────────────────────────────
+// Checked against the five failure modes this file's header names, because it
+// is the newest campaign and the one most likely to be half-wired.
+console.log('\n--- Someone to Hold');
+{
+  // 1. The API has a branch, or the bar reads "0 / 50" for the whole campaign
+  //    while nothing errors.
+  /sth_save === 'count'/.test(api) && /sth_save === 'increment'/.test(api)
+    ? ok('  the API answers sth_save')
+    : bad('  the API answers sth_save', 'proxy-image falls through and the bar sits at zero');
+
+  // 2. A key of its OWN. JENNIE already has two counters; reusing one would
+  //    open this campaign at the other's total, which looks like success.
+  const keys = [...api.matchAll(/'(bu_[a-z0-9_]+_(?:saves|joins))'/g)].map((m) => m[1]);
+  const dupes = keys.filter((k, i) => keys.indexOf(k) !== i);
+  keys.includes('bu_jennie_sth_saves')
+    ? ok('  with a counter key of its own', 'bu_jennie_sth_saves')
+    : bad('  with a counter key of its own', `only ${keys.join(', ')}`);
+  dupes.length === 0
+    ? ok('  and no two campaigns share a key', `${keys.length} distinct`)
+    : bad('  and no two campaigns share a key', `shared: ${[...new Set(dupes)].join(', ')}`);
+
+  // 3-5. The bar's three ids, the chip refresh, and the My Badges row.
+  ['sth-goal', 'sth-goal-nums', 'sth-goal-fill', 'sth-badge'].every((id) => ix.includes(`id="${id}"`))
+    ? ok('  the bar and chip elements are all in the page')
+    : bad('  the bar and chip elements are all in the page',
+          ['sth-goal','sth-goal-nums','sth-goal-fill','sth-badge'].filter((id) => !ix.includes(`id="${id}"`)).join(', ') + ' missing');
+  // The id as a WHOLE quoted value. /jennie-sth-presave/ as a substring still
+  // matches 'jennie-sth-presave-DISABLED', so renaming the row to switch it
+  // off passed this check — it was testing that the characters exist, not
+  // that the row does.
+  /id: 'jennie-sth-presave'/.test(ix) && /sthEarlySupporterEarned\(\)/.test(ix)
+    ? ok('  and it has a row on My Badges')
+    : bad('  and it has a row on My Badges');
+
+  // BOTH halves of the chip refresh, which do different jobs: the earned()
+  // call backfills the account flag, renderSthBadge() is what actually shows
+  // the chip. The sweep above accepts either one, so dropping the render left
+  // a campaign whose chip never appears and still went green.
+  const chipFn = ix.slice(ix.indexOf('async function refreshSupporterChips'),
+                          ix.indexOf('async function refreshSupporterChips') + 1200);
+  /sthEarlySupporterEarned\(\)/.test(chipFn)
+    ? ok('  the account flag is backfilled with the others')
+    : bad('  the account flag is backfilled with the others', 'missing from refreshSupporterChips');
+  /renderSthBadge\(\)/.test(chipFn)
+    ? ok('  and the chip is actually re-rendered')
+    : bad('  and the chip is actually re-rendered', 'the chip will never appear for someone who pre-saved');
+
+  // 6. GATED ON RELEASE. new trick shipped for six weeks handing "Early
+  //    Supporter" to anyone who tapped a Listen link after release, and
+  //    ADDICTED had the same hole for an hour. The guard is the first thing
+  //    in the handler.
+  const fn = ix.slice(ix.indexOf('function saveSomeoneToHold'), ix.indexOf('function saveSomeoneToHold') + 260);
+  /if \(sthLive\(\)\) return;/.test(fn)
+    ? ok('  pre-saving stops at release, so the badge stays worth something')
+    : bad('  pre-saving stops at release, so the badge stays worth something', 'no sthLive() guard');
+
+  // 7. The guard's instant and the countdown's instant are the SAME one. Two
+  //    hand-typed dates here would let the bar close while the card still
+  //    counts down, or the reverse.
+  const relAt = (ix.match(/const STH_RELEASE_AT = '([^']+)'/) || [])[1];
+  const target = (ix.match(/data-slug="steps"[^>]*data-target="([^"]+)"/) || [])[1];
+  relAt && relAt === target
+    ? ok('  and it is the same instant the card counts to', relAt)
+    : bad('  and it is the same instant the card counts to', `STH_RELEASE_AT ${relAt} vs card ${target}`);
+}
 
 if (errs.length) { console.log('    page errors: ' + errs.slice(0,3).join(' | ')); fails += errs.length; }
 // ── ADDICTED, ONCE IT IS OUT ────────────────────────────────────────────────

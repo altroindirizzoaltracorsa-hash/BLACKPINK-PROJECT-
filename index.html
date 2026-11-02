@@ -4239,9 +4239,16 @@
                    being a Netflix exclusive. -->
               <div class="st-film">From the Netflix film Steps · Nov 20</div>
             </div>
-            <div class="cd-eyebrow">JENNIE · Original Song · Netflix Film</div>
+            <div class="cd-eyebrow">JENNIE · Original Song · Netflix Film<div class="cd-badge-chip sth-locket" id="sth-badge" style="display:none;"><img src="/steps/someone-to-hold.svg" alt="" aria-hidden="true">Early Supporter</div></div>
             <div class="cd-sub">Fri, Nov 6, 2026 · <b>12AM EST / 2PM KST</b><span class="cd-sub-local" data-local-target></span></div>
             <div class="cd-timer" data-timer></div>
+            <div class="cd-goal" id="sth-goal" style="display:none;">
+              <div class="cd-goal-top">
+                <span class="cd-goal-label">🎯 Blinks pre-saved</span>
+                <span class="cd-goal-nums" id="sth-goal-nums"></span>
+              </div>
+              <div class="cd-goal-bar"><div class="cd-goal-fill" id="sth-goal-fill" style="width:0%"></div></div>
+            </div>
             <div class="st-note">
               Jennie wrote and performs <b>“Someone to Hold”</b> for <b>Steps</b>, Netflix Animation's
               Cinderella story told by the stepsisters — her <b>first song written for an animated film</b>.
@@ -4249,7 +4256,7 @@
               <b>two weeks ahead of the film</b>, which premieres on Netflix on <b>Nov 20</b>.
             </div>
             <div class="cd-links">
-              <a class="cd-btn" href="https://netflixmusic.ffm.to/someonetohold" target="_blank" rel="noopener">Pre-save ↗</a>
+              <a class="cd-btn" href="https://netflixmusic.ffm.to/someonetohold" target="_blank" rel="noopener" onclick="saveSomeoneToHold()">Pre-save ↗</a>
             </div>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
@@ -7168,6 +7175,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadJisooSaveCount();
   loadNewTrickSaveCount();
   loadAddictedSaveCount();
+  loadSthSaveCount();
   refreshSupporterChips();
   loadLtalStreamsGoal();
   renderItunesInlineBadge();
@@ -15212,6 +15220,14 @@ const SPECIAL_BADGES = [
     check: () => newtrickEarlySupporterEarned(),
   },
   {
+    id: 'jennie-sth-presave',
+    icon: '<img src="/steps/someone-to-hold.svg" alt="" style="height:20px;width:auto;max-width:96px;object-fit:contain;vertical-align:middle;">',
+    label: 'EARLY SUPPORTER',
+    song: 'Someone to Hold \u2014 JENNIE',
+    desc: 'Pre-saved before release',
+    check: () => sthEarlySupporterEarned(),
+  },
+  {
     id: 'jisoo-addicted-presave',
     icon: '<img src="/addicted/addicted-heart-lightning-v1.webp" alt="" style="height:20px;width:auto;max-width:96px;object-fit:contain;vertical-align:middle;">',
     label: 'EARLY SUPPORTER',
@@ -18629,8 +18645,9 @@ async function refreshSupporterChips() {
   let user = null;
   try { user = (await sb?.auth.getUser())?.data?.user || null; } catch {}
   _buSignedIn = !!user;
-  if (user) { try { await Promise.all([faEarlySupporterEarned(), lisaEarlySupporterEarned(), jisooEarlySupporterEarned(), newtrickEarlySupporterEarned(), addictedEarlySupporterEarned()]); } catch {} }
+  if (user) { try { await Promise.all([faEarlySupporterEarned(), lisaEarlySupporterEarned(), jisooEarlySupporterEarned(), newtrickEarlySupporterEarned(), addictedEarlySupporterEarned(), sthEarlySupporterEarned()]); } catch {} }
   renderFaBadge();
+  renderSthBadge();
   renderLisaBadge();
   renderJisooBadge();
   renderNewTrickBadge();
@@ -18670,6 +18687,89 @@ function saveFallenAngel() {
     refreshSupporterChips();   // show the chip now if signed in (account-gated)
   }
   countPresaveOnce(FA_COUNTED_LS, 'fa_save', renderFaSaveCount);
+}
+
+// ── JENNIE "Someone to Hold" (Steps OST) pre-save counter + Early Supporter ──
+// Its own key, flag and counter, like every other campaign: sharing JENNIE's
+// Fallen Angel counter would open this one at that one's total.
+//
+// The pre-save window closes at the SONG's instant, not the film's premiere
+// two weeks later — pre-saving something already out is not a thing, and the
+// card's countdown targets the same instant, so the two cannot drift apart.
+const STH_SAVE_LS    = 'bu_jennie_sth_saved';
+const STH_COUNTED_LS = 'bu_jennie_sth_counted';
+const STH_SAVE_GOAL  = 50;
+const STH_RELEASE_AT = '2026-11-06T05:00:00Z'; // Fri Nov 6 · 12AM EST / 2PM KST
+
+function sthLive() { return Date.now() >= new Date(STH_RELEASE_AT).getTime(); }
+
+function renderSthBadge() {
+  const el = document.getElementById('sth-badge');
+  if (el) el.style.display = (_buSignedIn && localStorage.getItem(STH_SAVE_LS)) ? 'inline-flex' : 'none';
+}
+
+function renderSthSaveCount(count) {
+  const wrap = document.getElementById('sth-goal');
+  const numsEl = document.getElementById('sth-goal-nums');
+  const fillEl = document.getElementById('sth-goal-fill');
+  if (!wrap || !numsEl || !fillEl || count <= 0) return;
+  if (sthLive()) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  // Same step-up as the others: once a goal is passed the bar re-targets the
+  // next one rather than sitting full for the rest of the campaign.
+  const milestonesPassed = Math.floor(count / STH_SAVE_GOAL);
+  const currentMilestone = milestonesPassed * STH_SAVE_GOAL;
+  const nextMilestone = currentMilestone + STH_SAVE_GOAL;
+  const pct = milestonesPassed > 0
+    ? ((count - currentMilestone) / STH_SAVE_GOAL) * 100
+    : (count / STH_SAVE_GOAL) * 100;
+  fillEl.style.width = Math.min(100, pct) + '%';
+  numsEl.innerHTML = milestonesPassed > 0
+    ? `🎉 ${currentMilestone.toLocaleString()} reached — ${count.toLocaleString()}<span> / ${nextMilestone.toLocaleString()} pre-saves</span>`
+    : `${count.toLocaleString()}<span> / ${STH_SAVE_GOAL.toLocaleString()} pre-saves</span>`;
+}
+
+// Fires on the pre-save tap without blocking the outbound navigation.
+// GATED ON RELEASE, the lesson from ADDICTED and new trick: once the song is
+// out there is nothing to pre-save, and handing an "Early Supporter" badge to
+// someone who tapped a Listen link afterwards devalues it for everyone who
+// did pre-save. sthLive() is the same instant the countdown uses.
+function saveSomeoneToHold() {
+  if (sthLive()) return;
+  if (!localStorage.getItem(STH_SAVE_LS)) {
+    localStorage.setItem(STH_SAVE_LS, '1');
+    _showShareToast(_buSignedIn ? '🏆 Badge unlocked: Early Supporter!' : '✅ Pre-saved! Sign in on My Badges to claim your Early Supporter badge.');
+    try { sb?.auth.updateUser({ data: { sth_early_supporter: true } }); } catch {}
+    refreshSupporterChips();
+  }
+  countPresaveOnce(STH_COUNTED_LS, 'sth_save', renderSthSaveCount);
+}
+
+async function sthEarlySupporterEarned() {
+  const localFlag = !!localStorage.getItem(STH_SAVE_LS);
+  let metaFlag = false;
+  try {
+    const user = (await sb?.auth.getUser())?.data?.user || null;
+    if (user) {
+      metaFlag = !!user.user_metadata?.sth_early_supporter;
+      if (localFlag && !metaFlag) {
+        await sb.auth.updateUser({ data: { sth_early_supporter: true } });
+        metaFlag = true;
+      } else if (metaFlag && !localFlag) {
+        localStorage.setItem(STH_SAVE_LS, '1');
+      }
+    }
+  } catch (e) {}
+  return localFlag || metaFlag;
+}
+
+async function loadSthSaveCount() {
+  renderSthBadge();
+  try {
+    const r = await fetch('/api/proxy-image?sth_save=count');
+    const d = await r.json();
+    renderSthSaveCount(d.count || 0);
+  } catch (e) {}
 }
 
 async function loadFaSaveCount() {

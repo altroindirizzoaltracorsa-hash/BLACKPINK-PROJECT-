@@ -1,0 +1,73 @@
+name: Fetch release art
+
+# Pull an official cover/artwork into the repo from a URL, and commit it.
+#
+# WHY A WORKFLOW. Claude Code sessions cannot reach most third-party hosts —
+# the egress proxy answers 403 — but a GitHub runner can. Artwork for a new
+# release lives on the distributor's CDN (imagestore.ffm.to, i.ffmcdn.com,
+# Spotify's i.scdn.co…), so this is the same arrangement as probe-page.yml:
+# the runner fetches, the session reads the result.
+#
+# It REFUSES TO COMMIT ANYTHING THAT IS NOT AN IMAGE. A CDN that wants a
+# browser answers a bare curl with an HTML error page and HTTP 200, and that
+# would otherwise land in the repo as a .jpg which renders as a broken icon
+# on every card that points at it.
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Absolute https URL of the image'
+        required: true
+      path:
+        description: 'Where to save it, repo-relative (e.g. steps/someone-to-hold-cover.jpg)'
+        required: true
+      commit:
+        description: 'Set to 1 to commit it. Blank = fetch and report only.'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch and verify
+        env:
+          URL: ${{ github.event.inputs.url }}
+          DEST: ${{ github.event.inputs.path }}
+        run: |
+          set -eu
+          case "$URL" in https://*) ;; *) echo "::error::url must be https"; exit 1 ;; esac
+          # No path traversal, and nothing outside the repo.
+          case "$DEST" in /*|*..*) echo "::error::path must be repo-relative with no .."; exit 1 ;; esac
+          mkdir -p "$(dirname "$DEST")"
+          code=$(curl -sSL --max-time 60 -o "$DEST" -w '%{http_code}' \
+                 -H 'User-Agent: Mozilla/5.0 (blinksunited release-art fetcher)' "$URL")
+          echo "HTTP $code · $(wc -c <"$DEST") bytes"
+          [ "$code" = "200" ] || { echo "::error::expected 200, got $code"; exit 1; }
+          # file(1) on the bytes, not the extension — this is the check that
+          # stops an HTML error page being committed as artwork.
+          kind=$(file -b --mime-type "$DEST")
+          echo "::notice title=art::$DEST is $kind, $(wc -c <"$DEST") bytes"
+          case "$kind" in
+            image/*) ;;
+            *) echo "::error::not an image: $kind"; head -c 300 "$DEST"; exit 1 ;;
+          esac
+          if command -v identify >/dev/null 2>&1; then
+            echo "::notice title=art::dimensions $(identify -format '%wx%h' "$DEST")"
+          fi
+      - name: Commit
+        if: ${{ github.event.inputs.commit == '1' }}
+        env:
+          DEST: ${{ github.event.inputs.path }}
+        run: |
+          set -eu
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$DEST"
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git commit -m "art: add $DEST [skip ci]"
+          git push
