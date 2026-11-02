@@ -59,7 +59,18 @@ async function readAll(tz){
 }
 // Each card's own hand-typed claim, and the zone it is a claim about.
 const CLAIMS = [
-  ['steps',             'America/Los_Angeles', '12:00 AM', 'Nov 20'],  // "12AM PT"
+  // BOTH of the Steps card's clocks, because it prints two and they are a
+  // cross-check on each other: "12AM EST / 2PM KST" is one instant only if the
+  // New York offset is -5, and it is -5 only because US clocks went back on
+  // Nov 1. Read as EDT the card would be an hour early, and a single-zone
+  // check could not tell the difference.
+  //
+  // It used to count to the FILM (Nov 20, 12AM PT) because the song's own date
+  // was unannounced. The song was then announced for Nov 6 — two weeks AHEAD
+  // of the premiere — so the countdown follows the song and these claims moved
+  // with it. The film's date is asserted separately, below.
+  ['steps',             'America/New_York',    '12:00 AM', 'Nov 6'],   // "12AM EST"
+  ['steps',             'Asia/Seoul',          '2:00 PM',  'Nov 6'],   // "2PM KST"
   ['newtrick',          'Asia/Seoul',          '8:00 AM',  'Sep 18'],  // "Thu, Sep 18 · 8AM KST"
   ['jisoo.io',          'Asia/Seoul',          '1:00 PM',  'Sep 4'],   // "1PM KST"
   ['hellosawadika.com', 'Asia/Seoul',          '9:00 AM',  'Sep 4'],   // "9AM KST"
@@ -91,6 +102,44 @@ for (const tz of ['Europe/Rome','America/New_York','Asia/Kolkata']){
     ? ok('   and PRESS PLAY still says midnight local time')
     : bad('   and PRESS PLAY still says midnight local time', r['lalisaofficial.com'].sub);
 }
+
+console.log('--- Steps: the song and the film are two dates, and stay two dates');
+// The card counted to the film while telling readers the song arrived "the
+// same day as the film". It does not — the single is 14 days earlier — and
+// both halves were wrong together, which is how it read as consistent. So:
+// the countdown is the SONG, the film's own date is still on the card, and
+// nothing claims they coincide.
+{
+  const pg = await browser.newPage({ timezoneId: 'Europe/Rome' });
+  await pg.goto(base, { waitUntil: 'domcontentloaded' });
+  await pg.waitForTimeout(2200);
+  const s = await pg.evaluate(() => {
+    const c = document.querySelector('#home-countdowns .cd-card[data-slug="steps"]')
+           || document.querySelector('.cd-card[data-slug="steps"]');
+    return c ? { target: c.dataset.target,
+                 times: (c.querySelector('[data-times-for]') || {}).dataset?.timesFor || '',
+                 text: c.innerText.replace(/\s+/g, ' ') } : null;
+  });
+  await pg.close();
+  if (!s) bad('the Steps card is on the page');
+  else {
+    s.target === '2026-11-06T05:00:00Z'
+      ? ok('the countdown targets the song', s.target)
+      : bad('the countdown targets the song', `got ${s.target}`);
+    // The worldwide-times list has to move with the target, or the card counts
+    // to one instant and lists another.
+    s.times === s.target
+      ? ok('and the worldwide times list the same instant', s.times)
+      : bad('and the worldwide times list the same instant', `times-for ${s.times} vs target ${s.target}`);
+    /Nov 20/.test(s.text)
+      ? ok("and the film's own date is still on the card", 'Nov 20')
+      : bad("and the film's own date is still on the card", 'Nov 20 is gone');
+    /same day as the film/i.test(s.text)
+      ? bad('and nothing says the song lands with the film', 'that claim is back')
+      : ok('and nothing says the song lands with the film');
+  }
+}
+
 await browser.close(); server.close();
 console.log(fails?`\n${fails} FAILED`:'\nAll correct.');
 process.exit(fails?1:0);
