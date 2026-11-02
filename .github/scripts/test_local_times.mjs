@@ -137,6 +137,22 @@ console.log('--- Steps: the song and the film are two dates, and stay two dates'
     /same day as the film/i.test(s.text)
       ? bad('and nothing says the song lands with the film', 'that claim is back')
       : ok('and nothing says the song lands with the film');
+
+    // THE WRITING CREDIT IS NOT HERS. The HMMA nominee list credits Justin
+    // Tranter, Julia Michaels and Jason Gill, performed by JENNIE. The card
+    // claimed "Jennie wrote and performs" and "her first song written for an
+    // animated film", and that survived an edit to the very sentence it sat
+    // in because the edit was about the release date and nobody re-read the
+    // clause before it. Pinned both ways: the false claim must be gone AND
+    // the real writers must be named, because dropping the claim without
+    // naming them would read as the song having no author.
+    /jennie\s+wrote|wrote\s+and\s+performs|written\s+by\s+jennie/i.test(s.text)
+      ? bad('and the card does not say Jennie wrote it', 'the writing claim is back')
+      : ok('and the card does not say Jennie wrote it');
+    /Justin Tranter/.test(s.text) && /Julia Michaels/.test(s.text) && /Jason Gill/.test(s.text)
+      ? ok('and it credits the three writers who did', 'Tranter, Michaels, Gill')
+      : bad('and it credits the three writers who did',
+            'the song reads as having no author');
   }
 }
 
