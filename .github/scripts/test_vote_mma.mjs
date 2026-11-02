@@ -127,7 +127,9 @@ console.log('\n--- the rules carry the parts that cost a vote');
 for (const [needle, why] of [
   ['50%',        'that the two platforms are half each'],
   ['00:00 KST',  'when the daily vote refreshes'],
-  ['cancelled',  'that a Berriz vote cannot be taken back'],
+  // 'cancel', not 'cancelled' — the fact is that a Berriz vote cannot be taken
+  // back, and pinning the inflection would fail a rewrite that still says so.
+  ['cancel',     'that a Berriz vote cannot be taken back'],
   ['Bonus votes', 'how Melon bonus votes work'],
   ['13 Nov',     'when voting closes'],
 ]) check(r.ruleText.includes(needle), `the rules say ${why}`, needle);
