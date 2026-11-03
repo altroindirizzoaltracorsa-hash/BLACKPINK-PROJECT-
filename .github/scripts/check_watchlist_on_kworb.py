@@ -54,7 +54,7 @@ def main():
         print("the watchlist is empty — nothing to check")
         return 0
 
-    listed, unreachable = [], []
+    listed, unreachable, held_back = [], [], []
     for artist_id, entry in groups:
         name = artist_id
         cat_path = os.path.join(CATALOGS, f"{artist_id}.json")
@@ -80,6 +80,40 @@ def main():
         now_on = [t for t in pending if t["id"] in kw]
         print(f"{name}: {len(pending)} pending, {len(now_on)} now on kworb "
               f"(kworb lists {len(kw)} ids, catalogue pins {len(counted)})")
+
+        # ── A HOLD: listed on kworb, but re-seeding now would do harm ────────
+        #
+        # "kworb lists it" is normally the whole trigger, because a re-seed
+        # only ever adds. It is not, when kworb has DROPPED something at the
+        # same time: the seeder pins whatever kworb says today, so a dropped
+        # track leaves the catalogue and its streams leave the total.
+        #
+        # BABYMONSTER, 2026-11-03: kworb listed DESERVE (8.6M) and dropped
+        # BATTER UP (277.7M) in the same week. Re-seeding would have been a
+        # net -269M — a 97% cut to the swing, showing as a one-day collapse in
+        # a streams race, for a debut single far likelier to be a kworb-side
+        # merge than a real de-scope. Held by the owner's call, pending its
+        # return.
+        #
+        # The hold is NOT a mute. Without it this check goes red every day
+        # demanding the one thing we decided against, and the one workflow
+        # whose whole job is to be noticed becomes the one nobody reads. So
+        # while the hold stands it reports and passes; the moment the held
+        # track is back on kworb it goes red, because THAT is the re-seed.
+        hold = entry.get("_hold") or {}
+        if hold:
+            back = [tid for tid in hold.get("until_back_on_kworb", []) if tid in kw]
+            still = [tid for tid in hold.get("until_back_on_kworb", []) if tid not in kw]
+            if still:
+                print(f"    ON HOLD — {hold.get('reason', 'no reason recorded')}")
+                for tid in still:
+                    print(f"      still missing from kworb  {tid}  {hold.get('names', {}).get(tid, '')}")
+                print(f"      re-seeding now would be {hold.get('net_effect', 'a net loss')}")
+                print(f"      not an action item until kworb restores it")
+                continue
+            if back:
+                held_back.append((name, artist_id, back, hold))
+                continue
 
         # The two SETS, not the two counts. Comparing sizes says nothing about
         # membership — 67 against 64 was read here as "three tracks kworb
@@ -112,6 +146,21 @@ def main():
         # answers and only one of them means do nothing.
         print(f"\n::error::could not reach kworb for: {', '.join(unreachable)} — "
               f"this run proved nothing, it did not prove 'not yet'")
+        return 1
+
+    # A held track coming BACK is the loud case: the reason for the hold is
+    # gone, so the re-seed that was refused is now the right move.
+    if held_back:
+        print("\n" + "=" * 70)
+        for name, artist_id, back, hold in held_back:
+            names = hold.get("names", {})
+            print(f"{name}: THE HELD TRACK IS BACK ON KWORB — "
+                  + ", ".join(names.get(t, t) for t in back))
+            print(f"  the hold was: {hold.get('reason', '')}")
+            print(f"  re-seed with:  Seed group catalogs from kworb  \u2192  only: {name}, write: 1")
+            print(f"  then clear _hold from data/group_watchlist.json")
+        print("=" * 70)
+        print("::error::a held track is back on kworb — the re-seed is unblocked")
         return 1
 
     if not listed:
