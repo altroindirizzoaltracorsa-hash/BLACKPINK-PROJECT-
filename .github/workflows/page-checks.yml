@@ -21,6 +21,7 @@ on:
       - 'collabs.html'
       - 'api/collabs.js'
       - 'api/leaderboard.js'
+      - 'api/cron-scrobbles.js'
       - 'api/youtube-history.js'
       - 'vs.html'
       - 'mama-guide.html'
@@ -47,6 +48,7 @@ on:
       - 'collabs.html'
       - 'api/collabs.js'
       - 'api/leaderboard.js'
+      - 'api/cron-scrobbles.js'
       - 'api/youtube-history.js'
       - 'vs.html'
       - 'mama-guide.html'
@@ -326,6 +328,17 @@ jobs:
       - name: The day turns over at 00:00 UTC, all year
         if: always()
         run: node .github/scripts/test_day_boundary.mjs
+
+      # The refresh fired 18 Last.fm calls per account in one Promise.all, 3
+      # accounts at a time, unpaced — ~70/s against a 5/s ceiling. The key was
+      # exhausted seconds into every run and, because the board is walked in a
+      # fixed order, it was always the same prefix that got served: 46 of 201
+      # users on 2026-11-03, 155 of them rate-limited. A failed user keeps their
+      # previous row, so the board looked populated while three quarters of it
+      # was frozen for days. Runs the real module against a counting Last.fm.
+      - name: The scrobble refresh stays inside Last.fm's budget, and starves nobody
+        if: always()
+        run: node .github/scripts/test_scrobble_rate.mjs
 
       # The countdown was set to 1PM KST, the hour JISOO's earlier singles used.
       # The official timetable says 8AM KST — five hours earlier — so the card

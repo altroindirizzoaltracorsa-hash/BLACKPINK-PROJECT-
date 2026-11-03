@@ -40,6 +40,33 @@ jobs:
           echo ""
           echo "--- summary ---"
           jq -r '"refreshed: \(.refreshed | length) · failed: \(.failed | length) · unverified (skipped): \(.unverified | length) · merged duplicates: \(.merged | length)"' response.json || true
+          jq -r '"last.fm calls: \(.lastfmCalls // "?") · rate-limited: \(.rateLimited // 0) · took: \(.tookMs // "?")ms · started from: \(.startedFrom // "top") · stopped at: \(.stoppedAt // "finished")"' response.json || true
           jq -r '.failed[]? | "  FAILED: \(.username) — \(.error)"' response.json || true
           jq -r '.merged[]? | "  MERGED (dropped stale duplicate): \(.)"' response.json || true
           if [ "$http_code" -ge 400 ]; then exit 1; fi
+
+          # ── THE RUN HAS TO GO RED WHEN THE BOARD STOPS UPDATING ──────────
+          #
+          # It did not, and that is why the scrobble outage of early November
+          # 2026 lasted days: the endpoint answers 200 with ok:true whatever
+          # happens to the individual users, so a run that refreshed 46 of 201
+          # and rate-limited the other 155 was indistinguishable, in the Actions
+          # list, from a perfect one. A list of FAILED lines printed into a log
+          # nobody opens is not an alert.
+          #
+          # Any rate limiting at all is a real signal — the request budget is
+          # supposed to be under the ceiling now, so a 29 means it is not.
+          rl=$(jq -r '.rateLimited // 0' response.json)
+          refreshed=$(jq -r '.refreshed | length' response.json)
+          failed=$(jq -r '.failed | length' response.json)
+          if [ "$rl" -gt 0 ]; then
+            echo "::error title=Last.fm rate limit::$rl user(s) hit error 29 — the refresh is over the shared key's budget again. Lower LASTFM_RATE_PER_SEC or cut calls per user; while this persists the board silently freezes for everyone past the cut-off."
+            exit 1
+          fi
+          # A 404/403 on a renamed or now-private account is nobody's bug and
+          # always a few. A majority failing is never normal.
+          total=$((refreshed + failed))
+          if [ "$total" -gt 0 ] && [ "$((failed * 2))" -gt "$total" ]; then
+            echo "::error title=Most users failed to refresh::$failed of $total failed. Their rows keep their last-known numbers, so the board looks healthy while it is frozen."
+            exit 1
+          fi

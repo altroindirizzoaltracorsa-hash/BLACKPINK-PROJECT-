@@ -7,6 +7,17 @@ const LASTFM_BASE = 'https://ws.audioscrobbler.com/2.0/';
 const LIBREFM_BASE = 'https://libre.fm/2.0/';
 const LB_BASE     = 'https://api.listenbrainz.org/1/';
 const LB_KEY = 'bu_leaderboard_v1';
+// Per-Last.fm-account cache of the figures that only move when the account
+// scrobbles, so an idle account costs one request instead of eighteen. Its own
+// key, NOT a field on the entries in LB_KEY: that key is 235 KB and every
+// visitor downloads it through /api/leaderboard, so a ~40 KB cache hung off it
+// would be paid for by every reader of the site. Here it is two Redis commands
+// per cron run and nobody else ever reads it.
+const LFM_CACHE_KEY = 'bu_lfm_cache_v1';
+// Where the next run starts walking the board. See the rotation note in the
+// handler: the point is that a run which cannot finish must not fail the same
+// people every time.
+const SCROBBLE_CURSOR_KEY = 'bu_scrobble_cursor_v1';
 const GOAL_HISTORY_KEY = 'bu_goal_history_v1';
 const GOAL_PRIMARY   = 15000;
 const GOAL_SECONDARY = 20000;
@@ -168,10 +179,57 @@ async function persistStamp(sb, username, todayKey, stamps) {
 
 // ── Last.fm helpers ───────────────────────────────────────────
 const LASTFM_RETRYABLE_ERRORS = new Set([8, 11, 16]);
+// 29 = Rate Limit Exceeded, kept SEPARATE from the three above because it needs
+// a different answer. An 8/11/16 is this one request's bad luck, so sleeping on
+// it privately is right. A 29 is the KEY being over budget: every other request
+// in flight is about to get one too, so the whole run has to slow down.
+const LASTFM_RATE_LIMIT_ERROR = 29;
+
+// WHY THERE IS A RATE GATE HERE AT ALL — the scrobble outage of early November
+// 2026, reported as "no están contando mis reproducciones desde hace días".
+//
+// refreshUser fired 18 Last.fm calls per account inside one Promise.all, three
+// accounts at a time, with no pacing: ~54 requests in flight and ~70/s
+// sustained against a documented ceiling (ToS 4.4) of an average of 5/s. So
+// the key was exhausted a few seconds into every run, and because the board is
+// walked in a fixed order (Object.values of the stored object), it was always
+// the SAME users who got served and always the same ones who did not:
+//
+//   run of 2026-11-03 10:08 UTC   refreshed  46 · failed 155 (152 of them a 29)
+//   run of 2026-11-02 20:31 UTC   refreshed  88 · failed 112 ( 99 of them a 29)
+//
+// and the 46 were a strict subset of the 88 — a prefix, not a scatter, which is
+// what a drained bucket looks like and what a flaky API does not. Everyone past
+// the cut-off kept their last-known numbers (refreshUser throws, the caller
+// keeps the old entry), so the board looked populated and healthy while three
+// quarters of it was frozen.
+//
+// ONE key serves this cron, /api/lastfm (every visitor), /api/artwork and
+// /api/control-ranking, so the cron never has the whole budget to itself and
+// has to run under the ceiling rather than at it.
+//
+// A single shared slot clock, so the pacing holds however many callers a
+// Promise.all launches at once: each request claims the next free instant and
+// sleeps until it. Per function instance, which is the scope of one cron run.
+const LFM_RATE_PER_SEC = Number(process.env.LASTFM_RATE_PER_SEC || 4);
+let lfmNextSlot = 0;
+let lfmCalls = 0;
+async function lfmSlot() {
+  lfmCalls++;
+  const now = Date.now();
+  const at  = Math.max(now, lfmNextSlot);
+  lfmNextSlot = at + 1000 / LFM_RATE_PER_SEC;
+  if (at > now) await new Promise(r => setTimeout(r, at - now));
+}
+// A 29 is the key's budget, not this request's, so the back-off goes on the
+// SHARED clock. Sleeping privately would leave the other callers queued behind
+// an unchanged clock, and they would all resume hammering in unison.
+function lfmPenalty(ms) { lfmNextSlot = Math.max(lfmNextSlot, Date.now() + ms); }
 
 async function lfmFetch(params, attempt = 0) {
   const url = LASTFM_BASE + '?' + new URLSearchParams({ ...params, api_key: LASTFM_KEY, format: 'json' });
   let data;
+  await lfmSlot();
   try {
     const r = await fetch(url);
     if (!r.ok) throw new Error(`Last.fm HTTP ${r.status}`);
@@ -184,6 +242,14 @@ async function lfmFetch(params, attempt = 0) {
     throw e;
   }
   if (data?.error) {
+    if (data.error === LASTFM_RATE_LIMIT_ERROR && attempt < 3) {
+      // Seconds, not the 500ms the others get: a rate limit that has already
+      // tripped does not clear in half a second. The recursion's own lfmSlot()
+      // is what performs the wait, so this both backs THIS request off and
+      // holds everyone else.
+      lfmPenalty(2000 * 2 ** attempt);
+      return lfmFetch(params, attempt + 1);
+    }
     if (LASTFM_RETRYABLE_ERRORS.has(data.error) && attempt < 2) {
       await new Promise(res => setTimeout(res, 500 * 3 ** attempt));
       return lfmFetch(params, attempt + 1);
@@ -211,6 +277,23 @@ async function fetchTrackPlays(username, artist, track, fetchFn = lfmFetch) {
 async function fetchArtistPlays(username, artist, fetchFn = lfmFetch) {
   const d = await fetchFn({ method: 'artist.getInfo', artist, username });
   return parseInt(d?.artist?.stats?.userplaycount || '0', 10);
+}
+
+// The account's whole-library scrobble count. One cheap call that answers the
+// only question worth asking before the expensive ones: has this account
+// recorded ANY play since we last looked? If it has not, none of the 16
+// per-track all-time totals can have moved, and the week's scrobble list cannot
+// have gained a row either — so 17 of the 18 requests are re-reading numbers we
+// already hold.
+//
+// null means "could not tell" (missing or unparseable — Libre.fm does not
+// always answer with a playcount), which falls through to the full refresh.
+// Never 0 for that case: 0 is a real answer from a brand-new account and would
+// match a cached 0 forever.
+async function fetchUserPlaycount(username, fetchFn = lfmFetch) {
+  const d  = await fetchFn({ method: 'user.getInfo', user: username });
+  const pc = parseInt(d?.user?.playcount, 10);
+  return Number.isFinite(pc) ? pc : null;
 }
 
 async function fetchRecentScrobbles(username, from, to, maxPages = 50, fetchFn = lfmFetch) {
@@ -347,7 +430,7 @@ async function extensionCountsForUsers(sb, appUserIds, dayFrom, dayTo, weekFrom,
 // ── Refresh one user's scores ─────────────────────────────────
 // linkedMap: Map(source_username.toLowerCase() -> app_user_id), used to attach
 // this profile's extension_scrobbles rows to the right account.
-async function refreshUser(entry, sb, linkedMap, nameInfo) {
+async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
   const linkedAccounts = entry.linkedAccounts || [{ type: 'lastfm', username: entry.username }];
 
   // Resolve the stable owner id. It's often missing on the in-Redis entry — a
@@ -400,6 +483,12 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
 
   const { from: dayFrom, to: dayTo }   = getDayBounds();
   const { from: weekFrom, to: weekTo } = getWeekBounds();
+  // Which day and week the per-account cache's day/week counts belong to. UTC,
+  // like every other boundary in this repo. A cached count is only reusable
+  // while its window is still the current one — a scrobble can fall OUT of a
+  // window without any new one arriving, which no playcount change would show.
+  const dayWindowKey  = dayKey(dayFrom);
+  const weekWindowKey = dayKey(weekFrom);
 
   const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0 };
   let artistPlays   = 0;
@@ -419,102 +508,100 @@ async function refreshUser(entry, sb, linkedMap, nameInfo) {
     if (acct.type === 'lastfm' || acct.type === 'librefm') {
       const u = acct.username;
       const fetchFn = acct.type === 'librefm' ? librefmFetch : lfmFetch;
-      // Single fetch spanning the whole week through today -- Last.fm/Libre.fm
-      // return scrobbles newest-first, so today's counts, the weekly counts,
-      // and the most recent BLACKPINK scrobble can all be derived from one
-      // paginated range instead of re-fetching/re-paginating once per day.
-      const [ap, jumpPlays, shutdownPlays, ddududuPlays, ltalPlays, goPlays, swPlays, clPlays, faPlays, heavenPlays, ntPlays, v12Plays, cobraPlays, tarantinoPlays, cutuoffPlays, sweatPlays, addictedPlays, weekSc] = await Promise.all([
-        fetchArtistPlays(u, 'BLACKPINK', fetchFn),
-        fetchTrackPlays(u, 'BLACKPINK', 'JUMP', fetchFn),
-        fetchTrackPlays(u, 'BLACKPINK', 'Shut Down', fetchFn),
-        fetchTrackPlays(u, 'BLACKPINK', 'DDU-DU DDU-DU', fetchFn),
-        fetchTrackPlays(u, 'Jennie', 'Less Than a Lover', fetchFn),
-        fetchTrackPlays(u, 'BLACKPINK', 'GO', fetchFn),
-        fetchTrackPlays(u, 'LISA', 'SaWaDiKa', fetchFn),
-        fetchTrackPlays(u, 'JISOO', 'CLICK', fetchFn),
-        fetchTrackPlays(u, 'Jennie', 'Fallen Angel', fetchFn),
-        fetchTrackPlays(u, 'Jennie', 'Heaven', fetchFn),
-        fetchTrackPlays(u, 'ROSÉ', 'new trick', fetchFn),
-        fetchTrackPlays(u, 'LISA', 'V12', fetchFn),
-        fetchTrackPlays(u, 'LISA', 'Cobra', fetchFn),
-        fetchTrackPlays(u, 'LISA', 'Tarantino', fetchFn),
-        fetchTrackPlays(u, 'LISA', 'Cut U Off', fetchFn),
-        fetchTrackPlays(u, 'LISA', 'Sweat', fetchFn),
-        fetchTrackPlays(u, 'JISOO', 'ADDICTED', fetchFn),
-        fetchRecentScrobbles(u, weekFrom, dayTo, 50, fetchFn),
-      ]);
-      artistPlays        += ap;
-      totalPlays.jump    += jumpPlays;
-      totalPlays.shutdown += shutdownPlays;
-      totalPlays.ddududu += ddududuPlays;
-      totalPlays.ltal    += ltalPlays;
-      totalPlays.go      += goPlays;
-      totalPlays.sawadika += swPlays;
-      totalPlays.click    += clPlays;
-      totalPlays.fallenangel += faPlays;
-      totalPlays.heaven      += heavenPlays;
-      totalPlays.newtrick    += ntPlays;
-      totalPlays.v12    += v12Plays;
-      totalPlays.cobra    += cobraPlays;
-      totalPlays.tarantino    += tarantinoPlays;
-      totalPlays.cutuoff    += cutuoffPlays;
-      totalPlays.sweat    += sweatPlays;
-      totalPlays.addicted += addictedPlays;
+      // ── HOW MANY REQUESTS THIS ACCOUNT COSTS ────────────────────────────
+      //
+      // One, when nothing has changed — which for most accounts is most hours.
+      // This replaced a flat 18 per account per run (a hand-written
+      // Promise.all of artist.getInfo + one track.getInfo per campaign track +
+      // the week's scrobbles), 3 accounts at a time with no pacing, which is
+      // what exhausted the shared Last.fm key and froze three quarters of the
+      // board for days. See the rate-gate note above lfmFetch.
+      //
+      // The whole-library playcount is the gate. If it has not moved since the
+      // last run then this account has recorded no play of anything, so:
+      //   · the 16 per-track all-time totals cannot have changed, and
+      //   · the week's scrobble list cannot have gained a row.
+      // The day and week COUNTS can still change without a new scrobble, by one
+      // falling out of the window, so they are only reused while the windows
+      // themselves are unchanged. Three cases, 1 / ~2 / ~18 requests:
+      const ukey   = u.toLowerCase();
+      const cached = lfmCache ? lfmCache[ukey] : null;
+      const pc     = await fetchUserPlaycount(u, fetchFn);
+      // A cache entry has to cover every track counted TODAY. Without this a
+      // release added to TRACKS after the entry was written would be served
+      // from it as a silent zero for everyone, every run, until they happened
+      // to scrobble something — exactly the failure the auto-discovery note in
+      // CLAUDE.md describes on the Spotify side.
+      const covered = !!cached && !!cached.t && !!cached.d && !!cached.w
+        && TRACKS.every(t => Number.isFinite(cached.t[t.id]));
+      const idle    = pc !== null && covered && cached.pc === pc;
+      const sameWin = idle && cached.dk === dayWindowKey && cached.wk === weekWindowKey;
 
-      const todaySc = weekSc.filter(s => {
-        const ts = parseInt(s.date?.uts || '0', 10);
-        return ts >= dayFrom && ts < dayTo;
-      });
-      const dc = countByTrack(todaySc);
-      todayCounts.jump     += dc.jump     || 0;
-      todayCounts.shutdown += dc.shutdown || 0;
-      todayCounts.ddududu  += dc.ddududu  || 0;
-      todayCounts.ltal     += dc.ltal     || 0;
-      todayCounts.go       += dc.go       || 0;
-      todayCounts.sawadika += dc.sawadika || 0;
-      todayCounts.click    += dc.click    || 0;
-      todayCounts.fallenangel += dc.fallenangel || 0;
-      todayCounts.heaven      += dc.heaven      || 0;
-      todayCounts.newtrick    += dc.newtrick    || 0;
-      todayCounts.v12    += dc.v12    || 0;
-      todayCounts.cobra    += dc.cobra    || 0;
-      todayCounts.tarantino    += dc.tarantino    || 0;
-      todayCounts.cutuoff    += dc.cutuoff    || 0;
-      todayCounts.sweat    += dc.sweat    || 0;
-      todayCounts.addicted += dc.addicted || 0;
-      todayBySource[`${acct.type === 'librefm' ? 'Libre.fm' : 'Last.fm'} · ${u}`] = {
-        jump: dc.jump || 0, shutdown: dc.shutdown || 0, ddududu: dc.ddududu || 0, ltal: dc.ltal || 0, go: dc.go || 0,
-      };
-
-      const wdc = countByTrack(weekSc);
-      weekCounts.jump     += wdc.jump     || 0;
-      weekCounts.shutdown += wdc.shutdown || 0;
-      weekCounts.ddududu  += wdc.ddududu  || 0;
-      weekCounts.ltal     += wdc.ltal     || 0;
-      weekCounts.go       += wdc.go       || 0;
-      weekCounts.sawadika += wdc.sawadika || 0;
-      weekCounts.click    += wdc.click    || 0;
-      weekCounts.fallenangel += wdc.fallenangel || 0;
-      weekCounts.heaven      += wdc.heaven      || 0;
-      weekCounts.newtrick    += wdc.newtrick    || 0;
-      weekCounts.v12    += wdc.v12    || 0;
-      weekCounts.cobra    += wdc.cobra    || 0;
-      weekCounts.tarantino    += wdc.tarantino    || 0;
-      weekCounts.cutuoff    += wdc.cutuoff    || 0;
-      weekCounts.sweat    += wdc.sweat    || 0;
-      weekCounts.addicted += wdc.addicted || 0;
-
-      // "blackpink" alone misses activity on Jennie's solo campaign track
-      // (Less Than a Lover), which would otherwise wrongly flag an actively-
-      // streaming fan as inactive just because their recent plays are all solo.
-      const bpEntry = weekSc.find(s => {
-        const a = (s.artist?.['#text'] || '').toLowerCase();
-        return (a.includes('blackpink') || a.includes('jennie')) && s.date?.uts;
-      });
-      if (bpEntry) {
-        const ts = new Date(parseInt(bpEntry.date.uts) * 1000).toISOString();
-        if (!lastScrobbleAt || ts > lastScrobbleAt) lastScrobbleAt = ts;
+      let ap, allTime, dayBy, weekBy, newestBp = null;
+      if (sameWin) {
+        // Nothing scrobbled, windows unchanged: every figure this account
+        // contributes is one we already hold. Cost: the gate call alone.
+        ap = cached.ap; allTime = cached.t; dayBy = cached.d; weekBy = cached.w;
+      } else {
+        if (idle) {
+          // Nothing scrobbled, but the day (or week) has rolled over, so the
+          // windowed counts must be re-derived. The all-time totals still cannot
+          // have moved. Cost: the gate call + the week fetch.
+          ap = cached.ap; allTime = cached.t;
+        } else {
+          // Either it scrobbled, or we could not tell. Full read.
+          const [apV, perTrack] = await Promise.all([
+            fetchArtistPlays(u, 'BLACKPINK', fetchFn),
+            // Driven off TRACKS rather than a second hand-written list. The
+            // Promise.all this replaces had to be edited in lockstep with
+            // TRACKS on every release — six parallel lists for one fact, which
+            // is the kind of pair that drifts silently.
+            Promise.all(TRACKS.map(t => fetchTrackPlays(u, t.artist, t.track, fetchFn))),
+          ]);
+          ap = apV;
+          allTime = Object.fromEntries(TRACKS.map((t, i) => [t.id, perTrack[i]]));
+        }
+        // Single fetch spanning the whole week through today -- Last.fm/Libre.fm
+        // return scrobbles newest-first, so today's counts, the weekly counts,
+        // and the most recent BLACKPINK scrobble can all be derived from one
+        // paginated range instead of re-fetching/re-paginating once per day.
+        const weekSc  = await fetchRecentScrobbles(u, weekFrom, dayTo, 50, fetchFn);
+        const todaySc = weekSc.filter(s => {
+          const ts = parseInt(s.date?.uts || '0', 10);
+          return ts >= dayFrom && ts < dayTo;
+        });
+        dayBy  = countByTrack(todaySc);
+        weekBy = countByTrack(weekSc);
+        // "blackpink" alone misses activity on Jennie's solo campaign track
+        // (Less Than a Lover), which would otherwise wrongly flag an actively-
+        // streaming fan as inactive just because their recent plays are all solo.
+        const bpEntry = weekSc.find(s => {
+          const a = (s.artist?.['#text'] || '').toLowerCase();
+          return (a.includes('blackpink') || a.includes('jennie')) && s.date?.uts;
+        });
+        if (bpEntry) newestBp = new Date(parseInt(bpEntry.date.uts) * 1000).toISOString();
       }
+
+      // Only cache a reading we can gate on later. pc === null means the gate
+      // question is unanswerable for this account, and an entry we can never
+      // trust is worse than none.
+      if (pc !== null && lfmCache) {
+        lfmCache[ukey] = { pc, ap, t: allTime, dk: dayWindowKey, wk: weekWindowKey, d: dayBy, w: weekBy };
+      }
+
+      artistPlays += ap;
+      for (const t of TRACKS) {
+        totalPlays[t.id]  += allTime[t.id] || 0;
+        todayCounts[t.id] += dayBy[t.id]   || 0;
+        weekCounts[t.id]  += weekBy[t.id]  || 0;
+      }
+      todayBySource[`${acct.type === 'librefm' ? 'Libre.fm' : 'Last.fm'} · ${u}`] = {
+        jump: dayBy.jump || 0, shutdown: dayBy.shutdown || 0, ddududu: dayBy.ddududu || 0,
+        ltal: dayBy.ltal || 0, go: dayBy.go || 0,
+      };
+      // lastScrobbleAt only ever climbs, so an idle account needs no update:
+      // entry.lastScrobbleAt already carries its newest play.
+      if (newestBp && (!lastScrobbleAt || newestBp > lastScrobbleAt)) lastScrobbleAt = newestBp;
     } else if (acct.type === 'listenbrainz') {
       const u = acct.username;
       try {
@@ -942,7 +1029,50 @@ export default async function handler(req, res) {
     }
   }
 
-  const users     = Object.values(data.users);
+  // THE ORDER THE BOARD IS WALKED IN, AND WHY IT HAS TO MOVE.
+  //
+  // Object.values is insertion order, and the board object is the same JSON
+  // reloaded every run, so this list is identical run after run. While the
+  // Last.fm key was being exhausted a few seconds in, that meant the same
+  // prefix of users was refreshed every time and the same tail never was —
+  // 46 of 201 on one run, 88 on another, and the 46 a strict subset of the 88.
+  // Nobody in the tail was ever going to recover on their own.
+  //
+  // The call budget is much smaller now, but a release day (everyone active, so
+  // nobody idle-gated) can still cost more than one invocation has time for. So
+  // the starting point rotates: whoever we did not reach is where the next run
+  // begins. A run that covers half the board still covers all of it over two,
+  // and no position on the list is a bad place to be.
+  //
+  // Stored as a KEY, not an index: entries are added and removed between runs,
+  // so an index would quietly point at somebody else.
+  const allUsers  = Object.values(data.users);
+  let cursorKey   = null;
+  try { cursorKey = await redis.get(SCROBBLE_CURSOR_KEY); } catch { /* fall back to the top */ }
+  // Only search for a cursor we actually have. Without the guard, no cursor
+  // compares equal to an entry whose username is blank and the run would start
+  // from whichever broken row that is, rather than from the top.
+  const wanted    = typeof cursorKey === 'string' ? cursorKey.toLowerCase() : '';
+  const startAt   = wanted
+    ? Math.max(0, allUsers.findIndex(e => (e.username || '').toLowerCase() === wanted))
+    : 0;
+  const users     = startAt ? [...allUsers.slice(startAt), ...allUsers.slice(0, startAt)] : allUsers;
+
+  // The per-account cache that makes an idle account cost one request. Read
+  // once here, mutated by refreshUser, written once at the end.
+  let lfmCache = null;
+  try { lfmCache = (await redis.get(LFM_CACHE_KEY)) || {}; } catch { lfmCache = {}; }
+
+  // Stop cleanly rather than being killed mid-write. Whatever is left becomes
+  // the next run's starting point, which is the whole point of the rotation.
+  const RUN_BUDGET_MS = Number(process.env.SCROBBLE_RUN_BUDGET_MS || 180000);
+  const runStartedAt  = Date.now();
+  // Module-level, so it carries over on a warm instance. Zero it per run or the
+  // reported figure is "every call this container ever made".
+  lfmCalls    = 0;
+  lfmNextSlot = 0;
+  let   stoppedAt     = null;   // first user not reached, if we ran out of time
+
   const ok        = [];
   const failed    = [];
   const unverified = [];
@@ -957,10 +1087,14 @@ export default async function handler(req, res) {
 
   const batchSize = 3;
   for (let i = 0; i < users.length; i += batchSize) {
+    if (Date.now() - runStartedAt > RUN_BUDGET_MS) {
+      stoppedAt = users[i].username;
+      break;
+    }
     await Promise.all(users.slice(i, i + batchSize).map(async entry => {
       if (!isVerified(entry)) { unverified.push(entry.username); return; }
       try {
-        const refreshed = await refreshUser(entry, sb, linkedMap, nameInfo);
+        const refreshed = await refreshUser(entry, sb, linkedMap, nameInfo, lfmCache);
         // Key by displayName (lowercased) so linked-account rows consolidate
         data.users[refreshed.displayName.toLowerCase()] = refreshed;
         // Remove the old key if the display name differs from the raw username
@@ -1121,6 +1255,31 @@ export default async function handler(req, res) {
   updateLeaderStreak(data);
   await redis.set(LB_KEY, data);
 
+  // Where the next run starts. Ran out of budget → resume at the first user we
+  // never reached, so the tail of this run is the head of the next and the
+  // cut-off keeps moving round the board. Got through everyone → there is no
+  // tail to make up for, so clear it and start from the top again.
+  // Written AFTER the board, so a failure here can never cost a refresh.
+  try {
+    if (stoppedAt) await redis.set(SCROBBLE_CURSOR_KEY, stoppedAt);
+    else           await redis.del(SCROBBLE_CURSOR_KEY);
+  } catch (e) { console.error('scrobble cursor write failed:', e.message || e); }
+
+  // Drop cache entries for accounts no longer on the board, so this key tracks
+  // the board instead of growing forever.
+  try {
+    if (lfmCache) {
+      const live = new Set();
+      for (const e of Object.values(data.users)) {
+        for (const a of (e.linkedAccounts || [{ username: e.username }])) {
+          if (a.username) live.add(a.username.toLowerCase());
+        }
+      }
+      for (const k of Object.keys(lfmCache)) if (!live.has(k)) delete lfmCache[k];
+      await redis.set(LFM_CACHE_KEY, lfmCache);
+    }
+  } catch (e) { console.error('lastfm cache write failed:', e.message || e); }
+
   // Freeze the finalized daily/weekly board for the CURRENT period from the fresh,
   // floored board. Overwrites each run; the last run before the 2am reset (the
   // 1:58am sweep) is the one that sticks for the day, so the archived board holds
@@ -1278,6 +1437,23 @@ export default async function handler(req, res) {
     }
   }
 
+  // THE OUTAGE WAS INVISIBLE, AND THAT IS ITS OWN BUG. Every run through it
+  // answered 200 with ok:true while 155 of 201 users had failed, so the
+  // workflow went green for days and the first notice was a fan writing in. A
+  // report that can only be read by counting the lines of a list nobody reads
+  // is not a report, so the shape of the failure is named here, in the body,
+  // where the workflow can act on it.
+  const rateLimited = failed.filter(f => /error 29|Rate Limit/i.test(f.error || '')).length;
   res.setHeader('Cache-Control', 'no-store');
-  res.status(200).json({ ok: true, seeded, refreshed: ok, failed, unverified, merged: [...removedKeys], dailyArchived, goalRecorded });
+  res.status(200).json({
+    ok: true, seeded, refreshed: ok, failed, unverified, merged: [...removedKeys],
+    dailyArchived, goalRecorded,
+    // Diagnostics. lastfmCalls is the number this run actually spent, which is
+    // the figure to watch: it was ~3,600 before the idle gate.
+    lastfmCalls:  lfmCalls,
+    rateLimited,
+    startedFrom:  startAt ? users[0]?.username : null,
+    stoppedAt,
+    tookMs:       Date.now() - runStartedAt,
+  });
 }
