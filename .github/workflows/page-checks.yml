@@ -22,6 +22,8 @@ on:
       - 'api/collabs.js'
       - 'api/leaderboard.js'
       - 'api/cron-scrobbles.js'
+      - 'api/ingest-scrobble.js'
+      - 'api/statsfm.js'
       - 'api/youtube-history.js'
       - 'vs.html'
       - 'mama-guide.html'
@@ -49,6 +51,8 @@ on:
       - 'api/collabs.js'
       - 'api/leaderboard.js'
       - 'api/cron-scrobbles.js'
+      - 'api/ingest-scrobble.js'
+      - 'api/statsfm.js'
       - 'api/youtube-history.js'
       - 'vs.html'
       - 'mama-guide.html'
@@ -339,6 +343,18 @@ jobs:
       - name: The scrobble refresh stays inside Last.fm's budget, and starves nobody
         if: always()
         run: node .github/scripts/test_scrobble_rate.mjs
+
+      # A play reaches the board down five paths and each carried its OWN
+      # hand-written track list. ADDICTED went into cron-scrobbles and
+      # index.html and into none of the other three, so extension plays fell
+      # into a generic bucket, Stats.fm reported 0, and the campaign sums and
+      # the daily floor left it out. A fan reported the card showing 2.
+      # test_track_wiring guards the same idea but only inside a browser, so
+      # every server path was outside it. This is the server half, in plain
+      # text, so it runs even when Playwright cannot install.
+      - name: Every scrobbler counts every track
+        if: always()
+        run: node .github/scripts/test_scrobbler_track_lists.mjs
 
       # The countdown was set to 1PM KST, the hour JISOO's earlier singles used.
       # The official timetable says 8AM KST — five hours earlier — so the card

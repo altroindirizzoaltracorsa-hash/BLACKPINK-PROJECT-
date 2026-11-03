@@ -36,6 +36,12 @@ const TRACKS = [
   { id: 'tarantino',   artist: 'lisa',      track: 'tarantino' },
   { id: 'cutuoff',     artist: 'lisa',      track: 'cut u off' },
   { id: 'sweat',       artist: 'lisa',      track: 'sweat' },
+  // JISOO solo single (2026-10-30). Added late: every extension-scrobbled
+  // ADDICTED play before this fell through matchTrack to the generic
+  // solo_jisoo bucket, so the song read near-zero on My Badges for anyone
+  // scrobbling through the extension. The plays were stored with their real
+  // artist/title, so they are recoverable by re-classifying those rows.
+  { id: 'addicted',    artist: 'jisoo',     track: 'addicted' },
 ];
 
 function norm(s) {

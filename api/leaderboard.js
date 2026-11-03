@@ -91,7 +91,7 @@ const TRACK_EVENTS = new Set(['pageview', 'playlist_click', 'share_click', 'vote
 // leaderboard. LTAL's old reset cutoff no longer drops it — it's back as part of
 // the EP. (Client mirror: CAMPAIGN_TOTAL_IDS in index.html.)
 const LTAL_STOP_MS = Date.UTC(2026, 7, 17, 0, 0, 0); // 2026-08-17 00:00 UTC = 2 AM Rome
-const rankTids = () => ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat'];
+const rankTids = () => ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted'];
 
 
 // Chat shares this file (instead of its own /api/chat.js) to stay under
@@ -170,7 +170,7 @@ function bpWeekBounds() {
 // Additive on top of Last.fm/LB scores; 0 for anyone who hasn't linked the
 // extension, so regular submissions are byte-for-byte unaffected.
 async function extensionCountsForUser(sb, appUserId, dayFrom, dayTo, weekFrom, weekTo) {
-  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 , v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0 });
+  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 , v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0 });
   const out = { total: empty(), week: empty(), today: empty() };
   if (!sb || !appUserId) return out;
   // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
@@ -867,7 +867,7 @@ async function handlerInner(req, res) {
       const { from: exDayFrom, to: exDayTo }   = bpDayBounds();
       const { from: exWeekFrom, to: exWeekTo } = bpWeekBounds();
       const ext = await extensionCountsForUser(sb, user.id, exDayFrom, exDayTo, exWeekFrom, exWeekTo);
-      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat'];
+      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted'];
       const hasAny = TIDS.some(id => ext.total[id] || ext.week[id] || ext.today[id]);
       if (hasAny) {
         for (const id of TIDS) {
@@ -907,7 +907,7 @@ async function handlerInner(req, res) {
     // disconnected scrobbler can still reduce it. Mirrors the cron's floor.
     if (existingEntry?.scores && scores) {
       const ex = existingEntry.scores;
-      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat'];
+      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted'];
       if (ex.daily_date === scores.daily_date) {
         for (const id of TIDS) scores[`daily_${id}`] = Math.max(scores[`daily_${id}`] || 0, ex[`daily_${id}`] || 0);
         scores.daily_all = rankTids().reduce((n, id) => n + (scores[`daily_${id}`] || 0), 0);

@@ -170,6 +170,9 @@ export default async function handler(request) {
       { id: 'tarantino',   prefix: 'tarantino',         artist: 'LISA' },
       { id: 'cutuoff',     prefix: 'cut u off',         artist: 'LISA' },
       { id: 'sweat',       prefix: 'sweat',             artist: 'LISA' },
+      // JISOO solo single (2026-10-30) — missed when the song shipped, so
+      // Stats.fm/Musicat reported 0 for it however much it was played.
+      { id: 'addicted',    prefix: 'addicted',          artist: 'JISOO' },
     ];
 
     function countTracks(list) {
