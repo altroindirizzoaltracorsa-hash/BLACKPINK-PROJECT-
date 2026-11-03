@@ -143,16 +143,16 @@ console.log('--- Steps: the song and the film are two dates, and stay two dates'
     // claimed "Jennie wrote and performs" and "her first song written for an
     // animated film", and that survived an edit to the very sentence it sat
     // in because the edit was about the release date and nobody re-read the
-    // clause before it. Pinned both ways: the false claim must be gone AND
-    // the real writers must be named, because dropping the claim without
-    // naming them would read as the song having no author.
+    // clause before it.
+    //
+    // What is checked is only that the FALSE claim stays gone. The writers
+    // were named here for a day and then taken out at the owner's call: no
+    // other release card on this site lists songwriters, and the card does
+    // not attribute the song to anyone, so there is nothing to correct —
+    // saying less is not the same as saying something wrong.
     /jennie\s+wrote|wrote\s+and\s+performs|written\s+by\s+jennie/i.test(s.text)
       ? bad('and the card does not say Jennie wrote it', 'the writing claim is back')
       : ok('and the card does not say Jennie wrote it');
-    /Justin Tranter/.test(s.text) && /Julia Michaels/.test(s.text) && /Jason Gill/.test(s.text)
-      ? ok('and it credits the three writers who did', 'Tranter, Michaels, Gill')
-      : bad('and it credits the three writers who did',
-            'the song reads as having no author');
   }
 }
 
