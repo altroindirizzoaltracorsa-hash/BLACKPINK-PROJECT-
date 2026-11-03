@@ -1,0 +1,216 @@
+name: Probe one track's scrobble count (read-only)
+
+# WHY. A fan reports a track reading far lower than they streamed it —
+# ADDICTED showing 2 on My Badges, 2026-11-03. The number on that card is
+# track.getInfo's `userplaycount` for an exact artist+track string, so a count
+# that is too low has three quite different causes and they need separating
+# before anything is changed:
+#
+#   1. the row is stale        -> the board has an old value (check updatedAt)
+#   2. the NAME does not match -> their scrobbler wrote a different artist or
+#                                 title string, so the exact-string lookup sees
+#                                 only the few plays that happened to match
+#   3. they really did stream it that many times
+#
+# Only (2) is a bug in this site, and it is invisible from the card. So this
+# asks Last.fm the same question four ways and prints the disagreement:
+#
+#   track.getInfo                     what the card shows
+#   track.getInfo&autocorrect=1       what it would show if variants folded in
+#   user.getTrackScrobbles            Last.fm's own count of that exact track
+#   user.getRecentTracks (scan)       the EXACT strings their scrobbler wrote
+#
+# The last one is the ground truth: it cannot be argued with, because it is
+# their own scrobbles with their own spelling.
+#
+# SCAN MODE (no `name`) answers the prior question — is this one account or
+# everyone? It prints the stored per-track figures for the whole board, so a
+# column that is low for nearly every user is a matching bug and a column low
+# for one user is not. Do that before concluding anything from one account.
+#
+# Read-only throughout: public leaderboard + public Last.fm API. Writes nothing,
+# touches no secret. The Last.fm key is the one already in the repo.
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: 'Board display name, or any linked account. Blank = scan the whole board.'
+        required: false
+        default: ''
+      track:
+        description: 'Track id from TRACKS (addicted, newtrick, click, jump…)'
+        required: true
+        default: 'addicted'
+      artists:
+        description: 'Artist spellings to try, comma separated. Blank = sensible defaults.'
+        required: false
+        default: ''
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        env:
+          NAME: ${{ github.event.inputs.name }}
+          TRACK: ${{ github.event.inputs.track }}
+          ARTISTS: ${{ github.event.inputs.artists }}
+        run: |
+          python3 - <<'PY'
+          import os, json, time, urllib.parse, urllib.request
+
+          LFM_KEY = "666b8ef2f3cc360fbc20df275fba2981"
+          LBASE   = "https://ws.audioscrobbler.com/2.0/"
+
+          # Mirrors TRACKS in index.html / api/cron-scrobbles.js. Only the ids a
+          # probe is likely to be pointed at; an unknown id is an error rather
+          # than a silent guess.
+          TRACKS = {
+            "jump":        ("BLACKPINK", "JUMP"),
+            "shutdown":    ("BLACKPINK", "Shut Down"),
+            "ddududu":     ("BLACKPINK", "DDU-DU DDU-DU"),
+            "ltal":        ("Jennie",    "Less Than a Lover"),
+            "go":          ("BLACKPINK", "GO"),
+            "sawadika":    ("LISA",      "SaWaDiKa"),
+            "click":       ("JISOO",     "CLICK"),
+            "fallenangel": ("Jennie",    "Fallen Angel"),
+            "heaven":      ("Jennie",    "Heaven"),
+            "newtrick":    ("ROSÉ",      "new trick"),
+            "v12":         ("LISA",      "V12"),
+            "cobra":       ("LISA",      "Cobra"),
+            "tarantino":   ("LISA",      "Tarantino"),
+            "cutuoff":     ("LISA",      "Cut U Off"),
+            "sweat":       ("LISA",      "Sweat"),
+            "addicted":    ("JISOO",     "ADDICTED"),
+          }
+
+          tid = (os.environ.get("TRACK") or "addicted").strip()
+          if tid not in TRACKS:
+              raise SystemExit(f"::error::unknown track id {tid!r}; known: {', '.join(sorted(TRACKS))}")
+          ARTIST, TITLE = TRACKS[tid]
+          name = (os.environ.get("NAME") or "").strip().lower()
+
+          spell = [s.strip() for s in (os.environ.get("ARTISTS") or "").split(",") if s.strip()]
+          if not spell:
+              spell = list(dict.fromkeys([ARTIST, ARTIST.title(), ARTIST.upper()]))
+
+          def req(url, tries=3):
+              for i in range(tries):
+                  try:
+                      rq = urllib.request.Request(url, headers={"User-Agent": "blinksunited-probe"})
+                      with urllib.request.urlopen(rq, timeout=45) as r:
+                          return json.loads(r.read())
+                  except Exception as e:
+                      if i == tries - 1: return {"__err": str(e)}
+                      time.sleep(2 * (i + 1))
+
+          def lfm(params):
+              # Paced: this probe must never be the thing that exhausts the key
+              # it is diagnosing.
+              time.sleep(0.25)
+              return req(LBASE + "?" + urllib.parse.urlencode({**params, "api_key": LFM_KEY, "format": "json"}))
+
+          board = req("https://www.blinksunited.com/api/leaderboard")
+          users = board.get("users", {}) or {}
+          print(f"board carries {len(users)} users\n")
+
+          # ── SCAN: is this one account or the whole board? ──────────────────
+          if not name:
+              print(f"=== SCAN: stored overall_{tid} across the board ===")
+              print("Low for nearly everyone -> a matching/scope bug. Low for a few -> not.\n")
+              rows, zero, low = [], 0, 0
+              for u in users.values():
+                  s = u.get("scores") or {}
+                  v  = s.get(f"overall_{tid}")
+                  cl = s.get("overall_click")
+                  nt = s.get("overall_newtrick")
+                  ar = s.get("overall_artist")
+                  if v in (None, 0): zero += 1
+                  if isinstance(v, int) and isinstance(cl, int) and cl >= 20 and v <= 5: low += 1
+                  rows.append((v or 0, u.get("displayName"), v, cl, nt, ar, u.get("updatedAt")))
+              rows.sort(reverse=True)
+              print(f"{'overall_'+tid:>14} {'click':>7} {'newtrk':>7} {'artist':>8}  updatedAt           name")
+              for _, dn, v, cl, nt, ar, up in rows[:25]:
+                  print(f"{str(v):>14} {str(cl):>7} {str(nt):>7} {str(ar):>8}  {str(up)[:19]}  {dn}")
+              print(f"\n{zero} of {len(users)} users have {tid} at 0 or missing")
+              print(f"{low} users have {tid} <= 5 while CLICK >= 20 "
+                    f"(both JISOO singles, so a big gap between them is the shape of a NAME problem)")
+              raise SystemExit(0)
+
+          # ── DEEP DIVE on one account ───────────────────────────────────────
+          def match(u):
+              ns = [(u.get("displayName") or ""), (u.get("username") or "")]
+              ns += [a.get("username", "") for a in (u.get("linkedAccounts") or [])]
+              return any(name in (n or "").lower() for n in ns)
+
+          hits = [u for u in users.values() if match(u)]
+          print(f"matched {len(hits)} board entr(y/ies) for {name!r}")
+          # Not on the board (or a handle given directly)? Probe it as a Last.fm
+          # user anyway — the Last.fm half of this does not need the board.
+          accounts = []
+          for u in hits:
+              s = u.get("scores") or {}
+              accts = [(a.get("type"), a.get("username")) for a in (u.get("linkedAccounts") or [])]
+              print(f"\n== {u.get('displayName')!r}   updatedAt={u.get('updatedAt')}")
+              print(f"   linkedAccounts = {accts}")
+              print(f"   STORED  overall_{tid}={s.get('overall_'+tid)}  daily_{tid}={s.get('daily_'+tid)}"
+                    f"  weekly_{tid}={s.get('weekly_'+tid)}   daily_date={s.get('daily_date')}")
+              print(f"   compare overall_click={s.get('overall_click')}  overall_newtrick={s.get('overall_newtrick')}"
+                    f"  overall_artist={s.get('overall_artist')}")
+              accounts += [un for typ, un in accts if typ in ("lastfm", "librefm", None) and un]
+          if not hits:
+              print("  (no board entry — treating the input as a Last.fm username)")
+              accounts = [os.environ["NAME"].strip()]
+
+          for un in dict.fromkeys(accounts):
+              print(f"\n--- Last.fm: {un} ---")
+
+              # 1+2. What the card asks, and what it would get with autocorrect.
+              for a in spell:
+                  for ac in ("0", "1"):
+                      d = lfm({"method": "track.getInfo", "artist": a, "track": TITLE,
+                               "username": un, "autocorrect": ac})
+                      t = d.get("track") or {}
+                      got = t.get("artist", {}).get("name") if isinstance(t.get("artist"), dict) else None
+                      print(f"  track.getInfo  artist={a!r:10} autocorrect={ac} -> "
+                            f"userplaycount={t.get('userplaycount')}  (lastfm resolved artist={got!r})"
+                            + (f"  ERR {d['__err']}" if "__err" in d else ""))
+
+              # 3. Last.fm's own count of that exact track for this user.
+              d = lfm({"method": "user.getTrackScrobbles", "artist": ARTIST, "track": TITLE, "user": un, "limit": 1})
+              total = ((d.get("trackscrobbles") or {}).get("@attr") or {}).get("total")
+              print(f"  user.getTrackScrobbles({ARTIST!r}, {TITLE!r}) -> total={total}"
+                    + (f"  ERR {d['__err']}" if "__err" in d else ""))
+
+              # 4. GROUND TRUTH: the strings their scrobbler actually wrote.
+              # Everything recent whose title looks like this track, however it
+              # is spelled, so a mismatch shows itself instead of being argued.
+              needle = "".join(c for c in TITLE.lower() if c.isalnum())[:6]
+              print(f"  recent scrobbles whose title contains {needle!r} (newest 1000):")
+              seen, pages = {}, 0
+              for page in range(1, 6):
+                  d = lfm({"method": "user.getRecentTracks", "user": un, "limit": 200, "page": page})
+                  rt = (d.get("recenttracks") or {})
+                  arr = rt.get("track") or []
+                  if isinstance(arr, dict): arr = [arr]
+                  if not arr: break
+                  pages += 1
+                  for s in arr:
+                      nm = (s.get("name") or "")
+                      ar = (s.get("artist") or {}).get("#text") if isinstance(s.get("artist"), dict) else s.get("artist")
+                      key = "".join(c for c in nm.lower() if c.isalnum())
+                      if needle in key:
+                          k = (ar, nm)
+                          seen[k] = seen.get(k, 0) + 1
+                  tp = int((rt.get("@attr") or {}).get("totalPages") or 1)
+                  if page >= tp: break
+              if seen:
+                  for (ar, nm), n in sorted(seen.items(), key=lambda kv: -kv[1]):
+                      flag = "" if (ar or "").lower() == ARTIST.lower() and nm.lower() == TITLE.lower() \
+                             else "   <-- DIFFERENT STRING than the site looks up"
+                      print(f"     {n:>4} x  artist={ar!r}  track={nm!r}{flag}")
+              else:
+                  print(f"     none in the newest {pages*200} scrobbles")
+              print(f"  (the site looks up exactly artist={ARTIST!r} track={TITLE!r})")
+          PY
