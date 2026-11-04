@@ -1898,6 +1898,8 @@
   .cd-card-sunshowers .cd-goal-bar { background: rgba(35,23,3,0.16); }
   .cd-card-sunshowers .cd-goal-fill { background: #231703; }
   .cd-card-sunshowers .cd-btn { background: #231703; color: #ffd978; border-color: #231703; }
+  .cd-card-sunshowers .cd-btn.ss-btn-ghost { background: transparent; color: #231703;
+     border: 1px solid rgba(35,23,3,0.45); }
   .cd-card-sunshowers .cd-links { margin-bottom: 1rem; }
   .cd-card-sunshowers .ss-src { display: block; margin-top: 0.7rem; font-family: var(--mono);
      font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(35,23,3,0.58); }
@@ -4400,6 +4402,7 @@
               </div>
               <div class="cd-links">
                 <a class="cd-btn" href="https://JISOO.lnk.to/SunShowers" target="_blank" rel="noopener" onclick="saveSunShowers()">Pre-save ↗</a>
+                <button class="cd-btn ss-btn-ghost" onclick="openSunShowersCard()">📸 Share</button>
               </div>
               <div class="ss-note">
                 JISOO <b>performs</b> and <b>co-wrote</b> <b>“Sun Showers”</b>, an original
@@ -21551,21 +21554,37 @@ function setCardFormat(fmt, btn) {
   const canvas = document.getElementById('card-canvas');
   if (fmt === 'landscape') { canvas.width = 1200; canvas.height = 675; }
   else                     { canvas.width = 1080; canvas.height = 1080; }
-  // THE ADDICTED PICKER IS FORMAT-DEPENDENT. One of its pictures exists only
-  // as a 16:9 cut, so its thumbnail is there in landscape and gone in square.
+  // A PRE-SAVE PICKER IS FORMAT-DEPENDENT. Some pictures exist only as a 16:9
+  // cut, so their thumbnails are there in landscape and gone in square.
   // Rebuilt here rather than left alone, because a thumbnail you can still
   // click in square would draw the crop the flag exists to prevent. If the
   // picture that just left was the active one, the card falls back to the
   // default instead of keeping a pick the format cannot honour.
   //
+  // WHICH release's pictures is read off the open card, never assumed. This
+  // block was written when ADDICTED was the only pre-save card with a picker,
+  // so it named that release's list and handler outright. Sun Showers is also
+  // type 'presave' and also has a picker — and on it, one tap of □ Square
+  // rebuilt the picker from ADDICTED's pictures, wired the thumbnails to
+  // selectAddictedCardArt, and then, because no Sun Showers url is in that
+  // list, took the `i < 0` fallback and redrew the open card as ADDICTED.
+  // That is one release's pictures in another release's picker — the exact
+  // failure test_pressplay_share.mjs exists to catch — reached through the
+  // format toggle rather than through the opener.
+  //
   // Gated on _presaveCardArtUrl, not on _cardType alone: the FA pre-save card
   // is also type 'presave' and has no picker at all.
-  if (_cardType === 'presave' && _presaveCardArtUrl) {
-    const avail = addictedPickerPics(fmt);
-    buildPicPicker(avail.map(p => p.url), 'selectAddictedCardArt');
+  const PRESAVE_PICKERS = {
+    addicted:   { pics: addictedPickerPics,   select: 'selectAddictedCardArt'   },
+    sunshowers: { pics: sunshowersPickerPics, select: 'selectSunShowersCardArt' },
+  };
+  const picker = _presaveCardData && PRESAVE_PICKERS[_presaveCardData.campaign];
+  if (_cardType === 'presave' && _presaveCardArtUrl && picker) {
+    const avail = picker.pics(fmt);
+    buildPicPicker(avail.map(p => p.url), picker.select);
     const i = avail.findIndex(p => p.url === _presaveCardArtUrl);
     const thumbs = document.querySelectorAll('.release-pic-thumb');
-    if (i < 0) { selectAddictedCardArt(avail[0].url, thumbs[0]); return; }
+    if (i < 0) { window[picker.select](avail[0].url, thumbs[0]); return; }
     thumbs.forEach((t, j) => t.classList.toggle('active', j === i));
   }
   if (_cardType === 'lb') renderLbCard(_cardLogo);
@@ -22291,7 +22310,14 @@ async function shareCard() {
     // Early Supporter badge and moves the pre-save challenge bar.
     const d = _presaveCardData;
     if (d) {
-      statsText = d.earned
+      // A release with no date cannot use the shared wording: "is coming
+      // release date not announced yet" is not a sentence, and the earned line
+      // would read "⏰ release date not announced yet" under a clock.
+      statsText = d.campaign === 'sunshowers'
+        ? (d.earned
+            ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n🐤 From The Angry Birds Movie 3 · release date not announced yet\n👉 Pre-save it too on blinksunited.com — don't forget to share!\n`
+            : `\n🐤 ${d.act} — "${d.release}", from The Angry Birds Movie 3\n📅 No release date announced yet — the pre-save is open\n👉 ${d.verbCta} on blinksunited.com — every one counts. Share it!\n`)
+        : d.earned
         ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n⏰ ${d.dateShort}\n👉 Pre-save it too on blinksunited.com — don't forget to share!\n`
         : `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n👉 ${d.verbCta} on blinksunited.com — every one counts. Share it!\n`;
     }
@@ -23861,9 +23887,45 @@ function drawPresaveCard(canvas, d) {
   // jenn.ie's loverYellow and Cormorant keeps every existing card identical.
   const ACCENT = d.accent || '#ffe051';
   const HEADFONT = d.headFont || 'italic 700 %SPX% "Cormorant Garamond", serif';
+
+  // SET the name, for a picture that has none and ships no PNG of one.
+  //
+  // `titleImg` and `artHasLockup` between them assumed every card is one of
+  // two things: artwork that already letters the title, or a release that
+  // supplies a wordmark image. The Sun Showers cast illustration is neither —
+  // no lettering in the file, no wordmark to load — so it came out with NO
+  // TITLE AT ALL: a card naming a song without naming it. Found by
+  // test_sunshowers_share.mjs, which reads back the strings the canvas
+  // actually sets, because on a <canvas> nothing else can see a missing word.
+  //
+  // Opt-in via `titleText`, and ignored whenever a titleImg exists, so every
+  // card drawn before this is unchanged to the pixel.
+  const titleText = (!titleImg && d.titleText) ? String(d.titleText) : '';
+  let titleTextSize = 0, titleTextH = 0;
+  if (titleText) {
+    // Fitted to the width an image title would have been given, not to a
+    // fraction of the canvas: a long name at a fixed size runs off the edge,
+    // and this face is set per release so its metrics are not knowable here.
+    // Measuring only — nothing is drawn until the block below.
+    const spacing = ctx.letterSpacing;
+    ctx.letterSpacing = '1px';
+    titleTextSize = Math.round(H * 0.13);
+    for (let i = 0; i < 32 && titleTextSize > 12; i++) {
+      ctx.font = HEADFONT.replace('%SPX%', titleTextSize + 'px');
+      if (ctx.measureText(titleText).width <= titleW) break;
+      titleTextSize = Math.round(titleTextSize * 0.94);
+    }
+    ctx.letterSpacing = spacing;
+    titleTextH = Math.round(titleTextSize * 1.04);
+  }
+  // One row either way, so every measurement below — the block height, the
+  // overlay's title box, the cursor advance — stays the single expression it
+  // was rather than growing a branch per caller.
+  const titleRowH = titleH || titleTextH;
+
   const blockH = d.earned
-    ? logoH + gapS + titleH + gapM + headSize + gapXS + cdLineH + gapS + dateH + gapM + ctaH
-    : logoH + gapS + titleH + gapM + cdEyebrowH + gapXS + cdBigSize + gapS + dateH + gapM + ctaH;
+    ? logoH + gapS + titleRowH + gapM + headSize + gapXS + cdLineH + gapS + dateH + gapM + ctaH
+    : logoH + gapS + titleRowH + gapM + cdEyebrowH + gapXS + cdBigSize + gapS + dateH + gapM + ctaH;
   let y = H - BP - blockH;
 
   // Left by default, which is jenn.ie's layout and PRESS PLAY's. A release
@@ -23877,7 +23939,7 @@ function drawPresaveCard(canvas, d) {
   const ix = (w) => mid ? Math.round((W - w) / 2) : PX;  // where an image does
   // Where the title image will land, handed to the overlay so it can build
   // around it. Measured the same way it is drawn, a few lines down.
-  const titleBox = { x: ix(titleW), y: y + logoH + gapS, w: titleW, h: titleH };
+  const titleBox = { x: ix(titleW), y: y + logoH + gapS, w: titleW, h: titleRowH };
 
   // A release can lay its own art over the photo before the scrims go down —
   // ADDICTED's lightning heart sits between the sky and the type.
@@ -23936,13 +23998,25 @@ function drawPresaveCard(canvas, d) {
   }
 
   // Live countdown to release (snapshot at generation time)
-  let diff = Date.parse(d.releaseAt) - Date.now();
-  const isOut = !(diff > 0);
+  // A RELEASE WITH NO ANNOUNCED DATE IS ITS OWN CASE, and it has to be: the
+  // arithmetic resolves it the wrong way on its own. Date.parse(null) is NaN
+  // and NaN > 0 is false, so `isOut` came out TRUE and this card announced
+  // "OUT NOW" / "JUST RELEASED" for a song nobody has dated. Worse here than
+  // on the page, because the share card is the version that gets posted.
+  //
+  // The same shape sits in drawPressPlayCard, drawLisaCard(Full),
+  // drawJisooCard/Full/Teaser and drawNewTrickCard. They are each tied to one
+  // release and every one of those has a date, so the trap is latent there and
+  // is left alone rather than six cards edited blind — but it IS the same trap.
+  const relAt  = Date.parse(d.releaseAt);
+  const noDate = !Number.isFinite(relAt);
+  let diff = relAt - Date.now();
+  const isOut = !noDate && !(diff > 0);
   let cdd = 0, cdh = 0, cdm = 0;
-  if (!isOut) { cdd = Math.floor(diff / 86400000); diff %= 86400000; cdh = Math.floor(diff / 3600000); diff %= 3600000; cdm = Math.floor(diff / 60000); }
+  if (!noDate && !isOut) { cdd = Math.floor(diff / 86400000); diff %= 86400000; cdh = Math.floor(diff / 3600000); diff %= 3600000; cdm = Math.floor(diff / 60000); }
   const p2 = n => String(n).padStart(2, '0');
-  const cdCompact = isOut ? 'OUT NOW ✨' : `OUT IN ${cdd}D ${p2(cdh)}H ${p2(cdm)}M`;
-  const cdBig     = isOut ? 'OUT NOW'    : `${cdd}D ${p2(cdh)}H ${p2(cdm)}M`;
+  const cdCompact = noDate ? 'RELEASE DATE TBA' : isOut ? 'OUT NOW ✨' : `OUT IN ${cdd}D ${p2(cdh)}H ${p2(cdm)}M`;
+  const cdBig     = noDate ? 'DATE TBA' : isOut ? 'OUT NOW'    : `${cdd}D ${p2(cdh)}H ${p2(cdm)}M`;
 
   ctx.textAlign = mid ? 'center' : 'left';
 
@@ -23950,7 +24024,13 @@ function drawPresaveCard(canvas, d) {
   if (logoW)  ctx.drawImage(logoImg, ix(logoW), y, logoW, logoH);
   y += logoH + gapS;
   if (titleH) ctx.drawImage(titleImg, ix(titleW), y, titleW, titleH);
-  y += titleH + gapM;
+  else if (titleText) {
+    ctx.font = HEADFONT.replace('%SPX%', titleTextSize + 'px');
+    ctx.letterSpacing = '1px';
+    ctx.fillStyle = '#f7f3f0';
+    ctx.fillText(titleText, tx, y);
+  }
+  y += titleRowH + gapM;
 
   if (d.earned) {
     // Only the pre-saver gets the "I PRE-SAVED" claim + a compact countdown.
@@ -23969,7 +24049,7 @@ function drawPresaveCard(canvas, d) {
     ctx.font = '500 18px "DM Mono", monospace';
     ctx.letterSpacing = '5px';
     ctx.fillStyle = 'rgba(245,240,240,0.6)';
-    ctx.fillText(isOut ? 'JUST RELEASED' : 'COUNTDOWN TO RELEASE', tx, y);
+    ctx.fillText(noDate ? 'RELEASE DATE NOT ANNOUNCED' : isOut ? 'JUST RELEASED' : 'COUNTDOWN TO RELEASE', tx, y);
     y += cdEyebrowH + gapXS;
     ctx.fillStyle = '#F5F0F0';
     _fitFont(ctx, cdBig, '', '"Bebas Neue", sans-serif', cdBigSize, W - PX * 2, 40);
@@ -23982,7 +24062,7 @@ function drawPresaveCard(canvas, d) {
   ctx.font = `italic 28px "Cormorant Garamond", serif`;
   ctx.letterSpacing = '1px';
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
-  ctx.fillText(d.dateLine, tx, y);
+  if (d.dateLine) ctx.fillText(d.dateLine, tx, y);
   y += dateH + gapM;
 
   // CTA row
@@ -26011,6 +26091,111 @@ async function selectAddictedCardArt(url, thumbEl) {
   _presaveCardData.artHasLockup = pick.hasLockup;
   _presaveCardData.titleImg = pick.hasLockup ? null : (_adLogoImg || null);
   if (label) label.textContent = _presaveCardData.earned ? "I'M AN EARLY SUPPORTER" : 'ADDICTED · COUNTDOWN';
+  drawPresaveCard(canvas, _presaveCardData);
+  _markCardReady(canvas);
+}
+
+// Sun Showers — what the share card can be built from.
+//
+// The sleeve is the default and the only one that works in BOTH shapes: it is
+// square, so it crops gracefully to 16:9 and not at all to 1:1. The cast
+// illustration is 680x303 — wider than 16:9 — so a square card would cut the
+// row of characters down to whoever happens to be in the middle. landscapeOnly
+// is a statement about the picture, not a shortcut: the same flag the ADDICTED
+// D-1 visual carries, for the same reason.
+//
+// hasLockup: the sleeve already prints SUN SHOWERS · JISOO · FROM THE ANGRY
+// BIRDS MOVIE 3, so drawing our own title over it would set the name twice.
+// The cast picture carries no lettering, so that one wants the title drawn.
+const SUNSHOWERS_CARD_PICS = [
+  // focalBias is the vertical crop anchor, 0 = keep the top. The sleeve's
+  // lettering (SUN SHOWERS / JISOO / ANGRY BIRDS 3) lives in its top 40%, so
+  // at the 0.42 this started on, a square cover cropped to 16:9 lost the
+  // whole lockup — and because hasLockup suppresses our own title, the card
+  // came out with NO title at all. The cast strip is 2.24:1, wider than the
+  // card, so it barely crops vertically and the anchor hardly matters.
+  { url: '/sunshowers/sun-showers-cover.webp', hasLockup: true,  focalBias: 0.02 },
+  { url: '/sunshowers/sunshowers-cast.webp',   hasLockup: false, focalBias: 0.5, landscapeOnly: true },
+];
+function sunshowersPickerPics(fmt) {
+  return SUNSHOWERS_CARD_PICS.filter(p => !p.landscapeOnly || fmt === 'landscape');
+}
+
+async function selectSunShowersCardArt(url, thumbEl) {
+  document.querySelectorAll('.release-pic-thumb').forEach(t => t.classList.remove('active'));
+  if (thumbEl) thumbEl.classList.add('active');
+  const canvas = document.getElementById('card-canvas');
+  const label  = document.getElementById('card-box-label');
+  if (label) label.textContent = 'GENERATING\u2026';
+  const pick = SUNSHOWERS_CARD_PICS.find(pic => pic.url === url) || SUNSHOWERS_CARD_PICS[0];
+  _presaveCardArtUrl = pick.url;
+  const art = await loadImg(pick.url).catch(() => null);
+  if (!art || !_presaveCardData) return;
+  _presaveCardData.photo = art;
+  // Always assigned, never left over: the previous pick's answer about its own
+  // picture must not govern this one.
+  _presaveCardData.photoWide   = null;
+  _presaveCardData.stampStack  = false;
+  _presaveCardData.stampCenter = false;
+  _presaveCardData.artHasLockup = pick.hasLockup;
+  // Always assigned, like the flags above: the previous pick's crop anchor
+  // must not govern this picture.
+  _presaveCardData.focalBias = pick.focalBias ?? 0.4;
+  // No wordmark PNG exists for this release, so the name is SET rather than
+  // drawn from an image — and only over the picture that does not already
+  // carry it. Both halves assigned every time: the sleeve must not inherit a
+  // second title from the cast strip, and the cast strip must not inherit the
+  // sleeve's silence, which is what left it with no title at all.
+  _presaveCardData.titleImg  = null;
+  _presaveCardData.titleText = pick.hasLockup ? null : 'Sun Showers';
+  if (label) label.textContent = _presaveCardData.earned ? "I'M AN EARLY SUPPORTER" : 'SUN SHOWERS';
+  drawPresaveCard(canvas, _presaveCardData);
+  _markCardReady(canvas);
+}
+
+async function openSunShowersCard() {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING\u2026';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  buildPicPicker(sunshowersPickerPics('landscape').map(pic => pic.url), 'selectSunShowersCardArt');
+  _presaveCardArtUrl = SUNSHOWERS_CARD_PICS[0].url;
+  _cardType = 'presave';
+  _cardTrackId = null;
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+
+  const cover = await loadImg(SUNSHOWERS_CARD_PICS[0].url).catch(() => null);
+  await document.fonts.ready;
+
+  await refreshSupporterChips();
+  const earned = _buSignedIn && !!localStorage.getItem(SS_SAVE_LS);
+  _presaveCardData = {
+    campaign: 'sunshowers', earned,
+    act: 'JISOO', release: 'Sun Showers',
+    photo: cover, titleImg: null, logoImg: null, emblemImg: null,
+    // The sleeve letters SUN SHOWERS · JISOO · ANGRY BIRDS 3 itself, so the
+    // default card sets no title of its own. selectSunShowersCardArt turns
+    // titleText on for the cast strip, which carries no lettering.
+    artHasLockup: true, titleText: null,
+    base: '#f9b218', scrimRGB: '14,8,0', focalBias: 0.02,
+    titleFrac: 0.72,
+    accent: '#ffd978', claim: 'I pre-saved',
+    // NO releaseAt, and that is the point. drawPresaveCard reads a null here
+    // and prints "RELEASE DATE NOT ANNOUNCED" instead of inventing a
+    // countdown — and dateLine is omitted entirely rather than carrying a
+    // guessed month, which is the same rule the card on the page follows.
+    releaseAt: null,
+    dateLine: null,
+    dateShort: 'release date not announced yet',
+    cta: '\u25b6 PRE-SAVE \u00b7 JISOO.lnk.to/SunShowers',
+    verb: 'is coming', verbCta: 'Pre-save it',
+  };
+  label.textContent = earned ? "I'M AN EARLY SUPPORTER" : 'SUN SHOWERS';
   drawPresaveCard(canvas, _presaveCardData);
   _markCardReady(canvas);
 }

@@ -114,6 +114,68 @@ if (btn) {
   : bad('and the tap is counted', 'the button does not call saveSunShowers(), so the bar and badge never move');
 
 
+// The share card is a canvas, so what it PRINTS is pinned in a real browser by
+// test_sunshowers_share.mjs — that one spies on fillText and reads the strings
+// back. What is checked here is only what a file read can answer: that the
+// button exists, that the pictures it offers are committed, and that the data
+// handed to the renderer carries no date for it to count to.
+console.log('\n--- the share card is wired and offers only committed pictures');
+/onclick="openSunShowersCard\(\)"/.test(cardHtml)
+  ? ok('the card has a share button', 'openSunShowersCard()')
+  : bad('the card has a share button', 'the 📸 Share button is missing or calls something else');
+
+const picsBlock = (site.match(/const SUNSHOWERS_CARD_PICS = \[[\s\S]*?\n\];/) || [''])[0];
+const picUrls = [...picsBlock.matchAll(/url:\s*'([^']+)'/g)].map(x => x[1]);
+picUrls.length
+  ? ok('it lists share-card pictures', `${picUrls.length}`)
+  : bad('it lists share-card pictures', 'SUNSHOWERS_CARD_PICS is empty or moved');
+for (const u of picUrls) {
+  existsSync(root + u.slice(1))
+    ? ok('and that file exists', u)
+    : bad('and that file exists', `${u} is offered on the picker and not committed`);
+}
+
+// A square card would cut the 2.24:1 cast strip down to whoever is mid-frame,
+// so that picture is landscapeOnly. Pinned because the flag is one word and
+// dropping it is invisible until someone posts the crop.
+/sunshowers-cast[^}]*landscapeOnly:\s*true/.test(picsBlock)
+  ? ok('the wide cast strip is landscape-only')
+  : bad('the wide cast strip is landscape-only', 'a square card would crop the row of characters');
+
+const openFn = (site.match(/async function openSunShowersCard\(\) \{[\s\S]*?\n\}/) || [''])[0];
+openFn ? ok('found openSunShowersCard()') : bad('found openSunShowersCard()', 'it moved — fix this test');
+/releaseAt:\s*null/.test(openFn)
+  ? ok('it hands the renderer no release date', 'releaseAt: null')
+  : bad('it hands the renderer no release date', 'a date reached the share card');
+/dateLine:\s*null/.test(openFn)
+  ? ok('and no date line', 'dateLine: null')
+  : bad('and no date line', 'the card would print a date under the title');
+{
+  const oDate = openFn.replace(/sunshowers|sun[- ]showers/ig, ' ').match(DATEY);
+  oDate ? bad('and names no date anywhere in it', `"${oDate[0]}"`) : ok('and names no date anywhere in it');
+}
+
+// The words posted BESIDE the image. The shared wording is built around a
+// date — "is coming {dateShort}" — so an undated release either reads as a
+// broken sentence or quietly acquires a date from whatever dateShort holds.
+console.log('\n--- and the words posted with the card say the same thing');
+{
+  const branch = (site.match(/statsText = d\.campaign === 'sunshowers'[\s\S]*?\)\n        : d\.earned/) || [''])[0];
+  branch
+    ? ok('the share text has its own undated wording')
+    : bad('the share text has its own undated wording', 'sunshowers falls through to the shared "is coming ${dateShort}" line');
+  if (branch) {
+    /not announced/i.test(branch)
+      ? ok('and says the date is not announced')
+      : bad('and says the date is not announced');
+    const sDate = branch.replace(/sunshowers|sun ?showers|angry birds movie 3/ig, ' ').match(DATEY);
+    sDate ? bad('and names no date', `"${sDate[0]}"`) : ok('and names no date');
+    /\$\{d\.dateShort\}|\$\{d\.verb\}/.test(branch)
+      ? bad('and does not reach for the dated fields', 'dateShort/verb would print the hedge as if it were a date')
+      : ok('and does not reach for the dated fields');
+  }
+}
+
 console.log('\n--- the artwork is really in the repo');
 const art = (cardHtml.match(/src="(\/sunshowers\/[^"]+)"/) || [])[1];
 art ? ok('the card points at an artwork file', art) : bad('the card points at an artwork file');

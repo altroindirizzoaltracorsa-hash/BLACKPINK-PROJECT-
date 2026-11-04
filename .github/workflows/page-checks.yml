@@ -425,6 +425,15 @@ jobs:
         if: always()
         run: node .github/scripts/test_pressplay_share.mjs
 
+      # The one card on the site with NO release date, so the one card whose
+      # share image is built on `Date.parse(null)` — NaN, and `NaN > 0` is
+      # false, which read as "already out" and printed JUST RELEASED for a song
+      # nobody has dated. The claims test above cannot see it: the words are
+      # set on a <canvas>, so this spies on fillText and reads them back.
+      - name: What the Sun Showers share card prints
+        if: always()
+        run: node .github/scripts/test_sunshowers_share.mjs
+
       # Each countdown's picture strip: the files load, the dots match, and
       # they stay on the release's own page rather than the home carousel.
       - name: The countdown picture strips
