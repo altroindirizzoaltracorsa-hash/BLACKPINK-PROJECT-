@@ -86,7 +86,22 @@ jobs:
     # on browserType.launch. Red every run since 2026-11-02, which is how two
     # real bugs then shipped past a suite that was not executing.
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    # 15 was right when this job ran in nine minutes. It does not any more, and
+    # the growth is NOT mostly the tests: measured on two consecutive runs,
+    # "Install Playwright and Chromium" took 319s and then 534s — the single
+    # biggest step by a wide margin, and swinging three and a half minutes run
+    # to run on identical input. Run 139 finished in 14.4 minutes, 36 seconds
+    # under the cap; run 140 added one 55-second check, drew the slow end of
+    # that install, and GitHub cancelled the job at 15:00.
+    #
+    # A cancelled run is worse than a slow one: it reports neither pass nor
+    # fail, and this suite going dark is exactly how two real bugs shipped in
+    # November. So the cap is set above the worst install observed plus the
+    # whole suite, and the install itself is the thing to fix — caching the
+    # browser would take five to nine minutes off every run. Not done here
+    # because it changes the step every browser check depends on, and this
+    # repo has been red for days once already over exactly that.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -96,10 +111,19 @@ jobs:
 
       # Pinned to the version these tests were written and verified against
       # (the same one the Claude Code container ships), so the browser under
-      # them cannot change without a commit. No cache: `npm install playwright`
-      # fetches the browser in its own postinstall, which would run BEFORE a
-      # restore step and make the cache pointless — and the whole install is
-      # under a minute on a workflow that only fires on code changes.
+      # them cannot change without a commit.
+      #
+      # NOT under a minute, which this comment used to claim. Measured on runs
+      # 139 and 140: 319s and 534s — five to nine minutes, and the reason the
+      # job needs a 30-minute cap for a suite whose checks total about four.
+      # The objection to caching that stood here is real but solvable: the
+      # browser download happens in npm's postinstall, before any restore
+      # step, so a cache only helps if that download is skipped first
+      # (PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 on the npm install, restore
+      # ~/.cache/ms-playwright, then `npx playwright install` only on a miss).
+      # Left alone deliberately: every browser check in this file depends on
+      # this step, and getting it wrong took the suite dark for days in
+      # November. Worth doing on its own, where it can be watched.
       - name: Install Playwright and Chromium
         run: |
           npm install --no-save playwright@1.56.1

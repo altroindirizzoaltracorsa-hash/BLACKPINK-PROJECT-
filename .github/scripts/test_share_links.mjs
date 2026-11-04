@@ -21,6 +21,15 @@
 // button is pressed, and the link that leaves is compared against the slug on
 // that card. Nothing here knows the releases by name, so the next one is
 // covered the day its card lands.
+//
+// WHAT THIS DOES NOT COVER, stated so nobody reads it as more than it is. It
+// follows the PICTURE — the share card — and only that. PRESS PLAY's menu has
+// four other options (video, poster, playlists, link) which build their
+// caption from PP_SHARE_URL, a different constant on a different path:
+// repointing that constant leaves this test green. Checked, not assumed —
+// it was mutated and nothing went red. Those four are one shared constant and
+// are currently right; if they ever stop being, this file is where to add
+// them, not where to look for the answer.
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { chromium } from './_playwright.mjs';
@@ -78,19 +87,34 @@ await new Promise(r => server.listen(0, r));
 const base = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch();
 
+// ONE PAGE, NAVIGATED, rather than a context per card, and every wait is on a
+// CONDITION rather than a stopwatch. The first version slept 2.5s after the
+// opener and 0.9s after the share on each of eight cards and built eight
+// browser contexts to do it — 58s locally, and on a runner it took the whole
+// Page checks job past its 15-minute cap, where GitHub cancelled it. Sleeping
+// is also the wrong instrument: it is simultaneously too long on a fast
+// machine and too short on a slow one, which is how a check like this starts
+// failing for reasons that have nothing to do with the code.
+// Navigation is a full page load, so index.html re-runs and no state carries
+// from one card to the next.
+const page = await browser.newPage({ viewport: { width: 430, height: 950 } });
+await page.addInitScript(() => { try {
+  localStorage.setItem('bu_tutorial_seen', '1');
+  localStorage.setItem('ext_update_dismissed_1.9.8', '1');
+  localStorage.setItem('ltal_reminder_dismissed_v1', '1');
+} catch (e) {} });
+let errs = [];
+page.on('pageerror', e => errs.push(e.message));
+
 for (const { slug, call } of cards) {
-  const page = await browser.newPage({ viewport: { width: 430, height: 950 } });
-  await page.addInitScript(() => { try {
-    localStorage.setItem('bu_tutorial_seen', '1');
-    localStorage.setItem('ext_update_dismissed_1.9.8', '1');
-    localStorage.setItem('ltal_reminder_dismissed_v1', '1');
-  } catch (e) {} });
-  const errs = [];
-  page.on('pageerror', e => errs.push(e.message));
+  errs = [];
   try {
     await page.goto(`${base}/countdowns/${slug}`, { waitUntil: 'domcontentloaded' });
     await page.locator(`[data-slug="${slug}"]`).first().waitFor({ timeout: 20000 });
-    await page.waitForTimeout(2500);
+    // The openers are defined in the page's own script; wait for the one this
+    // card names rather than for a fixed interval.
+    await page.waitForFunction(
+      (c) => typeof window[c.replace(/\(.*$/, '')] === 'function', call, { timeout: 20000 });
     // Open the card the button opens, then press share for real. Reading the
     // lookup table instead would only test this file's own arithmetic — and
     // the table is exactly where the answer was missing, so a check that asks
@@ -99,9 +123,17 @@ for (const { slug, call } of cards) {
       let caption = null, opened = null;
       const realOpen = window.open;
       const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      // Wait for a condition, checking often, with a ceiling so a card that
+      // never opens fails the check instead of hanging the run.
+      const until = async (fn, ms = 12000) => {
+        for (let i = 0; i < ms / 50; i++) { if (fn()) return true; await sleep(50); }
+        return false;
+      };
       try {
         await eval(c);
-        await sleep(2500);
+        // The card is ready when its canvas has been drawn — which is also the
+        // thing shareCard needs, so this waits for exactly what comes next.
+        await until(() => typeof cardCanvas !== 'undefined' && !!cardCanvas, 4000);
         // NOT EVERY SHARE BUTTON OPENS A CARD. PRESS PLAY's opens a MENU —
         // picture, video, poster, playlists, link — and the card is one
         // option inside it. Asserting "the button opens a card" would have
@@ -122,14 +154,22 @@ for (const { slug, call } of cards) {
             .pop();
           const pic = sheet && [...sheet.querySelectorAll('button')]
             .filter(visible).find(b => /picture/i.test(b.textContent || ''));
-          if (pic) { pic.click(); await sleep(2800); }
+          // Wait for the CANVAS again, not for the overlay. The overlay is
+          // shown at the top of the opener, before the artwork has loaded, so
+          // waiting on it returns while cardCanvas is still null — shareCard
+          // then returns immediately and nothing is shared. That is what the
+          // first attempt at this did, and it reported a working card as
+          // broken.
+          if (pic) { pic.click(); await until(() => typeof cardCanvas !== 'undefined' && !!cardCanvas, 8000); }
         }
         Object.defineProperty(navigator, 'share', { configurable: true, value: async () => {} });
         Object.defineProperty(navigator, 'clipboard', { configurable: true,
           value: { writeText: async (t) => { caption = t; } } });
         window.open = (u) => { opened = u; return null; };
         await window.shareCard();
-        await new Promise(r => setTimeout(r, 900));
+        // shareCard copies the caption inside a toBlob callback, so the write
+        // lands a tick or two later. Wait for it, not for a round number.
+        await until(() => caption !== null || opened !== null, 6000);
       } catch (e) { return { err: String((e && e.message) || e) }; }
       finally { window.open = realOpen; }
       return { caption, opened };
@@ -159,9 +199,9 @@ for (const { slug, call } of cards) {
   } catch (e) {
     bad(`${slug} shares its own countdown`, String(e.message || e).split('\n')[0]);
   }
-  await page.close();
 }
 
+await page.close();
 await browser.close();
 server.close();
 console.log(fails ? `\n${fails} FAILED` : '\nAll correct.');
