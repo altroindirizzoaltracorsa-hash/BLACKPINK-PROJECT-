@@ -4355,6 +4355,7 @@
             </div>
             <div class="cd-links">
               <a class="cd-btn" href="https://netflixmusic.ffm.to/someonetohold" target="_blank" rel="noopener" onclick="saveSomeoneToHold()">Pre-save ↗</a>
+              <button class="cd-btn cd-btn-ghost" onclick="openSomeoneToHoldCard()">📸 Share</button>
             </div>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
@@ -18866,6 +18867,11 @@ const STH_SAVE_LS    = 'bu_jennie_sth_saved';
 const STH_COUNTED_LS = 'bu_jennie_sth_counted';
 const STH_SAVE_GOAL  = 50;
 const STH_RELEASE_AT = '2026-11-06T05:00:00Z'; // Fri Nov 6 · 12AM EST / 2PM KST
+// The two files the share card draws. Named here because the card markup, the
+// Early Supporter chip and the share card all reach for the same wordmark, and
+// three spellings of one path is how one of them ends up a release behind.
+const STH_COVER_IMG    = '/steps/someone-to-hold-cover.webp';
+const STH_WORDMARK_IMG = '/steps/someone-to-hold.svg';
 
 function sthLive() { return Date.now() >= new Date(STH_RELEASE_AT).getTime(); }
 
@@ -23938,8 +23944,19 @@ function drawPresaveCard(canvas, d) {
   // Measured off the column, which is the full width unless the picture is
   // sitting beside it — so this is the same number it always was for every
   // card that does not fit its picture whole.
-  const titleW = Math.min((beside ? colW : W) * (d.titleFrac || 0.62), colW);
-  const titleH = (titleImg && titleImg.naturalWidth) ? titleW * (titleImg.naturalHeight / titleImg.naturalWidth) : 0;
+  let titleW = Math.min((beside ? colW : W) * (d.titleFrac || 0.62), colW);
+  let titleH = (titleImg && titleImg.naturalWidth) ? titleW * (titleImg.naturalHeight / titleImg.naturalWidth) : 0;
+  // A WORDMARK ON A FITTED CARD IS CAPPED BY HEIGHT, NOT BY WIDTH. Sized by
+  // width alone it is as tall as its own proportions make it, and on a stacked
+  // square card that came to a 156px lockup — taller than the countdown and
+  // most of the reason the picture was left a third of the card. Capped
+  // against the countdown it heads, which is the same rule the SET title a few
+  // lines down follows; a full-bleed card is unaffected, where the photo is
+  // behind the block and the block's height costs the picture nothing.
+  if (FIT && titleH > 0) {
+    const cap = Math.round(H * 0.11) * 0.85;
+    if (titleH > cap) { titleW *= cap / titleH; titleH = cap; }
+  }
   const logoH  = Math.round(H * 0.062);
   const logoW  = (logoImg && logoImg.naturalHeight) ? logoH * (logoImg.naturalWidth / logoImg.naturalHeight) : 0;
   const gapXS = Math.round(H * 0.01), gapS = Math.round(H * 0.016), gapM = Math.round(H * 0.03);
@@ -26249,6 +26266,80 @@ async function selectAddictedCardArt(url, thumbEl) {
   _presaveCardData.artHasLockup = pick.hasLockup;
   _presaveCardData.titleImg = pick.hasLockup ? null : (_adLogoImg || null);
   if (label) label.textContent = _presaveCardData.earned ? "I'M AN EARLY SUPPORTER" : 'ADDICTED · COUNTDOWN';
+  drawPresaveCard(canvas, _presaveCardData);
+  _markCardReady(canvas);
+}
+
+// ── JENNIE "Someone to Hold" share card (Steps, Netflix) ────────────────────
+// The one release card on the site that had a pre-save button and no way to
+// post it.
+//
+// `fitWhole`, for the same reason Sun Showers uses it and not by copying it:
+// this cover is 1:1 and carries its own lettering — the gold STEPS logo,
+// SOMEONE TO HOLD and JENNIE across the bottom third, the Netflix mark in the
+// top-left corner. A 16:9 crop of a square picture keeps the middle, so it
+// would take out the title block and the Netflix mark in one go and leave a
+// portrait that no longer says what it is.
+//
+// The wordmark goes in the type column as titleImg — the real vector, the same
+// file the Early Supporter chip uses — rather than being set in type. It is the
+// release's own lettering and we have it, so there is nothing to approximate.
+let _sthCoverImg = null, _sthWordmarkImg = null;
+async function openSomeoneToHoldCard() {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  // One picture, so no picker — and the null is what tells setCardFormat there
+  // is nothing to rebuild. Without it the last card's pick would govern a card
+  // that has no picker at all.
+  document.getElementById('release-pic-picker').style.display = 'none';
+  _presaveCardArtUrl = null;
+  _cardType = 'presave';
+  _cardTrackId = null;
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+
+  // Cached on the module, like every other card's art: the format toggle
+  // redraws synchronously, so anything fetched at that moment arrives a frame
+  // late and the card draws without it.
+  const [photo, wordmark] = await Promise.all([
+    _sthCoverImg    ? Promise.resolve(_sthCoverImg)    : loadImg(STH_COVER_IMG).then(i => (_sthCoverImg = i)).catch(() => null),
+    _sthWordmarkImg ? Promise.resolve(_sthWordmarkImg) : loadImg(STH_WORDMARK_IMG).then(i => (_sthWordmarkImg = i)).catch(() => null),
+  ]);
+  await document.fonts.ready;
+
+  await refreshSupporterChips();
+  const earned = _buSignedIn && !!localStorage.getItem(STH_SAVE_LS);
+  _presaveCardData = {
+    campaign: 'sth', earned,
+    act: 'JENNIE', release: 'Someone to Hold',
+    photo, logoImg: null,
+    // The lockup heads the type column, and is the badge emblem as well — one
+    // file doing both jobs, which is what the card on the page already does.
+    titleImg: wordmark, emblemImg: wordmark,
+    titleFrac: 0.96,
+    fitWhole: true,
+    base: '#08050a',
+    accent: '#e3b23c', claim: 'I pre-saved',
+    releaseAt: STH_RELEASE_AT,
+    dateLine: 'Out Nov 6, 2026 · 12AM EST / 2PM KST',
+    // No leading "out": the shared caption reads `${verb} ${dateShort}`, and
+    // the Fallen Angel card's "out Aug 28" pairs with its "drops" to make
+    // "drops out Aug 28". Left alone there, since changing it would reword a
+    // card that has already been posted; not repeated here.
+    dateShort: 'Nov 6, 2026',
+    // The host, not the whole path: on a fitted card the CTA shares a column
+    // barely a third of the card wide, and the full ffm.to path shrinks to
+    // unreadable there. The button on the page is where the link is.
+    cta: '▶ PRE-SAVE · NETFLIXMUSIC.FFM.TO',
+    verb: 'drops', verbCta: 'Pre-save it',
+  };
+  label.textContent = earned ? "I'M AN EARLY SUPPORTER" : 'SOMEONE TO HOLD · COUNTDOWN';
   drawPresaveCard(canvas, _presaveCardData);
   _markCardReady(canvas);
 }

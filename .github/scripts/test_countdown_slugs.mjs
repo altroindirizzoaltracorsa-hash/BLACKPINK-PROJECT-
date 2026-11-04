@@ -85,6 +85,72 @@ addicted.includes('data-times-for="2026-10-29T23:00:00Z"')
   ? ok('the worldwide-times list uses that same instant')
   : bad('the worldwide-times list uses that same instant');
 
+// EVERY RELEASE CARD OFFERS A SHARE CARD.
+//
+// Nothing checked this, and a release shipped without one: the Steps card —
+// JENNIE, "Someone to Hold" — had a pre-save button and no way to post it,
+// for as long as the card existed. It was not a broken button or a failed
+// draw; the markup simply never had one, so there was nothing to notice.
+// Every other card had grown one as it was built, which is exactly how the
+// gap stayed invisible.
+//
+// The list of cards comes from the page itself rather than a list kept here,
+// so the NEXT release is covered the day its card lands.
+const SHARELESS_OK = {
+  // Not a release: it is the awards-voting card, and it links out to the
+  // ballot rather than to anything a fan would post an image of.
+  vmas: 'a voting card, not a release — it links to the ballot',
+};
+{
+  // THE CARD'S OWN ELEMENT, found by matching its closing tag.
+  //
+  // cardBlock() above runs from one card to the NEXT one, which is fine for
+  // the checks that use it and useless here: the LAST card on the page has no
+  // next one, so its "block" is the whole rest of the file. This check passed
+  // `vmas` twice before this — first on an openGoalsCard() three thousand
+  // lines below it in the JavaScript, then, after bounding the block at the
+  // first <script, on a DIFFERENT openGoalsCard() in the campaign-goals markup
+  // that sits between the two. A bound that is merely tighter is not a bound.
+  //
+  // Comments are stripped before the walk because several of these cards carry
+  // long ones that contain markup, and a <div inside a comment would throw the
+  // depth off and silently widen the window again.
+  const cardMarkup = (slug) => {
+    const at = ix.indexOf(`data-slug="${slug}"`);
+    if (at < 0) return '';
+    const open = ix.lastIndexOf('<div', at);
+    const src = ix.slice(open).replace(/<!--[\s\S]*?-->/g, '');
+    let depth = 0;
+    for (let i = 0; i < src.length; i++) {
+      if (src.startsWith('<div', i)) depth++;
+      else if (src.startsWith('</div>', i)) { if (--depth === 0) return src.slice(0, i + 6); }
+    }
+    return src;   // unbalanced markup: fall back to everything, and fail loudly below
+  };
+  const cards = [...ix.matchAll(/<div class="cd-card[^"]*"[^>]*data-slug="([^"]+)"/g)].map(m => m[1]);
+  const missing = [];
+  for (const slug of cards) {
+    const body = cardMarkup(slug);
+    // A share button is a button that opens a card. Matched on the call, not
+    // on the label: the emoji and the wording differ per release ("📸 Share",
+    // an image-plus-word button on the JISOO card), and matching the label
+    // would have passed a button that opens nothing.
+    const opener = body.match(/onclick="(open[A-Za-z]*Card\([^"]*\))"/);
+    if (opener) ok(`${slug} can be shared`, opener[1]);
+    else if (SHARELESS_OK[slug]) ok(`${slug} has no share card`, SHARELESS_OK[slug]);
+    else missing.push(slug);
+  }
+  missing.length
+    ? bad('every release card offers a share card', `${missing.join(', ')} — pre-save button, no way to post it`)
+    : ok('every release card offers a share card');
+  // And the other direction: an exemption for a card that no longer exists is
+  // a hole waiting for a slug to be reused.
+  const staleExempt = Object.keys(SHARELESS_OK).filter(s => !cards.includes(s));
+  staleExempt.length
+    ? bad('no exemption without a card', staleExempt.join(', '))
+    : ok('no exemption without a card');
+}
+
 // The bug this section exists for: the ADDICTED card was written inside
 // #cd-past — the block that carries `hidden` on the home page and is revealed
 // only on the /countdowns hub. Nothing failed. The slug was wired, the link
