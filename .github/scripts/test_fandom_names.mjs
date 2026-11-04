@@ -33,10 +33,27 @@ const check = (c, m, d) => { console.log((c ? '  ok   ' : '  FAIL ') + m + (d ? 
 
 const b = await chromium.launch();
 
+// SERVICE WORKERS OFF, at the context rather than with page.route.
+//
+// index.html reloads itself once on `controllerchange` (sw.js does skipWaiting
+// + clients.claim), and that reload lands mid-check: the run dies with
+// "Execution context was destroyed, most likely because of a navigation" on
+// whatever evaluate is in flight. This file already answered 404 for /sw.js
+// inside page.route — but a route handler does not reliably intercept the
+// SERVICE WORKER SCRIPT request, which the browser fetches outside the page's
+// network stack. So it kept registering on CI, where this was the only failing
+// check in the whole suite, while passing locally every time.
+//
+// `serviceWorkers: 'block'` is the version that cannot be raced: nothing
+// registers, so nothing takes control, so there is no reload. Nothing here
+// tests caching. (test_local_times.mjs does the same job by serving 404 from
+// its own HTTP server — upstream of the browser rather than inside it.)
+const NO_SW = { serviceWorkers: 'block' };
+
 // One page per scenario: the auto-name path runs once per session by design
 // (_assigningBlink), and localStorage carries the answer across a reload.
 async function openPage(opts = {}) {
-  const ctx = await b.newContext();
+  const ctx = await b.newContext(NO_SW);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(String(e)));
@@ -399,7 +416,7 @@ console.log('\n--- /vote-link: the sign-up a partner fandom actually does');
 // board had no name on it. The label is stored once and reused for ever, which
 // is why the order of the two calls below is the whole point.
 async function openLinkPage(opts = {}) {
-  const ctx = await b.newContext();
+  const ctx = await b.newContext(NO_SW);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(String(e)));
@@ -554,7 +571,7 @@ console.log('\n--- /vote-link says so when the sign-in library cannot load');
 // title and nothing to press — which reads as "this site is broken", not as
 // "try another network". Found by rendering the page with no library present.
 {
-  const ctx = await b.newContext();
+  const ctx = await b.newContext(NO_SW);
   const p = await ctx.newPage();
   // No stub at all: exactly what a blocked CDN leaves behind.
   await p.route('**/*', async (route) => {
@@ -671,7 +688,7 @@ console.log('\n--- Delete Account actually deletes the account');
     ['it calls the function and signs out',  null,                      ['rpc:delete_account', 'signOut']],
     ['and a failure is reported, not hidden', { message: 'nope' },      ['rpc:delete_account']],
   ]) {
-    const ctx = await b.newContext();
+    const ctx = await b.newContext(NO_SW);
     const p = await ctx.newPage();
     await p.addInitScript((err) => {
       window.__log = [];
@@ -751,7 +768,7 @@ console.log('\n--- the OTHER link page, the one the Android app opens');
 // Checked as a PAIR from here on, because "fixed one of the two" is exactly
 // what happened.
 {
-  const ctx = await b.newContext();
+  const ctx = await b.newContext(NO_SW);
   const p = await ctx.newPage();
   const errs = [];
   p.on('pageerror', (e) => errs.push(String(e)));
@@ -854,7 +871,7 @@ console.log('\n--- the OTHER link page, the one the Android app opens');
   // The app path SIGNED OUT, which is the first screen a newcomer sees and the
   // only place the title and lead are set. Checking only the post-link state
   // missed it entirely: putting "Link your scrobbler" back passed happily.
-  const ctx = await b.newContext();
+  const ctx = await b.newContext(NO_SW);
   const p = await ctx.newPage();
   await p.addInitScript(() => {
     window.supabase = { createClient: () => ({
@@ -891,7 +908,7 @@ console.log('\n--- the OTHER link page, the one the Android app opens');
   // The scrobbler extension opens the SAME page without ?app=android, and that
   // product is unchanged — its wording is correct for it, and this is what
   // stops the fix above from being made at its expense.
-  const ctx = await b.newContext();
+  const ctx = await b.newContext(NO_SW);
   const p = await ctx.newPage();
   await p.addInitScript(() => {
     window.supabase = { createClient: () => ({
