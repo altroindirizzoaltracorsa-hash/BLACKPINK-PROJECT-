@@ -99,6 +99,20 @@ export const config = {
     '/countdowns/jisoo.io', '/countdowns/jenn.ie', '/countdowns/hellosawadika.com',
     '/countdowns/lalisaofficial.com', '/countdowns/steps', '/countdowns/vmas',
     '/countdowns/addicted', '/countdowns/newtrick', '/countdowns/sunshowers',
+    // The member-name aliases. The page resolves each to that member's live
+    // release and rewrites the address bar to the card's own slug, so these
+    // are an entry point rather than a second address for a release — which
+    // is why they get the HUB preview (metaFor falls back to it for any slug
+    // it does not know) and not a release's own.
+    //
+    // Giving them the right release's preview would mean teaching middleware
+    // which release is current, i.e. a second copy of every release date at
+    // the edge. This repo has a standing rule against exactly that, and the
+    // rule is why the countdown and its worldwide-times list read one date.
+    // A generic preview on the way in is the cheaper mistake: the link still
+    // lands on the right card, and the URL the reader then copies is the
+    // canonical one with the real preview behind it.
+    '/countdowns/jennie', '/countdowns/jisoo', '/countdowns/rose', '/countdowns/lisa',
   ],
 };
 

@@ -270,6 +270,15 @@ jobs:
         if: always()
         run: node .github/scripts/test_presave_wiring.mjs
 
+      # /countdowns/<member> opens whatever she has next. jenn.ie is Fallen
+      # Angel's own address and also reads as JENNIE's name, so it looked like
+      # "Jennie's countdown" and landed on an EP from August. The alias is
+      # resolved from the cards' dates, never from a table of names to slugs,
+      # and the test moves a date to prove it.
+      - name: A member's name opens her live countdown
+        if: always()
+        run: node .github/scripts/test_member_aliases.mjs
+
       # Where a share actually SENDS people. Every pre-save release is drawn by
       # one function and carries one _cardType, so the link is looked up by
       # campaign — and that lookup falls back to Fallen Angel's countdown, so a
