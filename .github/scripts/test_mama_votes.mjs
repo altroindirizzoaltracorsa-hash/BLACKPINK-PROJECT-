@@ -303,12 +303,36 @@ console.log('\n--- signed out');
 console.log('\n--- the panel');
 {
   const b = await chromium.launch();
-  const page = await b.newPage({ viewport: { width: 1100, height: 1200 } });
+  // THE SERVICE WORKER IS BLOCKED AT THE CONTEXT, and it has to be done here
+  // rather than in the route handler below.
+  //
+  // index.html registers /sw.js on `load` and reloads itself once on
+  // `controllerchange`. That reload lands in the middle of whatever evaluate
+  // is in flight and surfaces as "Execution context was destroyed, most
+  // likely because of a navigation", pointing at whichever line was running —
+  // which is how this file went red on CI under a commit whose whole diff was
+  // a countdown URL alias.
+  //
+  // It passes locally for a reason that is not a fix: a route handler does
+  // NOT reliably intercept the service-worker script request, so the browser
+  // fetches /sw.js outside the page's network stack, straight at the real
+  // www.blinksunited.com. In a sandbox with no outbound network that request
+  // fails and nothing registers; on a runner with network it succeeds, the
+  // worker takes control, and the page reloads. Answering 404 from
+  // page.route therefore changes nothing — that was tried here first and
+  // measured as inert, which is the same trap test_fandom_names.mjs
+  // documents after the same CI-only failure.
+  //
+  // Blocking it on the context cannot be raced: nothing registers, so nothing
+  // takes control, so there is no reload. Nothing here tests caching.
+  const page = await b.newPage({ viewport: { width: 1100, height: 1200 }, serviceWorkers: 'block' });
   const errs = [];
   page.on('pageerror', (e) => errs.push(String(e)));
   await page.route('**/*', async (route) => {
     const u = new URL(route.request().url());
     if (u.hostname.includes('fonts.g')) return route.continue();
+    // /sw.js is NOT handled here on purpose — see the serviceWorkers: 'block'
+    // note on the context above. A 404 from this handler does not stop it.
     if (u.pathname === '/api/mama-votes') {
       if (u.searchParams.get('board')) return route.fulfill({ contentType: 'application/json', body: JSON.stringify({ board: [{ handle: 'blinkone', days: 3 }] }) });
       if (u.searchParams.get('me')) return route.fulfill({ status: 401, body: '{}' });
