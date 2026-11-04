@@ -53,8 +53,13 @@ async function readAll(tz){
   const r=await page.evaluate(()=>Object.fromEntries(
     [...document.querySelectorAll('#home-countdowns .cd-card')].map(c=>[
       c.dataset.slug,
+      // `|| ''` on BOTH, which `line` had and `sub` did not: a card with no
+      // .cd-sub made this read undefined.replace() and the whole run died with
+      // a TypeError before its first assertion — a crash, not a failure, so it
+      // said nothing about the clocks it exists to check. The Sun Showers card
+      // is the first with no .cd-sub (it has no date to put in one).
       { line: (c.querySelector('.cd-sub-local')||{}).textContent || '',
-        sub: (c.querySelector('.cd-sub')||{}).textContent.replace(/\s+/g,' ').trim() }])));
+        sub: ((c.querySelector('.cd-sub')||{}).textContent || '').replace(/\s+/g,' ').trim() }])));
   await page.close(); return r;
 }
 // Each card's own hand-typed claim, and the zone it is a claim about.

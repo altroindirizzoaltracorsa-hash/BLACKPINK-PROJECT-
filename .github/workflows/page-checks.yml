@@ -356,6 +356,16 @@ jobs:
         if: always()
         run: node .github/scripts/test_scrobbler_track_lists.mjs
 
+      # Two things about Sun Showers are NOT known: whether JISOO performs it,
+      # and when it comes out. The card must claim neither. This site made the
+      # mirror-image mistake six days ago — the Steps card asserted a writing
+      # credit that belonged to three other people, and it survived an edit to
+      # the very sentence it sat in. Plain text, no browser, so it runs even
+      # when Playwright cannot install.
+      - name: The Sun Showers card claims only what is known
+        if: always()
+        run: node .github/scripts/test_sunshowers_claims.mjs
+
       # The countdown was set to 1PM KST, the hour JISOO's earlier singles used.
       # The official timetable says 8AM KST — five hours earlier — so the card
       # would have shown time remaining while the song was already out, and the

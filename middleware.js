@@ -25,6 +25,15 @@ const PAGES = {
 // shared link shows that specific countdown's card (title + date + art) instead
 // of the generic site preview.
 const COUNTDOWNS = {
+  // No date in the title or description, deliberately: every other entry here
+  // names one because every other release has one. Writing "coming soon" or a
+  // guessed month into a link preview is how a date nobody announced ends up
+  // quoted back at us from a screenshot.
+  sunshowers: {
+    title: 'JISOO — Sun Showers, from The Angry Birds Movie 3 | BLINKS UNITED',
+    description: "JISOO has co-written an original song, \u201cSun Showers\u201d, for The Angry Birds Movie 3. No release date announced yet, and it has not been said whether she performs it.",
+    image: '/og-countdown-sunshowers.jpg',
+  },
   addicted: {
     title: 'JISOO — ADDICTED, Oct 30, 2026 | Countdown · BLINKS UNITED',
     description: "Counting down to JISOO's ADDICTED — Oct 30, 2026 (8AM KST / Oct 29, 7PM EDT). Pre-save at jisoo.lnk.to/addicted.",
@@ -88,7 +97,7 @@ export const config = {
     '/countdowns',
     '/countdowns/jisoo.io', '/countdowns/jenn.ie', '/countdowns/hellosawadika.com',
     '/countdowns/lalisaofficial.com', '/countdowns/steps', '/countdowns/vmas',
-    '/countdowns/addicted', '/countdowns/newtrick',
+    '/countdowns/addicted', '/countdowns/newtrick', '/countdowns/sunshowers',
   ],
 };
 

@@ -107,7 +107,11 @@ console.log('--- the countdown cards, on the home page');
   // 23rd; a countdown to a date that has passed is not the thing to open on.
   // CLICK (jisoo.io) is no longer in this row at all — it moved to the past
   // block on 2026-10-24, which is what the #cd-past check below now expects.
-  const ORDER = ['addicted','steps','lalisaofficial.com','newtrick','hellosawadika.com'];
+  // Sun Showers sits after Steps and before the released ones: it is still
+  // ahead of us, but it has NO announced date, so it cannot be placed by
+  // soonest-first and must not lead the row — the carousel opens on card
+  // one, and opening on a release nobody can date is not useful.
+  const ORDER = ['addicted','steps','sunshowers','lalisaofficial.com','newtrick','hellosawadika.com'];
   // Read the AUTHORED order, not the DOM order: with looping on, the track
   // rotates cards between its ends, so the DOM order is the running order
   // turned by however many times it has wrapped.

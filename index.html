@@ -1854,6 +1854,38 @@
      the trailer's pink glow on black, and the vertical light streaks from its
      end card. Swap in the real cover here the day it lands. */
   .cd-card-steps { position: relative; overflow: hidden; background: #08050a; }
+  /* SUN SHOWERS — the artwork is a bright yellow square and the rest of this
+     row is near-black, so the card takes its own ground from the art instead
+     of sitting a yellow picture on a black card and calling it a design. The
+     text below returns to the page's own ink on that yellow, which is the only
+     pair here that needs a dark foreground. */
+  /* PADDING MOVED OFF THE CARD AND ONTO THE BODY, which is the whole reason
+     the art reads as one piece. .cd-card pads 1.5rem/1.4rem, so the artwork
+     sat inset — and because the sleeve is a radial gradient (bright behind the
+     birds, deeper at the corners) its interior is a LIGHTER yellow than the
+     flat card ground. Inset, that showed as a distinct rectangle seam down
+     both sides and across the bottom. Bled to the edges, the sleeve's own
+     corner yellow is the card colour and the join disappears. The card ground
+     is sampled from the artwork's corner pixel, not picked by eye. */
+  .cd-card-sunshowers { position: relative; overflow: hidden; padding: 0;
+     background: #f9b218; color: #231703; }
+  .cd-card-sunshowers .ss-art { display: block; width: 100%; height: auto; }
+  .cd-card-sunshowers .ss-body { padding: 1.1rem 1.4rem 1.5rem; }
+  /* Dark enough to read as text rather than as a watermark: #8a4b00 on this
+     yellow looked washed out at 0.56rem with 0.2em tracking. */
+  .cd-card-sunshowers .cd-eyebrow { color: #6b3800; }
+  /* Where a timer would be. A countdown with no date cannot show one, and a
+     blank gap reads as a card that failed to load — so the card says, in the
+     timer's own place, that the date is not known. */
+  .cd-card-sunshowers .ss-tba { display: inline-block; font-family: var(--mono); font-size: 0.6rem;
+     letter-spacing: 0.18em; text-transform: uppercase; color: #231703;
+     background: rgba(35,23,3,0.12); border: 1px solid rgba(35,23,3,0.28);
+     border-radius: 999px; padding: 0.4rem 0.7rem; margin-bottom: 0.9rem; }
+  .cd-card-sunshowers .ss-note { font-family: var(--mono); font-size: 0.62rem; line-height: 1.85;
+     color: rgba(35,23,3,0.82); }
+  .cd-card-sunshowers .ss-note b { color: #231703; font-weight: 600; }
+  .cd-card-sunshowers .ss-src { display: block; margin-top: 0.7rem; font-family: var(--mono);
+     font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(35,23,3,0.58); }
   .st-hero {
     position: relative; width: calc(100% + 2.8rem); margin: -1.5rem -1.4rem 1.1rem;
     padding: 2.6rem 1.4rem 2.2rem; text-align: center; background: #000; overflow: hidden;
@@ -4311,6 +4343,54 @@
               <summary>Release times worldwide</summary>
               <div class="cd-times-body" data-times-for="2026-11-06T05:00:00Z"></div>
             </details>
+          </div>
+          <!-- SUN SHOWERS — JISOO, from The Angry Birds Movie 3.
+               NO data-target, ON PURPOSE. No release date has been announced,
+               and renderHomeCountdowns only walks `.cd-card[data-target]`, so
+               this card carries no timer rather than counting to a date
+               somebody guessed. The moment a date is announced, add
+               data-target and the timer starts working with no other change.
+
+               TWO THINGS ARE NOT KNOWN AND THE CARD MUST NOT IMPLY EITHER.
+               The Hollywood Reporter's exclusive says JISOO CO-WROTE the song.
+               It does not say she performs it, and no release date is given.
+               So this card says "co-written", never "performs" or "sings", and
+               names no date. This site got the mirror image of this wrong six
+               days ago — the Steps card claimed Jennie "wrote and performs"
+               a song credited to Tranter/Michaels/Gill, and it survived an
+               edit to the very sentence it sat in. test_sunshowers_claims.mjs
+               pins both halves so neither can drift back in.
+
+               Also not stated: the film's own release date. It is probably
+               knowable, but it was not in what we were told, and a card is not
+               the place to find out. -->
+          <!-- data-prerelease-name so loadAutoPrereleases() does not add a SECOND
+               Sun Showers card beside this one the day Spotify lists the single:
+               it dedupes bespoke cards by this name, and a card without it is
+               invisible to that check. The auto card would also carry a date,
+               which is the one thing this card is careful not to. -->
+          <div class="cd-card cd-card-sunshowers" data-slug="sunshowers" data-prerelease-name="sun showers">
+            <img class="ss-art" src="/sunshowers/sun-showers-cover.webp" width="1000" height="1000"
+                 alt="Sun Showers — JISOO, from The Angry Birds Movie 3. The Angry Birds cast on a yellow field, with Shumon, a small grey dustball, at the front right."
+                 loading="lazy">
+            <div class="ss-body">
+              <div class="cd-eyebrow">JISOO · Original Song · The Angry Birds Movie 3</div>
+              <div class="ss-tba">Release date not announced</div>
+              <div class="ss-note">
+                JISOO has <b>co-written</b> an original song, <b>“Sun Showers”</b>, for
+                <b>The Angry Birds Movie 3</b>. It is expected in the film and in its
+                trailer, which has not landed yet.
+                <br><br>
+                The sleeve is hers too: the small grey dustball at the front is
+                <b>Shumon</b>, a character she first drew in middle school, years before
+                she debuted.
+                <br><br>
+                Whether she also <b>performs</b> it has not been said, and nor has a
+                release date — so there is nothing to count down to yet. This card
+                updates when there is.
+                <span class="ss-src">Reported by The Hollywood Reporter</span>
+              </div>
+            </div>
           </div>
           <!-- The EP lands at midnight wherever you are, so there is no one
                instant to count to and data-target-local names the DATE instead:

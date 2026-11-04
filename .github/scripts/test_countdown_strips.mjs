@@ -48,6 +48,35 @@ for (const [slug,name,n] of CARDS) {
   await page.goto(base+'/countdowns/'+slug,{waitUntil:'domcontentloaded'});
   await page.locator('.cd-card[data-slug]:visible').first().waitFor({timeout:20000});
   await page.waitForTimeout(3200);
+  // WAIT FOR THE LAZY ONES, rather than sampling at a fixed instant and hoping.
+  //
+  // What this file says it checks is that every picture is really there — "a
+  // rename kills them silently". That is a 404 question. But `complete &&
+  // naturalWidth > 0` read 3.2s after load answers a different one, "has it
+  // finished downloading yet", and the two only agree while the page happens
+  // to settle inside the timeout. Every frame here is loading="lazy", so the
+  // last one sits below the fold and is the slowest; adding ANY card above
+  // these in the markup pushes it further down and the check starts failing
+  // on a picture that is present, correct and merely late. That is what
+  // happened when the Sun Showers card went in — still-4.webp was unloaded at
+  // 2.5s and loaded at 6s, with no failed request at any point.
+  //
+  // So: scroll the strip in, give the images a bounded chance to finish, and
+  // only then sample. A genuinely missing file never completes, so the
+  // assertion below still fails for the reason it was written for — and the
+  // `miss` listener above still catches the 404 itself.
+  await page.evaluate(async () => {
+    const card=[...document.querySelectorAll('#home-countdowns .cd-card')].find(c=>getComputedStyle(c).display!=='none');
+    const st=card && card.querySelector('.cd-strip'); if(!st) return;
+    st.scrollIntoView({block:'center'});
+    const imgs=[...st.querySelectorAll('.cd-frame img')];
+    await Promise.all(imgs.map(i => (i.complete && i.naturalWidth>0) ? null : new Promise(res=>{
+      const done=()=>res();
+      i.addEventListener('load',done,{once:true});
+      i.addEventListener('error',done,{once:true});   // let a real 404 fall through to the assertion
+      setTimeout(done, 8000);
+    })));
+  });
   const r=await page.evaluate(()=>{
     const card=[...document.querySelectorAll('#home-countdowns .cd-card')].find(c=>getComputedStyle(c).display!=='none');
     const st=card.querySelector('.cd-strip'); if(!st) return {none:true};
