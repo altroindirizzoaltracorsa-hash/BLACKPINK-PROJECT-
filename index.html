@@ -31,7 +31,7 @@
      nearest free stand-in for the Steps logotype. It has no weight axis, so it
      must be requested bare: adding ":wght@400" makes css2 reject the WHOLE
      request and every family above it falls back too. -->
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Berkshire+Swash&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,300&family=IBM+Plex+Sans:wght@400;500;600;700&family=Pinyon+Script&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Berkshire+Swash&family=Bodoni+Moda:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:wght@300;400;500&family=Cormorant+Garamond:ital,wght@0,300;0,600;0,700;1,300&family=IBM+Plex+Sans:wght@400;500;600;700&family=Pinyon+Script&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
@@ -4387,7 +4387,7 @@
                invisible to that check. The auto card would also carry a date,
                which is the one thing this card is careful not to. -->
           <div class="cd-card cd-card-sunshowers" data-slug="sunshowers" data-prerelease-name="sun showers">
-            <img class="ss-art" src="/sunshowers/sun-showers-cover.webp" width="1000" height="1000"
+            <img class="ss-art" src="/sunshowers/sun-showers-cover.webp" width="1400" height="1400"
                  alt="Sun Showers — JISOO, from The Angry Birds Movie 3. The Angry Birds cast on a yellow field, with Shumon, a small grey dustball, at the front right."
                  loading="lazy">
             <div class="ss-body">
@@ -23828,6 +23828,35 @@ function _drawFaSupporterBadge(ctx, W, PX, baselineY, emblemImg) {
     { emblem: emblemImg, tint: '#020a0b', pill: '#ffe051', ink: '#020a0b' });
 }
 
+// The Angry Birds trailer lettering: heavy condensed caps, scarlet, rimmed in
+// chrome over a dark outline. Taken from the film's own "FEATURING NEW MUSIC
+// FROM JISOO" card rather than invented, because a Sun Showers card in this
+// site's usual italic serif reads as a different release than the one the
+// studio is promoting.
+//
+// Painted outside-in, which is the only order that works: each pass covers the
+// middle of the one before it, so the dark outline survives as a hairline, the
+// chrome as a rim, and the fill owns the body of the letter. The light comes
+// from the top-left, so the chrome is offset down-right by a fraction of the
+// size — a constant offset reads as a drop shadow at 100px and as a blur at 20.
+function _drawChromeText(ctx, text, x, y, size, opts = {}) {
+  const ink   = opts.ink   || '#2a0603';   // the outline, nearly black-red
+  const rim   = opts.rim   || '#f2f6fa';   // the chrome highlight
+  const fill  = opts.fill  || '#e8201c';   // the scarlet body
+  const off   = Math.max(1, Math.round(size * 0.022));
+  const prevJ = ctx.lineJoin, prevW = ctx.lineWidth, prevS = ctx.strokeStyle, prevF = ctx.fillStyle;
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = Math.max(2, size * 0.14);
+  ctx.strokeStyle = ink;
+  ctx.strokeText(text, x, y);
+  ctx.lineWidth = Math.max(1.5, size * 0.085);
+  ctx.strokeStyle = rim;
+  ctx.strokeText(text, x + off, y + off);
+  ctx.fillStyle = fill;
+  ctx.fillText(text, x, y);
+  ctx.lineJoin = prevJ; ctx.lineWidth = prevW; ctx.strokeStyle = prevS; ctx.fillStyle = prevF;
+}
+
 // ── PRE-SAVE SHARE CARD (JENNIE — Fallen Angel) ──────────────────────────────
 // A shareable card a fan gets after pre-saving: photo hero + wordmarks + their
 // Early Supporter status + the release date + a pre-save CTA. Reuses the card
@@ -23853,7 +23882,10 @@ function drawPresaveCard(canvas, d) {
   // is made from the same numbers the cover maths uses and cannot disagree
   // with the canvas it is filling.
   const photo = (W > H && d.photoWide) ? d.photoWide : d.photo;
-  if (photo && photo.naturalWidth) {
+  // `fitWhole` shows the picture entire instead of cutting the canvas out of
+  // it, so that path draws later, once it knows where the type block starts.
+  const FIT = !!d.fitWhole && !!(photo && photo.naturalWidth);
+  if (photo && photo.naturalWidth && !FIT) {
     const scale = Math.max(W / photo.naturalWidth, H / photo.naturalHeight);
     const dw = photo.naturalWidth * scale, dh = photo.naturalHeight * scale;
     ctx.drawImage(photo, (W - dw) / 2, -(dh - H) * (d.focalBias ?? 0.12), dw, dh);
@@ -23867,12 +23899,46 @@ function drawPresaveCard(canvas, d) {
   // ── Bottom content block ──
   const BP = Math.round(H * 0.085);
   const titleImg = d.titleImg, logoImg = d.logoImg;
+
+  // WHERE THE PICTURE GOES WHEN IT IS NOT A CROP.
+  //
+  // Cropping is not cosmetic on this release. The Sun Showers sleeve is 1:1
+  // and puts the whole cast along its BOTTOM, Shumon among them — the dustball
+  // JISOO drew in middle school, which is the reason the sleeve is hers. A
+  // 16:9 cover crop of a square picture throws the top and bottom away, so the
+  // one thing the card exists to show was the first thing it cut.
+  //
+  // The arrangement follows from the two SHAPES, not from a flag, because
+  // "whole picture plus a block of type" cannot be stacked on every canvas: a
+  // square picture stacked above type on a 16:9 card gets a third of the
+  // height it could have had. So a picture squarer than the canvas goes BESIDE
+  // the type and a wider one goes ABOVE it. 0.85 rather than 1.0 leaves a
+  // picture that is only slightly squarer than the canvas stacked, where it
+  // still reads large.
+  const artAspect = FIT ? photo.naturalWidth / photo.naturalHeight : 0;
+  const beside    = FIT && artAspect < (W / H) * 0.85;
+  const artTop    = Math.round(H * 0.085) + Math.round(H * 0.035);
+  // The type column. Default is the full measure, which is what every card
+  // drawn before this used, so those are unchanged; only `beside` narrows it.
+  let artBox = null, colX = PX, colW = W - PX * 2;
+  if (beside) {
+    const availH = H - artTop - BP;
+    const w = Math.min(availH * artAspect, (W - PX * 2) * 0.58);
+    const h = w / artAspect;
+    artBox = { x: PX, y: Math.round(artTop + (availH - h) / 2), w, h };
+    colX = Math.round(PX + w + W * 0.045);
+    colW = W - PX - colX;
+  }
+
   // 0.62 of the card is jenn.ie's proportion, where the lockup is one item
   // in a left-hand column. A card built AROUND the lockup wants it larger:
   // at 0.62 the ADDICTED artwork sat small in the middle of the square
   // with a band of empty sky over it. Opt-in per release, so nothing
   // already drawn changes.
-  const titleW = Math.min(W * (d.titleFrac || 0.62), W - PX * 2);
+  // Measured off the column, which is the full width unless the picture is
+  // sitting beside it — so this is the same number it always was for every
+  // card that does not fit its picture whole.
+  const titleW = Math.min((beside ? colW : W) * (d.titleFrac || 0.62), colW);
   const titleH = (titleImg && titleImg.naturalWidth) ? titleW * (titleImg.naturalHeight / titleImg.naturalWidth) : 0;
   const logoH  = Math.round(H * 0.062);
   const logoW  = (logoImg && logoImg.naturalHeight) ? logoH * (logoImg.naturalWidth / logoImg.naturalHeight) : 0;
@@ -23923,10 +23989,57 @@ function drawPresaveCard(canvas, d) {
   // was rather than growing a branch per caller.
   const titleRowH = titleH || titleTextH;
 
+  // The CTA row normally puts the link on the left and blinksunited.com on the
+  // right of one line. A fitted card's type can be in a column barely a third
+  // of the card wide, where those two collide, so there the second one drops
+  // to its own line and the block grows by exactly that much.
+  const ctaRows = FIT ? ctaH + gapXS + ctaH : ctaH;
+  // EMPTY ROWS ARE NOT RESERVED ON A FITTED CARD. The block always kept room
+  // for a logo and a date line whether or not this release has either, which
+  // costs nothing on a full-bleed card — the photo is behind it regardless —
+  // but on a fitted one every pixel the block holds is a pixel the picture
+  // does not get. Sun Showers has no logo and, by design, no date, and those
+  // two phantom rows were 93px of the 675: a third of what the cast strip had
+  // left to be drawn in. Gated on FIT, so no full-bleed card moves.
+  const logoRow = (FIT && !logoW)      ? 0 : logoH + gapS;
+  const dateRow = (FIT && !d.dateLine) ? 0 : dateH + gapM;
+  // Chrome lettering is drawn with a stroke around the glyphs, so it occupies
+  // more than its font size: the outline reaches about a tenth of the size
+  // above the cap line, which is further than the gap under the eyebrow. Left
+  // alone, the rim of DATE TBA struck through RELEASE DATE NOT ANNOUNCED.
+  const chromePad = d.chrome ? Math.round(cdBigSize * 0.12) : 0;
   const blockH = d.earned
-    ? logoH + gapS + titleRowH + gapM + headSize + gapXS + cdLineH + gapS + dateH + gapM + ctaH
-    : logoH + gapS + titleRowH + gapM + cdEyebrowH + gapXS + cdBigSize + gapS + dateH + gapM + ctaH;
+    ? logoRow + titleRowH + gapM + headSize + gapXS + cdLineH + gapS + dateRow + ctaRows
+    : logoRow + titleRowH + gapM + cdEyebrowH + gapXS + chromePad + cdBigSize + gapS + dateRow + ctaRows;
   let y = H - BP - blockH;
+  // Beside the picture, the type is a column of its own rather than a caption
+  // under a full-bleed photo, so it centres on the picture instead of sitting
+  // on the card's floor — bottom-aligned, it left the top two thirds of that
+  // column empty and the card read as half-finished.
+  if (beside) y = Math.min(y, Math.max(artTop, Math.round(artBox.y + (artBox.h - blockH) / 2)));
+
+  // Stacked is the other half of the rule above: the picture takes everything
+  // between the header row and the type, whole, centred in what is left.
+  if (FIT && !beside) {
+    // Full card width, not the text measure. A picture wider than the canvas
+    // is height-limited here whatever width it is allowed, so insetting it by
+    // the margin only shrinks it; the type below keeps its own margin.
+    const top = artTop, availH = Math.max(40, (y - gapM) - top), availW = W;
+    const w = Math.min(availW, availH * artAspect), h = w / artAspect;
+    artBox = { x: Math.round((W - w) / 2), y: Math.round(top + (availH - h) / 2), w, h };
+  }
+  if (artBox) {
+    ctx.drawImage(photo, Math.round(artBox.x), Math.round(artBox.y),
+                  Math.round(artBox.w), Math.round(artBox.h));
+    // A hairline edge. The studio's own title card is black on black ground,
+    // so without this the picture has no boundary at all and reads as type
+    // floating in the card rather than as a picture on it.
+    const pw = ctx.lineWidth, ps = ctx.strokeStyle;
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(255,255,255,0.13)';
+    ctx.strokeRect(Math.round(artBox.x) + 0.5, Math.round(artBox.y) + 0.5,
+                   Math.round(artBox.w) - 1, Math.round(artBox.h) - 1);
+    ctx.lineWidth = pw; ctx.strokeStyle = ps;
+  }
 
   // Left by default, which is jenn.ie's layout and PRESS PLAY's. A release
   // whose artwork is built around a centred lockup — ADDICTED's lettering
@@ -23935,8 +24048,8 @@ function drawPresaveCard(canvas, d) {
   // beneath it is not. `align: 'center'` puts the whole block on that line.
   // Opt-in, so every card drawn before this is unchanged to the pixel.
   const mid = d.align === 'center';
-  const tx = mid ? Math.round(W / 2) : PX;            // where text begins
-  const ix = (w) => mid ? Math.round((W - w) / 2) : PX;  // where an image does
+  const tx = mid ? Math.round(W / 2) : colX;            // where text begins
+  const ix = (w) => mid ? Math.round((W - w) / 2) : colX;  // where an image does
   // Where the title image will land, handed to the overlay so it can build
   // around it. Measured the same way it is drawn, a few lines down.
   const titleBox = { x: ix(titleW), y: y + logoH + gapS, w: titleW, h: titleRowH };
@@ -23944,14 +24057,19 @@ function drawPresaveCard(canvas, d) {
   // A release can lay its own art over the photo before the scrims go down —
   // ADDICTED's lightning heart sits between the sky and the type.
   if (typeof d.overlay === 'function') { try { d.overlay(ctx, W, H, { title: titleBox }); } catch {} }
-  // Scrims — subtle at top, strong at the bottom for text legibility
-  const g = ctx.createLinearGradient(0, 0, 0, H);
-  g.addColorStop(0,    `rgba(${SCRIM},0.55)`);
-  g.addColorStop(0.32, `rgba(${SCRIM},0.06)`);
-  g.addColorStop(0.60, `rgba(${SCRIM},0.34)`);
-  g.addColorStop(1,    `rgba(${SCRIM},0.96)`);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, W, H);
+  // Scrims — subtle at top, strong at the bottom for text legibility.
+  // A fitted card has none: the type sits on the card's own ground, not on the
+  // picture, so there is nothing to darken — and darkening it anyway would put
+  // a grey wash over artwork the whole point was to show undamaged.
+  if (!FIT) {
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0,    `rgba(${SCRIM},0.55)`);
+    g.addColorStop(0.32, `rgba(${SCRIM},0.06)`);
+    g.addColorStop(0.60, `rgba(${SCRIM},0.34)`);
+    g.addColorStop(1,    `rgba(${SCRIM},0.96)`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+  }
   drawNoise(ctx, W, H, 0.018);
 
   // Top row: BU wordmark (left) · status (right)
@@ -24022,13 +24140,13 @@ function drawPresaveCard(canvas, d) {
 
   ctx.textBaseline = 'top';
   if (logoW)  ctx.drawImage(logoImg, ix(logoW), y, logoW, logoH);
-  y += logoH + gapS;
+  y += logoRow;
   if (titleH) ctx.drawImage(titleImg, ix(titleW), y, titleW, titleH);
   else if (titleText) {
     ctx.font = HEADFONT.replace('%SPX%', titleTextSize + 'px');
     ctx.letterSpacing = '1px';
-    ctx.fillStyle = '#f7f3f0';
-    ctx.fillText(titleText, tx, y);
+    if (d.chrome) _drawChromeText(ctx, titleText, tx, y, titleTextSize, d.chrome);
+    else { ctx.fillStyle = '#f7f3f0'; ctx.fillText(titleText, tx, y); }
   }
   y += titleRowH + gapM;
 
@@ -24050,11 +24168,12 @@ function drawPresaveCard(canvas, d) {
     ctx.letterSpacing = '5px';
     ctx.fillStyle = 'rgba(245,240,240,0.6)';
     ctx.fillText(noDate ? 'RELEASE DATE NOT ANNOUNCED' : isOut ? 'JUST RELEASED' : 'COUNTDOWN TO RELEASE', tx, y);
-    y += cdEyebrowH + gapXS;
+    y += cdEyebrowH + gapXS + chromePad;
     ctx.fillStyle = '#F5F0F0';
-    _fitFont(ctx, cdBig, '', '"Bebas Neue", sans-serif', cdBigSize, W - PX * 2, 40);
+    const bigSize = _fitFont(ctx, cdBig, '', d.bigFont || '"Bebas Neue", sans-serif', cdBigSize, colW, 40);
     ctx.letterSpacing = '2px';
-    ctx.fillText(cdBig, tx, y);
+    if (d.chrome) _drawChromeText(ctx, cdBig, tx, y, Number(bigSize) || cdBigSize, d.chrome);
+    else ctx.fillText(cdBig, tx, y);
     y += cdBigSize + gapS;
   }
 
@@ -24063,16 +24182,29 @@ function drawPresaveCard(canvas, d) {
   ctx.letterSpacing = '1px';
   ctx.fillStyle = 'rgba(255,255,255,0.85)';
   if (d.dateLine) ctx.fillText(d.dateLine, tx, y);
-  y += dateH + gapM;
+  y += dateRow;
 
   // CTA row
   ctx.font = '600 22px "DM Mono", monospace';
   ctx.letterSpacing = '2px';
   ctx.fillStyle = ACCENT;
-  ctx.fillText(d.cta, tx, y);
-  ctx.textAlign = 'right';
-  ctx.fillStyle = 'rgba(245,240,240,0.6)';
-  ctx.fillText('blinksunited.com', W - PX, y);
+  if (FIT) {
+    // In a column this narrow the CTA is the thing most likely to run past
+    // the edge — it carries a whole URL — so it is fitted to the column and
+    // blinksunited.com takes the line beneath rather than the far side of the
+    // same one. The space for that line is already in blockH (ctaRows).
+    _fitFont(ctx, d.cta, '600', '"DM Mono", monospace', 22, colW, 11);
+    ctx.fillText(d.cta, tx, y);
+    y += ctaH + gapXS;
+    ctx.font = '600 18px "DM Mono", monospace';
+    ctx.fillStyle = 'rgba(245,240,240,0.55)';
+    ctx.fillText('blinksunited.com', tx, y);
+  } else {
+    ctx.fillText(d.cta, tx, y);
+    ctx.textAlign = 'right';
+    ctx.fillStyle = 'rgba(245,240,240,0.6)';
+    ctx.fillText('blinksunited.com', W - PX, y);
+  }
 
   // reset
   ctx.textAlign = 'left';
@@ -26097,29 +26229,43 @@ async function selectAddictedCardArt(url, thumbEl) {
 
 // Sun Showers — what the share card can be built from.
 //
-// The sleeve is the default and the only one that works in BOTH shapes: it is
-// square, so it crops gracefully to 16:9 and not at all to 1:1. The cast
-// illustration is 680x303 — wider than 16:9 — so a square card would cut the
-// row of characters down to whoever happens to be in the middle. landscapeOnly
-// is a statement about the picture, not a shortcut: the same flag the ADDICTED
-// D-1 visual carries, for the same reason.
+// NONE OF THESE ARE CROPPED. The card draws them whole (`fitWhole`), which is
+// why there is no focalBias here and no landscapeOnly either: a crop anchor
+// answers "which part do we keep", and the answer for this release is all of
+// it. The sleeve's cast runs along its BOTTOM edge — Shumon with them — so a
+// 16:9 cover crop of it cut out the one character the sleeve is hers for.
 //
-// hasLockup: the sleeve already prints SUN SHOWERS · JISOO · FROM THE ANGRY
-// BIRDS MOVIE 3, so drawing our own title over it would set the name twice.
-// The cast picture carries no lettering, so that one wants the title drawn.
+// hasLockup: the sleeve already letters SUN SHOWERS · JISOO · FROM THE ANGRY
+// BIRDS MOVIE 3, so drawing our own over it would set the name twice. The cast
+// illustration carries no lettering, so that one gets a drawn title.
+//
+// The studio's "FEATURING NEW MUSIC FROM JISOO" title card is deliberately NOT
+// in this list. It came in as a reference for the LETTERING — which is where
+// SS_CARD_CHROME and SS_CARD_FONT below come from — not as a picture for the
+// card to show.
 const SUNSHOWERS_CARD_PICS = [
-  // focalBias is the vertical crop anchor, 0 = keep the top. The sleeve's
-  // lettering (SUN SHOWERS / JISOO / ANGRY BIRDS 3) lives in its top 40%, so
-  // at the 0.42 this started on, a square cover cropped to 16:9 lost the
-  // whole lockup — and because hasLockup suppresses our own title, the card
-  // came out with NO title at all. The cast strip is 2.24:1, wider than the
-  // card, so it barely crops vertically and the anchor hardly matters.
-  { url: '/sunshowers/sun-showers-cover.webp', hasLockup: true,  focalBias: 0.02 },
-  { url: '/sunshowers/sunshowers-cast.webp',   hasLockup: false, focalBias: 0.5, landscapeOnly: true },
+  { url: '/sunshowers/sun-showers-cover.webp', hasLockup: true  },
+  { url: '/sunshowers/sunshowers-cast.webp',   hasLockup: false },
 ];
+// Every picture works in both shapes now that none of them is cropped, so the
+// list no longer changes with the format. Kept as a function because
+// setCardFormat calls it that way for every pre-save release.
 function sunshowersPickerPics(fmt) {
   return SUNSHOWERS_CARD_PICS.filter(p => !p.landscapeOnly || fmt === 'landscape');
 }
+
+// The trailer lettering, read off the studio's own "FEATURING NEW MUSIC FROM
+// JISOO" title card: heavy condensed caps, scarlet, rimmed in chrome over a
+// dark outline, on black. Anton is the closest face available to the page —
+// it already loads in the same Google Fonts request as Bebas Neue, so it
+// costs no extra round trip — with Bebas behind it as the fallback.
+//
+// Black ground for the same reason: the pictures are no longer bled to the
+// edges, so they sit ON the card and need something to sit on, and this is
+// the colour the film puts its own lettering on.
+const SS_CARD_INK   = '#07070a';
+const SS_CARD_CHROME = { ink: '#2a0603', rim: '#f2f6fa', fill: '#e8201c' };
+const SS_CARD_FONT  = '%SPX% "Anton", "Bebas Neue", sans-serif';
 
 async function selectSunShowersCardArt(url, thumbEl) {
   document.querySelectorAll('.release-pic-thumb').forEach(t => t.classList.remove('active'));
@@ -26138,16 +26284,13 @@ async function selectSunShowersCardArt(url, thumbEl) {
   _presaveCardData.stampStack  = false;
   _presaveCardData.stampCenter = false;
   _presaveCardData.artHasLockup = pick.hasLockup;
-  // Always assigned, like the flags above: the previous pick's crop anchor
-  // must not govern this picture.
-  _presaveCardData.focalBias = pick.focalBias ?? 0.4;
   // No wordmark PNG exists for this release, so the name is SET rather than
   // drawn from an image — and only over the picture that does not already
   // carry it. Both halves assigned every time: the sleeve must not inherit a
   // second title from the cast strip, and the cast strip must not inherit the
   // sleeve's silence, which is what left it with no title at all.
   _presaveCardData.titleImg  = null;
-  _presaveCardData.titleText = pick.hasLockup ? null : 'Sun Showers';
+  _presaveCardData.titleText = pick.hasLockup ? null : 'SUN SHOWERS';
   if (label) label.textContent = _presaveCardData.earned ? "I'M AN EARLY SUPPORTER" : 'SUN SHOWERS';
   drawPresaveCard(canvas, _presaveCardData);
   _markCardReady(canvas);
@@ -26182,8 +26325,18 @@ async function openSunShowersCard() {
     // default card sets no title of its own. selectSunShowersCardArt turns
     // titleText on for the cast strip, which carries no lettering.
     artHasLockup: true, titleText: null,
-    base: '#f9b218', scrimRGB: '14,8,0', focalBias: 0.02,
-    titleFrac: 0.72,
+    // THE PICTURE IS NOT CROPPED. Everything else here follows from that:
+    // black ground because the artwork no longer bleeds to the edges and has
+    // to sit on something, no scrimRGB because there is no scrim over a
+    // picture the card is showing whole, and no focalBias because there is no
+    // crop to anchor.
+    fitWhole: true,
+    base: SS_CARD_INK,
+    // The film's own lettering, from its "FEATURING NEW MUSIC FROM JISOO"
+    // card: heavy condensed caps, scarlet, rimmed in chrome.
+    headFont: SS_CARD_FONT, bigFont: '"Anton", "Bebas Neue", sans-serif',
+    chrome: SS_CARD_CHROME,
+    titleFrac: 0.92,
     accent: '#ffd978', claim: 'I pre-saved',
     // NO releaseAt, and that is the point. drawPresaveCard reads a null here
     // and prints "RELEASE DATE NOT ANNOUNCED" instead of inventing a

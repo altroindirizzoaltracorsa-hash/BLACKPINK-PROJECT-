@@ -124,7 +124,10 @@ console.log('\n--- the share card is wired and offers only committed pictures');
   ? ok('the card has a share button', 'openSunShowersCard()')
   : bad('the card has a share button', 'the 📸 Share button is missing or calls something else');
 
-const picsBlock = (site.match(/const SUNSHOWERS_CARD_PICS = \[[\s\S]*?\n\];/) || [''])[0];
+// Comments stripped here too — a note inside the list saying why there is no
+// focalBias would otherwise fail the check that there is no focalBias.
+const picsBlock = (site.match(/const SUNSHOWERS_CARD_PICS = \[[\s\S]*?\n\];/) || [''])[0]
+  .replace(/\/\/[^\n]*/g, ' ');
 const picUrls = [...picsBlock.matchAll(/url:\s*'([^']+)'/g)].map(x => x[1]);
 picUrls.length
   ? ok('it lists share-card pictures', `${picUrls.length}`)
@@ -135,14 +138,26 @@ for (const u of picUrls) {
     : bad('and that file exists', `${u} is offered on the picker and not committed`);
 }
 
-// A square card would cut the 2.24:1 cast strip down to whoever is mid-frame,
-// so that picture is landscapeOnly. Pinned because the flag is one word and
-// dropping it is invisible until someone posts the crop.
-/sunshowers-cast[^}]*landscapeOnly:\s*true/.test(picsBlock)
-  ? ok('the wide cast strip is landscape-only')
-  : bad('the wide cast strip is landscape-only', 'a square card would crop the row of characters');
+// NOTHING IS CROPPED, and the picture list is where that would come back.
+// A crop anchor only exists to answer "which part do we keep", so a focalBias
+// on any of these pictures means the card went back to cutting one of them —
+// and on the sleeve, whose cast runs along the bottom edge, what it cuts first
+// is Shumon. landscapeOnly likewise: it exists to hide a picture whose crop
+// would be unacceptable in one shape, and an uncropped picture has none.
+/focalBias/.test(picsBlock)
+  ? bad('no picture carries a crop anchor', 'a focalBias is back, so something is being cropped again')
+  : ok('no picture carries a crop anchor');
+/landscapeOnly/.test(picsBlock)
+  ? bad('and none is hidden from a shape', 'landscapeOnly is back; uncropped pictures work in both')
+  : ok('and none is hidden from a shape');
 
-const openFn = (site.match(/async function openSunShowersCard\(\) \{[\s\S]*?\n\}/) || [''])[0];
+// Comments stripped, for the same reason the card's visible text is read
+// without them: this function explains the rules using the very words the
+// rules forbid ("no focalBias because there is no crop to anchor"), so a
+// search over the raw source fails on its own documentation. That is not
+// hypothetical — it failed exactly that way the first time this ran.
+const openFn = (site.match(/async function openSunShowersCard\(\) \{[\s\S]*?\n\}/) || [''])[0]
+  .replace(/\/\/[^\n]*/g, ' ');
 openFn ? ok('found openSunShowersCard()') : bad('found openSunShowersCard()', 'it moved — fix this test');
 /releaseAt:\s*null/.test(openFn)
   ? ok('it hands the renderer no release date', 'releaseAt: null')
@@ -153,6 +168,36 @@ openFn ? ok('found openSunShowersCard()') : bad('found openSunShowersCard()', 'i
 {
   const oDate = openFn.replace(/sunshowers|sun[- ]showers/ig, ' ').match(DATEY);
   oDate ? bad('and names no date anywhere in it', `"${oDate[0]}"`) : ok('and names no date anywhere in it');
+}
+/fitWhole:\s*true/.test(openFn)
+  ? ok('and asks for the picture whole', 'fitWhole: true')
+  : bad('and asks for the picture whole', 'the card is back to cropping a canvas out of the artwork');
+/focalBias/.test(openFn)
+  ? bad('with no crop anchor', 'a focalBias on a card that crops nothing means it crops something')
+  : ok('with no crop anchor');
+
+// The film's own lettering. Sent as a reference for the type, not as a
+// picture — so what has to survive here is the face and the chrome, and the
+// test for it is the wiring, because the glyphs themselves are only visible
+// on the canvas (test_sunshowers_share.mjs reads those).
+console.log('\n--- and it is set in the film\'s own lettering');
+/chrome:\s*SS_CARD_CHROME/.test(openFn)
+  ? ok('the card asks for the chrome treatment')
+  : bad('the card asks for the chrome treatment', 'the scarlet-and-chrome lettering is gone');
+/headFont:\s*SS_CARD_FONT/.test(openFn)
+  ? ok('and the heavy condensed face')
+  : bad('and the heavy condensed face', 'it fell back to the site default serif');
+/const SS_CARD_FONT\s*=\s*'[^']*Anton/.test(site)
+  ? ok('which is Anton')
+  : bad('which is Anton', 'SS_CARD_FONT no longer names it');
+/fonts\.googleapis\.com\/css2\?[^"]*family=Anton[&"]/.test(site)
+  ? ok('and Anton is actually loaded', 'same Google Fonts request as the rest, so no extra round trip')
+  : bad('and Anton is actually loaded', 'the card asks for a font the page never fetches');
+{
+  const chromeDef = (site.match(/const SS_CARD_CHROME\s*=\s*\{[^}]*\}/) || [''])[0];
+  /ink:/.test(chromeDef) && /rim:/.test(chromeDef) && /fill:/.test(chromeDef)
+    ? ok('the chrome keeps all three passes', 'outline, rim, fill')
+    : bad('the chrome keeps all three passes', `got: ${chromeDef || 'nothing'}`);
 }
 
 // The words posted BESIDE the image. The shared wording is built around a

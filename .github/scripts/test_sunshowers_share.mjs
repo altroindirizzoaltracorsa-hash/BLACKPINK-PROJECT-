@@ -54,6 +54,33 @@ await page.addInitScript(() => { try {
   localStorage.setItem('ext_update_dismissed_1.9.8', '1');
 } catch (e) {} });
 // The spy goes in before any script runs, so it catches the very first draw.
+// WHAT WAS CUT OFF THE PICTURE, measured rather than eyeballed.
+//
+// A cover crop and a whole picture are the same call with different numbers:
+// drawImage(img, x, y, w, h). The difference is whether w/h still equals the
+// file's own width/height. When it does not, the card is showing a window onto
+// the artwork — and on the Sun Showers sleeve, whose cast runs along the
+// BOTTOM edge, the first thing a 16:9 window cuts is Shumon, the character the
+// sleeve is JISOO's for. So the spy records the ratio of each draw against the
+// source's, and the assertions below demand they match.
+await page.addInitScript(() => {
+  window.__cardArt = [];
+  const p = CanvasRenderingContext2D.prototype, od = p.drawImage;
+  p.drawImage = function (img, ...a) {
+    try {
+      if (this.canvas && this.canvas.id === 'card-canvas' && a.length >= 4 && img && img.naturalWidth) {
+        const [x, y, w, h] = a;
+        window.__cardArt.push({
+          src: String(img.src || '').replace(location.origin, ''),
+          drawn: w / h, source: img.naturalWidth / img.naturalHeight,
+          x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h),
+          cw: this.canvas.width, ch: this.canvas.height,
+        });
+      }
+    } catch (e) {}
+    return od.call(this, img, ...a);
+  };
+});
 await page.addInitScript(() => {
   window.__cardText = [];
   const proto = CanvasRenderingContext2D.prototype;
@@ -75,7 +102,7 @@ await page.waitForTimeout(2500);
 
 // A real click on the real button: the wiring is half of what is being tested.
 console.log('--- the share button on the card opens a card');
-await page.evaluate(() => { window.__cardText = []; });
+await page.evaluate(() => { window.__cardText = []; window.__cardArt = []; });
 await page.locator('.cd-card-sunshowers button.cd-btn').click();
 await page.waitForTimeout(3000);
 
@@ -102,6 +129,44 @@ const JUST_OUT = /just released|out now|out in \d|available now|streaming now/i;
 const DATEY = /\b(20\d\d|jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|jun(e)?|jul(y)?|aug(ust)?|sep(t|tember)?|oct(ober)?|nov(ember)?|dec(ember)?)\b/i;
 
 async function texts() { return page.evaluate(() => window.__cardText.slice()); }
+
+// Every picture this card drew, and whether it drew all of it.
+async function checkWhole(what, expectSrc) {
+  const art = await page.evaluate(() => window.__cardArt.slice());
+  const mine = art.filter(a => a.src.startsWith('/sunshowers/'));
+  if (!mine.length) { bad(`${what}: the card drew the artwork`, `drew: ${JSON.stringify(art.map(a => a.src))}`); return; }
+  const last = mine[mine.length - 1];
+  ok(`${what}: the card drew the artwork`, `${last.src} at ${last.w}x${last.h}`);
+  if (expectSrc) last.src === expectSrc
+    ? ok(`${what}: and it is the picture that was picked`, expectSrc)
+    : bad(`${what}: and it is the picture that was picked`, `drew ${last.src}, expected ${expectSrc}`);
+  // THE RATIO IS THE WEAK HALF OF THIS, and the mutation run is what showed
+  // it: a cover crop draws the picture at its OWN ratio too — it just draws it
+  // bigger than the canvas and lets the edges fall off the sides. Removing
+  // fitWhole left this line green and only the bounds check below went red.
+  // Both are kept, because they fail on different mistakes: this one catches a
+  // picture squashed to fill a box, the next catches one hanging off the card.
+  const off = Math.abs(last.drawn - last.source) / last.source;
+  off <= 0.01
+    ? ok(`${what}: drawn at its own proportions`, `${last.drawn.toFixed(3)} vs the file's ${last.source.toFixed(3)}`)
+    : bad(`${what}: drawn at its own proportions`,
+          `drawn at ${last.drawn.toFixed(3)} against the file's ${last.source.toFixed(3)} — ` +
+          `${(off * 100).toFixed(0)}% off, so it is being stretched to fit`);
+  // Every edge on the card. This is the one that means "nothing was cut": a
+  // cover crop puts the picture's top edge at a NEGATIVE y and its right edge
+  // past the canvas, which is precisely how the sleeve lost the row of
+  // characters along its bottom — Shumon among them.
+  const inside = last.x >= -1 && last.y >= -1 &&
+                 last.x + last.w <= last.cw + 1 && last.y + last.h <= last.ch + 1;
+  inside
+    ? ok(`${what}: whole, every edge on the card`,
+         `${last.w}x${last.h} at ${last.x},${last.y} in ${last.cw}x${last.ch}`)
+    : bad(`${what}: whole, every edge on the card`,
+          `${last.w}x${last.h} at ${last.x},${last.y} in ${last.cw}x${last.ch} — ` +
+          `${[last.x < -1 && 'left', last.y < -1 && 'top',
+              last.x + last.w > last.cw + 1 && 'right',
+              last.y + last.h > last.ch + 1 && 'bottom'].filter(Boolean).join('/')} is cut off`);
+}
 
 async function checkNoDate(what) {
   const t = await texts();
@@ -138,6 +203,7 @@ async function checkNoDate(what) {
 }
 
 console.log('\n--- the sleeve, which is the default');
+await checkWhole('sleeve', '/sunshowers/sun-showers-cover.webp');
 await checkNoDate('sleeve');
 {
   const t = await texts();
@@ -173,9 +239,10 @@ const snap = () => page.evaluate(() => {
 const sleeveHash = await snap();
 
 console.log('\n--- the cast illustration, picked from the picker');
-await page.evaluate(() => { window.__cardText = []; });
+await page.evaluate(() => { window.__cardText = []; window.__cardArt = []; });
 await page.evaluate(() => document.querySelectorAll('#release-pic-picker .release-pic-thumb')[1].click());
 await page.waitForTimeout(2500);
+await checkWhole('cast', '/sunshowers/sunshowers-cast.webp');
 const castHash = await snap();
 castHash !== sleeveHash
   ? ok('picking it redraws the card')
@@ -204,7 +271,7 @@ await checkNoDate('cast');
 // data rather than on the thumbnails, because the thumbnails looked plausible:
 // they were real pictures of a real release, just not this one.
 console.log('\n--- switching to square keeps it the same release');
-await page.evaluate(() => { window.__cardText = []; });
+await page.evaluate(() => { window.__cardText = []; window.__cardArt = []; });
 await page.evaluate(() => setCardFormat('square', document.getElementById('fmt-square')));
 await page.waitForTimeout(2500);
 const sq = await page.evaluate(() => ({
@@ -224,11 +291,17 @@ sq.campaign === 'sunshowers'
 sq.thumbs.every(t => t.startsWith('/sunshowers/'))
   ? ok('and the picker still holds only its own pictures', sq.thumbs.join(', '))
   : bad('and the picker still holds only its own pictures', sq.thumbs.join(', '));
-// The cast strip is 2.24:1 and landscape-only, so square must drop back to the
-// sleeve rather than leave a pick the format cannot honour.
-sq.thumbs.length === 1 && sq.photo === '/sunshowers/sun-showers-cover.webp'
-  ? ok('and falls back to the sleeve, which is the square one', sq.photo)
-  : bad('and falls back to the sleeve, which is the square one', `${sq.thumbs.length} thumbs, showing ${sq.photo}`);
+// Nothing is cropped any more, so no picture is unusable in either shape and
+// the square picker offers the same two. It used to offer one, because the
+// 2.24:1 strip could not survive a square COVER CROP — that constraint is what
+// went away, and this is the line that would notice it coming back.
+sq.thumbs.length === 2
+  ? ok('and offers both of them in square too', 'nothing is cropped, so nothing is shape-locked')
+  : bad('and offers both of them in square too', `${sq.thumbs.length}: ${sq.thumbs.join(', ')}`);
+sq.photo === '/sunshowers/sunshowers-cast.webp'
+  ? ok('and keeps the picture that was picked', sq.photo)
+  : bad('and keeps the picture that was picked', `switched to ${sq.photo}`);
+await checkWhole('square', '/sunshowers/sunshowers-cast.webp');
 await checkNoDate('square');
 
 console.log('\n--- and nothing threw');
