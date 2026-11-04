@@ -79,7 +79,13 @@ concurrency:
 
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    # PINNED, not ubuntu-latest. GitHub rolled ubuntu-latest to Ubuntu 26.04 and
+    # playwright@1.56.1 does not know that distro, so `playwright install
+    # --with-deps` aborted with "does not support chromium on ubuntu26.04-x64",
+    # Chromium was never downloaded, and all 26 browser-driven checks below died
+    # on browserType.launch. Red every run since 2026-11-02, which is how two
+    # real bugs then shipped past a suite that was not executing.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
