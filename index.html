@@ -21391,11 +21391,23 @@ let _cardShareBlob = null; // pre-generated blob for shareCard (set when drawing
 // campaign name the card data already carries. One table rather than a chain
 // of ifs, because the chain is what got this wrong: every campaign drawn by
 // drawPresaveCard shares _cardType 'presave', so the first release's link was
-// quietly standing in for all of them. A new campaign adds a line here and is
-// caught by the check in test_presave_wiring if it does not.
+// quietly standing in for all of them.
+//
+// THE FALLBACK IS WHAT MAKES A MISSING LINE INVISIBLE. shareCard reads
+// `PRESAVE_CARD_LINKS[campaign] || PRESAVE_CARD_LINKS.fa`, so a campaign that
+// is not in this table does not fail — it silently shares JENNIE's Fallen
+// Angel countdown. Sun Showers shipped that way and Someone to Hold was added
+// the same way the next day: right picture, wrong link, and nothing about the
+// share looks wrong until somebody follows it.
+//
+// test_share_links.mjs now drives every countdown card's share button and
+// demands the link match the card it is on, which is what the comment that
+// used to live here only claimed was happening.
 const PRESAVE_CARD_LINKS = {
-  fa:       'https://www.blinksunited.com/countdowns/jenn.ie',
-  addicted: 'https://www.blinksunited.com/countdowns/addicted',
+  fa:         'https://www.blinksunited.com/countdowns/jenn.ie',
+  addicted:   'https://www.blinksunited.com/countdowns/addicted',
+  sunshowers: 'https://www.blinksunited.com/countdowns/sunshowers',
+  sth:        'https://www.blinksunited.com/countdowns/steps',
 };
 let _msShareBlob   = null; // pre-generated blob for shareMilestoneCard
 let _goalCardPhoto = null; // pre-loaded BLACKPINK photo for goal hit card

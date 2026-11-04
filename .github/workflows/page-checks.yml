@@ -246,6 +246,16 @@ jobs:
         if: always()
         run: node .github/scripts/test_presave_wiring.mjs
 
+      # Where a share actually SENDS people. Every pre-save release is drawn by
+      # one function and carries one _cardType, so the link is looked up by
+      # campaign — and that lookup falls back to Fallen Angel's countdown, so a
+      # release missing from the table shares somebody else's page under the
+      # right picture. Two shipped that way. This presses each card's own share
+      # button and reads the link that leaves.
+      - name: Every share button sends its own countdown
+        if: always()
+        run: node .github/scripts/test_share_links.mjs
+
       - name: Campaign goal checklists are wired up
         if: always()
         run: node .github/scripts/test_campaign_goals.mjs
