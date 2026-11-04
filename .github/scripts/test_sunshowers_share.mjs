@@ -68,11 +68,24 @@ await page.addInitScript(() => {
   const p = CanvasRenderingContext2D.prototype, od = p.drawImage;
   p.drawImage = function (img, ...a) {
     try {
-      if (this.canvas && this.canvas.id === 'card-canvas' && a.length >= 4 && img && img.naturalWidth) {
-        const [x, y, w, h] = a;
+      // A <canvas> source counts: that is what a TINTED emblem is, and a
+      // check that only sees Image elements reports a recoloured badge as no
+      // badge at all — the right verdict for the wrong reason, which is the
+      // kind of message that sends someone looking in the wrong file.
+      const src0 = (img && (img.naturalWidth || img.width)) ? img : null;
+      if (this.canvas && this.canvas.id === 'card-canvas' && a.length >= 4 && src0) {
+        // drawImage has two long forms and they do NOT mean the same thing.
+        // With 4 trailing numbers those are the destination; with 8 the first
+        // four are the SOURCE rect and the destination is the last four. The
+        // Early Supporter pill uses the 8-arg form to crop the emblem to its
+        // opaque bounds, so reading a[0..3] there would have measured the
+        // emblem's position inside its own file against the card's edges.
+        const [x, y, w, h] = a.length >= 8 ? a.slice(4, 8) : a;
+        const sw = img.naturalWidth || img.width, sh = img.naturalHeight || img.height;
         window.__cardArt.push({
           src: String(img.src || '').replace(location.origin, ''),
-          drawn: w / h, source: img.naturalWidth / img.naturalHeight,
+          fromCanvas: !img.src,
+          drawn: w / h, source: sw / sh,
           x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h),
           cw: this.canvas.width, ch: this.canvas.height,
         });
@@ -133,7 +146,8 @@ async function texts() { return page.evaluate(() => window.__cardText.slice()); 
 // Every picture this card drew, and whether it drew all of it.
 async function checkWhole(what, expectSrc) {
   const art = await page.evaluate(() => window.__cardArt.slice());
-  const mine = art.filter(a => a.src.startsWith('/sunshowers/'));
+  // The badge emblem lives under /sunshowers/ too, and it is not the artwork.
+  const mine = art.filter(a => a.src.startsWith('/sunshowers/') && !a.src.includes('shumon'));
   if (!mine.length) { bad(`${what}: the card drew the artwork`, `drew: ${JSON.stringify(art.map(a => a.src))}`); return; }
   const last = mine[mine.length - 1];
   ok(`${what}: the card drew the artwork`, `${last.src} at ${last.w}x${last.h}`);
@@ -303,6 +317,69 @@ sq.photo === '/sunshowers/sunshowers-cast.webp'
   : bad('and keeps the picture that was picked', `switched to ${sq.photo}`);
 await checkWhole('square', '/sunshowers/sunshowers-cast.webp');
 await checkNoDate('square');
+
+// THE EARLY SUPPORTER PILL, which is a different card. Everything above is the
+// card a passer-by shares; this is the one a fan who actually pre-saved gets,
+// and it is the only one with a badge on it. It shipped with an EMPTY pill:
+// the stamp takes its emblem from emblemImg or titleImg and this release had
+// neither, because its sleeve letters its own title and so there was no
+// wordmark image to fall back on the way every other release has. Shumon is
+// the badge everywhere else on the site, so the share card was the one place
+// the badge was anonymous — and the share card is the one that gets posted.
+console.log('\n--- the Early Supporter card carries Shumon');
+await page.evaluate(() => {
+  try { localStorage.setItem('bu_jisoo_sunshowers_saved', '1'); } catch (e) {}
+  // Stands in for a signed-in pre-saver; the real path needs a Supabase
+  // session, and what is under test is the card, not the sign-in.
+  window.refreshSupporterChips = async () => { _buSignedIn = true; };
+  window.__cardText = []; window.__cardArt = [];
+});
+await page.evaluate(() => openSunShowersCard());
+await page.waitForTimeout(3500);
+
+const earned = await page.evaluate(() => !!_presaveCardData?.earned);
+earned ? ok('the card knows it was earned')
+       : bad('the card knows it was earned', 'the earned branch never ran, so this section proves nothing');
+if (earned) {
+  const art = await page.evaluate(() => window.__cardArt.slice());
+  const badge  = art.find(a => a.src.includes('shumon'));
+  const tinted = art.find(a => a.fromCanvas);
+  badge
+    ? ok('the pill draws Shumon', `${badge.src} at ${badge.w}x${badge.h}`)
+    : bad('the pill draws Shumon', tinted
+        ? `it draws a recoloured copy instead (${tinted.w}x${tinted.h}), so he is one flat shape`
+        : `an empty EARLY SUPPORTER pill — drew: ${JSON.stringify(art.map(a => a.src || '<canvas>'))}`);
+  // Falsifiable on its own, which the src check above is not: a tint replaces
+  // the file with a one-colour canvas, and this is the line that sees it.
+  tinted
+    ? bad('and in his own colours', 'the emblem was flattened to a single colour before drawing')
+    : ok('and in his own colours', 'drawn from the file, not from a recoloured copy');
+  if (badge) {
+    // He has to be big enough to be a character rather than a speck. The chip
+    // elsewhere on the site renders him around 20-34px; below that his
+    // silhouette is the only thing left and this one is round.
+    badge.h >= 24
+      ? ok('and at a size he reads at', `${badge.h}px tall`)
+      : bad('and at a size he reads at', `${badge.h}px tall — a grey dot`);
+  }
+  const t = await texts();
+  t.some(s => /early supporter/i.test(s))
+    ? ok('and the pill says what it is')
+    : bad('and the pill says what it is', `printed: ${JSON.stringify(t.slice(0, 12))}`);
+  t.some(s => /pre-?saved/i.test(s))
+    ? ok('and the card claims the pre-save')
+    : bad('and the card claims the pre-save', `printed: ${JSON.stringify(t.slice(0, 12))}`);
+  // The earned branch has its own countdown line, so the no-date rule has to
+  // hold on it separately — it is a different string built from the same NaN.
+  const claimedOut = t.filter(s => JUST_OUT.test(s));
+  claimedOut.length === 0
+    ? ok('and still never says the song is out')
+    : bad('and still never says the song is out', JSON.stringify(claimedOut));
+  t.some(s => /date tba/i.test(s))
+    ? ok('and still says the date is unknown')
+    : bad('and still says the date is unknown', `printed: ${JSON.stringify(t.slice(0, 12))}`);
+  await checkWhole('earned', '/sunshowers/sun-showers-cover.webp');
+}
 
 console.log('\n--- and nothing threw');
 errs.length === 0 ? ok('no page errors') : bad('no page errors', errs.slice(0, 3).join(' | '));

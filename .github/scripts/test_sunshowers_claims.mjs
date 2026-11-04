@@ -176,6 +176,38 @@ openFn ? ok('found openSunShowersCard()') : bad('found openSunShowersCard()', 'i
   ? bad('with no crop anchor', 'a focalBias on a card that crops nothing means it crops something')
   : ok('with no crop anchor');
 
+// ONE BADGE, THREE PLACES. Shumon is the Early Supporter badge on the card's
+// chip, in the My Badges row and on the share card — and the share card was
+// the one place he was missing, because its stamp falls back to the release's
+// wordmark image and this release has none (its sleeve letters its own title).
+// The pill came out saying EARLY SUPPORTER with nothing in it.
+console.log('\n--- and the Early Supporter badge is Shumon everywhere');
+{
+  const badgeSrc = (site.match(/const SS_BADGE_IMG\s*=\s*'([^']+)'/) || [])[1];
+  badgeSrc ? ok('the badge file is named once', badgeSrc)
+           : bad('the badge file is named once', 'SS_BADGE_IMG is gone');
+  if (badgeSrc) {
+    existsSync(root + badgeSrc.slice(1))
+      ? ok('and it exists', badgeSrc)
+      : bad('and it exists', `${badgeSrc} is referenced and not committed`);
+    // The chip on the card and the My Badges row point at it too. Three
+    // copies of a path is how one of them ends up a release behind.
+    const uses = [...site.matchAll(/\/sunshowers\/shumon[^"']*/g)].map(m => m[0]);
+    uses.length >= 2 && uses.every(u => u === badgeSrc)
+      ? ok('and every badge on the site uses that same file', `${uses.length} references`)
+      : bad('and every badge on the site uses that same file', `got ${JSON.stringify([...new Set(uses)])}`);
+  }
+  /emblemImg:\s*shumon/.test(openFn)
+    ? ok('the share card hands it to the Early Supporter pill', 'emblemImg: shumon')
+    : bad('the share card hands it to the Early Supporter pill', 'the pill is empty — no emblem and no wordmark to fall back on');
+  /loadImg\(SS_BADGE_IMG\)/.test(openFn)
+    ? ok('and loads it up front', 'the draw is synchronous, so a late fetch misses the frame')
+    : bad('and loads it up front', 'nothing fetches the badge before the card is drawn');
+  /stampTint:\s*false/.test(openFn)
+    ? ok('and leaves him his own colours', 'stampTint: false')
+    : bad('and leaves him his own colours', 'the default tint flattens a drawing to one shape');
+}
+
 // The film's own lettering. Sent as a reference for the type, not as a
 // picture — so what has to survive here is the face and the chrome, and the
 // test for it is the wiring, because the glyphs themselves are only visible

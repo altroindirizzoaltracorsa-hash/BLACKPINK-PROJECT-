@@ -24090,8 +24090,18 @@ function drawPresaveCard(canvas, d) {
     // card was correct, legible and ruined, and no check could have known,
     // because nothing here can see where a face is. The picture says so
     // instead.
-    const stampOpts = { emblem: d.emblemImg || d.titleImg, tint: d.stampTint || '#020a0b',
-                        pill: d.stampPill || '#ffe051', ink: d.stampInk || '#020a0b' };
+    // The tint exists because most of these emblems are wordmarks that have to
+    // be recoloured to sit on the pill. Shumon is not a wordmark — he is a
+    // drawing, grey fur with black squiggle eyes — and flattening him to one
+    // colour leaves a dustball-shaped blob. `stampTint: false` is how a
+    // release says "this emblem has its own colours"; null and undefined still
+    // take the default, so nothing that relied on it changes.
+    const stampOpts = { emblem: d.emblemImg || d.titleImg,
+                        tint: d.stampTint === false ? null : (d.stampTint || '#020a0b'),
+                        pill: d.stampPill || '#ffe051', ink: d.stampInk || '#020a0b',
+                        // A wordmark fills its row at 1; a round drawing with
+                        // detail inside it needs more height to read at all.
+                        emScale: d.stampScale || 1 };
     if (d.stampCenter) {
       // Top centre. On the D-DAY cut the top-right is the cat ear and the pill
       // sat across it; the left is the wordmark's column. The middle is the
@@ -24153,9 +24163,15 @@ function drawPresaveCard(canvas, d) {
   if (d.earned) {
     // Only the pre-saver gets the "I PRE-SAVED" claim + a compact countdown.
     ctx.fillStyle = ACCENT;
-    ctx.font = HEADFONT.replace('%SPX%', String(Math.round(headSize * 1.05)) + 'px');
+    const claimSize = Math.round(headSize * 1.05);
+    ctx.font = HEADFONT.replace('%SPX%', claimSize + 'px');
     ctx.letterSpacing = '1px';
-    ctx.fillText(d.claim || 'I pre-saved', tx, y);
+    // The claim is this card's headline when it is earned — there is no big
+    // countdown on that branch — so it takes the same treatment the countdown
+    // gets on the other one, or the release's lettering would appear on the
+    // card everyone else shares and not on the one its supporters do.
+    if (d.chrome) _drawChromeText(ctx, d.claim || 'I pre-saved', tx, y, claimSize, d.chrome);
+    else ctx.fillText(d.claim || 'I pre-saved', tx, y);
     y += headSize + gapXS;
     ctx.font = '600 22px "DM Mono", monospace';
     ctx.letterSpacing = '3px';
@@ -26266,6 +26282,10 @@ function sunshowersPickerPics(fmt) {
 const SS_CARD_INK   = '#07070a';
 const SS_CARD_CHROME = { ink: '#2a0603', rim: '#f2f6fa', fill: '#e8201c' };
 const SS_CARD_FONT  = '%SPX% "Anton", "Bebas Neue", sans-serif';
+// Shumon, the Early Supporter badge for this release — the same file the chip
+// on the card and the My Badges row use, named once here because the share
+// card needs it as an Image rather than as markup.
+const SS_BADGE_IMG  = '/sunshowers/shumon.webp';
 
 async function selectSunShowersCardArt(url, thumbEl) {
   document.querySelectorAll('.release-pic-thumb').forEach(t => t.classList.remove('active'));
@@ -26312,7 +26332,15 @@ async function openSunShowersCard() {
   const canvas = document.getElementById('card-canvas');
   canvas.width = 1200; canvas.height = 675;
 
-  const cover = await loadImg(SUNSHOWERS_CARD_PICS[0].url).catch(() => null);
+  // Shumon is loaded with the sleeve, not when the pill is drawn, because the
+  // draw is synchronous: a file fetched at that moment arrives after the frame
+  // it was wanted for, and the Early Supporter pill would come out empty on
+  // the first card and right on the second. Same reason the ADDICTED picker
+  // loads both of its faces up front.
+  const [cover, shumon] = await Promise.all([
+    loadImg(SUNSHOWERS_CARD_PICS[0].url).catch(() => null),
+    loadImg(SS_BADGE_IMG).catch(() => null),
+  ]);
   await document.fonts.ready;
 
   await refreshSupporterChips();
@@ -26320,7 +26348,20 @@ async function openSunShowersCard() {
   _presaveCardData = {
     campaign: 'sunshowers', earned,
     act: 'JISOO', release: 'Sun Showers',
-    photo: cover, titleImg: null, logoImg: null, emblemImg: null,
+    // THE EARLY SUPPORTER PILL IS SHUMON'S. It was coming out as a plain
+    // "EARLY SUPPORTER" pill with nothing in it: the stamp takes its emblem
+    // from emblemImg or titleImg, and this card had neither — the sleeve
+    // letters its own title, so there was no wordmark image to fall back on
+    // the way every other release has. He is the badge everywhere else on the
+    // site (the chip on the card, the My Badges row), so the share card was
+    // the only place the badge was anonymous.
+    photo: cover, titleImg: null, logoImg: null, emblemImg: shumon,
+    // He keeps his own grey: see the tint note in _drawSupporterBadge's caller.
+    stampTint: false,
+    // Dark pill, light ink. The default is loverYellow with near-black ink,
+    // which is right on a photo and wrong here — a yellow pill on the black
+    // card is the brightest thing on it, louder than the artwork.
+    stampPill: 'rgba(255,255,255,0.09)', stampInk: '#f3efe6', stampScale: 1.3,
     // The sleeve letters SUN SHOWERS · JISOO · ANGRY BIRDS 3 itself, so the
     // default card sets no title of its own. selectSunShowersCardArt turns
     // titleText on for the cast strip, which carries no lettering.
@@ -26337,7 +26378,10 @@ async function openSunShowersCard() {
     headFont: SS_CARD_FONT, bigFont: '"Anton", "Bebas Neue", sans-serif',
     chrome: SS_CARD_CHROME,
     titleFrac: 0.92,
-    accent: '#ffd978', claim: 'I pre-saved',
+    // Caps, because the lettering is: the title above it is set in the film's
+    // own all-caps face, and "I pre-saved" under "SUN SHOWERS" reads as two
+    // different cards stacked.
+    accent: '#ffd978', claim: 'I PRE-SAVED',
     // NO releaseAt, and that is the point. drawPresaveCard reads a null here
     // and prints "RELEASE DATE NOT ANNOUNCED" instead of inventing a
     // countdown — and dateLine is omitted entirely rather than carrying a
