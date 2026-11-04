@@ -28,10 +28,11 @@ const COUNTDOWNS = {
   // No date in the title or description, deliberately: every other entry here
   // names one because every other release has one. Writing "coming soon" or a
   // guessed month into a link preview is how a date nobody announced ends up
-  // quoted back at us from a screenshot.
+  // quoted back at us from a screenshot. Still true — the distributor's own
+  // pre-save page carries releaseDateInfo.date = null.
   sunshowers: {
     title: 'JISOO — Sun Showers, from The Angry Birds Movie 3 | BLINKS UNITED',
-    description: "JISOO has co-written an original song, \u201cSun Showers\u201d, for The Angry Birds Movie 3. No release date announced yet, and it has not been said whether she performs it.",
+    description: "JISOO performs and co-wrote \u201cSun Showers\u201d, an original song for The Angry Birds Movie 3. Pre-save it now \u2014 no release date announced yet.",
     image: '/og-countdown-sunshowers.jpg',
   },
   addicted: {

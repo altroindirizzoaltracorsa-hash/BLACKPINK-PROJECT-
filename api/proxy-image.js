@@ -770,19 +770,25 @@ export default async function handler(req, res) {
       req.query.jisoo_save === 'count'  || req.query.jisoo_save === 'increment' ||
       req.query.addicted_save === 'count' || req.query.addicted_save === 'increment' ||
       req.query.sth_save === 'count'    || req.query.sth_save === 'increment' ||
+      req.query.sunshowers_save === 'count' || req.query.sunshowers_save === 'increment' ||
       req.query.newtrick_save === 'count' || req.query.newtrick_save === 'increment') {
     if (!storeUrl()) return res.status(200).json({ count: 0 });
     const campaign = req.query.jisoo_save != null ? 'jisoo'
                    : req.query.addicted_save != null ? 'addicted'
                    : req.query.sth_save != null ? 'sth'
+                   : req.query.sunshowers_save != null ? 'sunshowers'
                    : req.query.lisa_save != null ? 'lisa'
                    : req.query.fa_save   != null ? 'fa'
                    : req.query.newtrick_save != null ? 'newtrick'
                    : 'ltal';
-    const action = req.query.jisoo_save ?? req.query.addicted_save ?? req.query.sth_save ?? req.query.lisa_save ?? req.query.fa_save ?? req.query.newtrick_save ?? req.query.jennie_save;
+    const action = req.query.jisoo_save ?? req.query.addicted_save ?? req.query.sth_save ?? req.query.sunshowers_save ?? req.query.lisa_save ?? req.query.fa_save ?? req.query.newtrick_save ?? req.query.jennie_save;
     const KEY = campaign === 'jisoo' ? 'bu_jisoo_click_saves'
               : campaign === 'addicted' ? 'bu_jisoo_addicted_saves'
               : campaign === 'sth' ? 'bu_jennie_sth_saves'
+              // Sun Showers is its OWN key, not ADDICTED's: two JISOO singles
+              // sharing one counter would open the new release at the old
+              // one's total. Same reason ADDICTED is not CLICK's.
+              : campaign === 'sunshowers' ? 'bu_jisoo_sunshowers_saves'
               : campaign === 'lisa' ? 'bu_lisa_sawadika_joins'
               : campaign === 'fa'   ? 'bu_jennie_fallenangel_saves'
               : campaign === 'newtrick' ? 'bu_rose_newtrick_saves'

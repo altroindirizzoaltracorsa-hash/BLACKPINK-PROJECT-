@@ -2,11 +2,17 @@
 //
 // Run: node .github/scripts/test_sunshowers_claims.mjs
 //
-// WHY. The Hollywood Reporter's exclusive says JISOO CO-WROTE an original
-// song, "Sun Showers", for The Angry Birds Movie 3. It does not say she
-// performs it, and it gives no release date. Two unknowns, and a card is a
-// very easy place to quietly resolve both — "JISOO's new song, out soon" reads
-// naturally and asserts two things nobody has said.
+// WHY. JISOO co-wrote AND performs "Sun Showers", an original song for The
+// Angry Birds Movie 3, and the pre-save is open. What is still not announced
+// is the RELEASE DATE — confirmed at the source, not assumed: the
+// distributor's own pre-save page carries releaseDateInfo.date = null.
+//
+// So the rule flipped for one half and held for the other. The performing
+// credit was unknown when this card shipped and this file FORBADE claiming
+// it; it is now confirmed, so the file REQUIRES it. The date was unknown and
+// still is, so that half is unchanged. Written down because a check whose
+// meaning silently inverts is worse than no check: the mutation list at the
+// bottom of the commit is what proves this one actually flipped.
 //
 // This site has already made the mirror-image mistake. The Steps card claimed
 // Jennie "wrote and performs" a song the HMMA nominee list credits to Justin
@@ -15,13 +21,11 @@
 // nobody re-read the clause before it. There the writing credit was invented;
 // here the performing credit is the one at risk. Same failure, opposite half.
 //
-// THE DISCLAIMER CONTAINS THE WORD IT IS GUARDING AGAINST. The card says
-// "Whether she also performs it has not been said" — so a check that simply
-// refuses /performs/ fails on the correct copy, and a check that simply
-// requires it passes on "JISOO performs Sun Showers". A substring that occurs
-// in both the claim and its denial cannot test either. So the disclaimer is
-// matched and REMOVED first, and only then is the remaining text searched for
-// a performance verb.
+// THE DATE HALF STILL HAS THE HARD CASE. "Release date not announced" and a
+// real date both contain date-ish words, so the check strips the one phrase
+// the card is allowed to say and then refuses any month or year in what is
+// left — rather than grepping for a string that appears in both the claim and
+// its denial.
 import { readFileSync, existsSync } from 'node:fs';
 
 const root = new URL('../..', import.meta.url).pathname;
@@ -51,9 +55,12 @@ const text = cardHtml
 ok('found the card', `${text.length} visible chars`);
 
 console.log('\n--- what IS known is said');
-/co-?writ/i.test(text)
+/co-?(writ|wrote)/i.test(text)
   ? ok('it says she co-wrote the song')
-  : bad('it says she co-wrote the song', 'the one credit we actually have is missing');
+  : bad('it says she co-wrote the song');
+/\b(performs?|sings?)\b/i.test(text)
+  ? ok('and that she performs it', 'confirmed, so the card says so')
+  : bad('and that she performs it', 'it is her song and the card no longer says so');
 /sun showers/i.test(text)   ? ok('it names the song')  : bad('it names the song');
 /angry birds movie 3/i.test(text) ? ok('it names the film') : bad('it names the film');
 /shumon/i.test(text)
@@ -65,20 +72,11 @@ console.log('\n--- what IS known is said');
 
 console.log('\n--- what is NOT known is not claimed');
 
-// 1. THE PERFORMANCE CLAIM. Remove the disclaimer, then nothing about
-//    performing may remain.
-const DISCLAIMER = /whether she also \*{0,2}performs\*{0,2} it has not been said/i;
-const hasDisclaimer = DISCLAIMER.test(text);
-hasDisclaimer
-  ? ok('it says plainly that we do not know if she performs it')
-  : bad('it says plainly that we do not know if she performs it',
-        'the disclaimer is gone — readers will assume she sings it');
-const stripped = text.replace(DISCLAIMER, ' ');
-const PERF = /\b(performs?|performed|performing|sings?|sung|singing|vocals?|her vocal)\b/i;
-const hit = stripped.match(PERF);
-hit
-  ? bad('and claims nothing about her performing it', `"${hit[0]}" appears outside the disclaimer`)
-  : ok('and claims nothing about her performing it');
+// And nothing may re-introduce the old hedge, which is now false.
+const HEDGE = /whether she (also )?(performs?|sings?)[^.]*not been said|not( been)? (said|confirmed|clear) (whether|if) she/i;
+HEDGE.test(text)
+  ? bad('the old "we do not know if she sings it" hedge is gone', 'it is back, and it is now untrue')
+  : ok('the old "we do not know if she sings it" hedge is gone');
 
 // 2. THE DATE. No timer, because there is no date to count to.
 /data-target\s*=/.test(cardTag)
@@ -96,10 +94,25 @@ dateHit
   ? ok('and says outright that the date is unknown')
   : bad('and says outright that the date is unknown', 'a card with no timer and no explanation reads as broken');
 
-// 3. No pre-save button, because there is no link to pre-save at.
-/<a[^>]+class="[^"]*cd-btn/.test(cardHtml)
-  ? bad('it offers no pre-save link', 'there is no campaign to link to yet')
-  : ok('it offers no pre-save link');
+// 3. THE PRE-SAVE, which now exists. Exact URL, no tracking tail: this repo
+//    strips ?si=/?is=/utm_* everywhere else and a pre-save link is the one
+//    most likely to arrive carrying one.
+const PRESAVE = 'https://JISOO.lnk.to/SunShowers';
+const btn = cardHtml.match(/<a[^>]+class="[^"]*cd-btn[^"]*"[^>]*href="([^"]+)"[^>]*>/)
+         || cardHtml.match(/<a[^>]+href="([^"]+)"[^>]*class="[^"]*cd-btn/);
+btn ? ok('it offers the pre-save', btn[1]) : bad('it offers the pre-save', 'the button is gone');
+if (btn) {
+  btn[1] === PRESAVE
+    ? ok('and the link is the official one, clean', PRESAVE)
+    : bad('and the link is the official one, clean', `got ${btn[1]}`);
+  /[?&](si|is|utm_|_r|_t|ref)=/i.test(btn[1])
+    ? bad('and carries no tracking parameters', btn[1])
+    : ok('and carries no tracking parameters');
+}
+/onclick="saveSunShowers\(\)"/.test(cardHtml)
+  ? ok('and the tap is counted', 'saveSunShowers()')
+  : bad('and the tap is counted', 'the button does not call saveSunShowers(), so the bar and badge never move');
+
 
 console.log('\n--- the artwork is really in the repo');
 const art = (cardHtml.match(/src="(\/sunshowers\/[^"]+)"/) || [])[1];
@@ -109,6 +122,11 @@ if (art) {
     ? ok('and that file exists', art)
     : bad('and that file exists', `${art} is referenced and not committed`);
 }
+const chip = (cardHtml.match(/src="(\/sunshowers\/shumon[^"]*)"/) || [])[1];
+chip ? ok('the pre-save badge is Shumon', chip) : bad('the pre-save badge is Shumon', 'the chip image is missing');
+if (chip) existsSync(root + chip.slice(1))
+  ? ok('and that file exists', chip)
+  : bad('and that file exists', `${chip} is referenced and not committed`);
 const og = readFileSync(root + 'middleware.js', 'utf8')
   .match(/sunshowers:\s*\{[\s\S]*?image:\s*'([^']+)'/);
 og ? ok('the share preview names an image', og[1]) : bad('the share preview names an image');
@@ -125,12 +143,13 @@ console.log('\n--- and the share preview makes the same two claims, no more');
   const mw = readFileSync(root + 'middleware.js', 'utf8');
   const blk = (mw.match(/sunshowers:\s*\{[\s\S]*?\n  \},/) || [''])[0]
     .replace(/\/\/[^\n]*/g, ' ');
-  /co-?writ/i.test(blk) ? ok('the preview says co-written') : bad('the preview says co-written');
-  const pStripped = blk.replace(/whether she performs it[^."]*/i, ' ')
-                       .replace(/it has not been said whether she performs it/i, ' ');
-  const pHit = pStripped.match(PERF);
-  pHit ? bad('the preview claims nothing about performing', `"${pHit[0]}"`)
-       : ok('the preview claims nothing about performing');
+  /co-?(writ|wrote)/i.test(blk) ? ok('the preview says co-written') : bad('the preview says co-written');
+  /\b(performs?|sings?)\b/i.test(blk)
+    ? ok('the preview says she performs it')
+    : bad('the preview says she performs it');
+  HEDGE.test(blk)
+    ? bad('and does not carry the old hedge', 'it is back, and untrue')
+    : ok('and does not carry the old hedge');
   const pDate = blk.replace(/sunshowers|sun-showers|og-countdown-sunshowers/ig, ' ').match(DATEY);
   pDate ? bad('the preview names no date', `"${pDate[0]}"`) : ok('the preview names no date');
 }

@@ -1884,6 +1884,21 @@
   .cd-card-sunshowers .ss-note { font-family: var(--mono); font-size: 0.62rem; line-height: 1.85;
      color: rgba(35,23,3,0.82); }
   .cd-card-sunshowers .ss-note b { color: #231703; font-weight: 600; }
+  /* The chip sits on the card's yellow, so it needs dark ink and a dark rim —
+     every other Early Supporter chip on this site is light-on-dark. */
+  .cd-card-sunshowers .cd-badge-chip.ss-shumon { display: none; align-items: center; gap: 0.35rem;
+     margin-left: 0.5rem; padding: 0.22rem 0.5rem 0.22rem 0.26rem; border-radius: 999px;
+     background: rgba(35,23,3,0.10); border: 1px solid rgba(35,23,3,0.30); color: #231703;
+     font-family: var(--mono); font-size: 0.5rem; letter-spacing: 0.12em; text-transform: uppercase;
+     white-space: nowrap; vertical-align: middle; }
+  .cd-card-sunshowers .cd-badge-chip.ss-shumon img { height: 1.05rem; width: 1.05rem; border-radius: 50%;
+     object-fit: cover; display: block; }
+  .cd-card-sunshowers .cd-goal { margin: 0.2rem 0 1rem; }
+  .cd-card-sunshowers .cd-goal-label, .cd-card-sunshowers .cd-goal-nums { color: #231703; }
+  .cd-card-sunshowers .cd-goal-bar { background: rgba(35,23,3,0.16); }
+  .cd-card-sunshowers .cd-goal-fill { background: #231703; }
+  .cd-card-sunshowers .cd-btn { background: #231703; color: #ffd978; border-color: #231703; }
+  .cd-card-sunshowers .cd-links { margin-bottom: 1rem; }
   .cd-card-sunshowers .ss-src { display: block; margin-top: 0.7rem; font-family: var(--mono);
      font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(35,23,3,0.58); }
   .st-hero {
@@ -4374,20 +4389,29 @@
                  alt="Sun Showers — JISOO, from The Angry Birds Movie 3. The Angry Birds cast on a yellow field, with Shumon, a small grey dustball, at the front right."
                  loading="lazy">
             <div class="ss-body">
-              <div class="cd-eyebrow">JISOO · Original Song · The Angry Birds Movie 3</div>
+              <div class="cd-eyebrow">JISOO · Original Song · The Angry Birds Movie 3<div class="cd-badge-chip ss-shumon" id="ss-badge" style="display:none;"><img src="/sunshowers/shumon.webp" alt="" aria-hidden="true">Early Supporter</div></div>
               <div class="ss-tba">Release date not announced</div>
+              <div class="cd-goal" id="ss-goal" style="display:none;">
+                <div class="cd-goal-top">
+                  <span class="cd-goal-label">🎯 Blinks pre-saved</span>
+                  <span class="cd-goal-nums" id="ss-goal-nums"></span>
+                </div>
+                <div class="cd-goal-bar"><div class="cd-goal-fill" id="ss-goal-fill" style="width:0%"></div></div>
+              </div>
+              <div class="cd-links">
+                <a class="cd-btn" href="https://JISOO.lnk.to/SunShowers" target="_blank" rel="noopener" onclick="saveSunShowers()">Pre-save ↗</a>
+              </div>
               <div class="ss-note">
-                JISOO has <b>co-written</b> an original song, <b>“Sun Showers”</b>, for
-                <b>The Angry Birds Movie 3</b>. It is expected in the film and in its
-                trailer, which has not landed yet.
+                JISOO <b>performs</b> and <b>co-wrote</b> <b>“Sun Showers”</b>, an original
+                song for <b>The Angry Birds Movie 3</b>. It is expected in the film and in
+                its trailer, which has not landed yet.
                 <br><br>
                 The sleeve is hers too: the small grey dustball at the front is
                 <b>Shumon</b>, a character she first drew in middle school, years before
-                she debuted.
+                she debuted — and he is the badge you get for pre-saving.
                 <br><br>
-                Whether she also <b>performs</b> it has not been said, and nor has a
-                release date — so there is nothing to count down to yet. This card
-                updates when there is.
+                No release date has been announced, so there is nothing to count down to
+                yet. The pre-save is open; this card gets its clock the day a date exists.
                 <span class="ss-src">Reported by The Hollywood Reporter</span>
               </div>
             </div>
@@ -7305,6 +7329,7 @@ window.addEventListener('DOMContentLoaded', () => {
   loadNewTrickSaveCount();
   loadAddictedSaveCount();
   loadSthSaveCount();
+  loadSsSaveCount();
   refreshSupporterChips();
   loadLtalStreamsGoal();
   renderItunesInlineBadge();
@@ -15357,6 +15382,14 @@ const SPECIAL_BADGES = [
     check: () => sthEarlySupporterEarned(),
   },
   {
+    id: 'jisoo-sunshowers-presave',
+    icon: '<img src="/sunshowers/shumon.webp" alt="" style="height:20px;width:20px;border-radius:50%;object-fit:cover;vertical-align:middle;">',
+    label: 'EARLY SUPPORTER',
+    song: 'Sun Showers \u2014 JISOO',
+    desc: 'Pre-saved before release',
+    check: () => ssEarlySupporterEarned(),
+  },
+  {
     id: 'jisoo-addicted-presave',
     icon: '<img src="/addicted/addicted-heart-lightning-v1.webp" alt="" style="height:20px;width:auto;max-width:96px;object-fit:contain;vertical-align:middle;">',
     label: 'EARLY SUPPORTER',
@@ -18774,13 +18807,14 @@ async function refreshSupporterChips() {
   let user = null;
   try { user = (await sb?.auth.getUser())?.data?.user || null; } catch {}
   _buSignedIn = !!user;
-  if (user) { try { await Promise.all([faEarlySupporterEarned(), lisaEarlySupporterEarned(), jisooEarlySupporterEarned(), newtrickEarlySupporterEarned(), addictedEarlySupporterEarned(), sthEarlySupporterEarned()]); } catch {} }
+  if (user) { try { await Promise.all([faEarlySupporterEarned(), lisaEarlySupporterEarned(), jisooEarlySupporterEarned(), newtrickEarlySupporterEarned(), addictedEarlySupporterEarned(), sthEarlySupporterEarned(), ssEarlySupporterEarned()]); } catch {} }
   renderFaBadge();
   renderSthBadge();
   renderLisaBadge();
   renderJisooBadge();
   renderNewTrickBadge();
   renderAddictedBadge();
+  renderSsBadge();
 }
 
 function renderFaSaveCount(count) {
@@ -18890,6 +18924,91 @@ async function sthEarlySupporterEarned() {
     }
   } catch (e) {}
   return localFlag || metaFlag;
+}
+
+// ── JISOO · "Sun Showers" (The Angry Birds Movie 3) ───────────────────────
+// Its own counter key, its own localStorage flags, its own badge — so it can
+// never open at ADDICTED's total or hand out ADDICTED's badge.
+//
+// NO RELEASE DATE. The distributor's own pre-save page carries
+// releaseDateInfo.date = null, so there is no instant to gate on and ssLive()
+// is false while SS_RELEASE_AT is null. That is the right answer for now:
+// everyone pre-saving an unreleased song IS early.
+//
+// THE DAY A DATE IS ANNOUNCED, set SS_RELEASE_AT and the gate starts working
+// with no other change. That gate is not optional — new trick shipped for six
+// weeks without one and ADDICTED had the same hole, so "Early Supporter" went
+// to anyone who tapped the link weeks AFTER release, which devalues it for
+// everyone who actually pre-saved.
+const SS_SAVE_LS    = 'bu_jisoo_sunshowers_saved';
+const SS_COUNTED_LS = 'bu_jisoo_sunshowers_counted';
+const SS_SAVE_GOAL  = 50;
+const SS_RELEASE_AT = null;
+
+function ssLive() {
+  return SS_RELEASE_AT != null && Date.now() >= new Date(SS_RELEASE_AT).getTime();
+}
+
+function renderSsBadge() {
+  const el = document.getElementById('ss-badge');
+  if (el) el.style.display = (_buSignedIn && localStorage.getItem(SS_SAVE_LS)) ? 'inline-flex' : 'none';
+}
+
+function renderSsSaveCount(count) {
+  const wrap = document.getElementById('ss-goal');
+  const numsEl = document.getElementById('ss-goal-nums');
+  const fillEl = document.getElementById('ss-goal-fill');
+  if (!wrap || !numsEl || !fillEl || count <= 0) return;
+  if (ssLive()) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  const milestonesPassed = Math.floor(count / SS_SAVE_GOAL);
+  const currentMilestone = milestonesPassed * SS_SAVE_GOAL;
+  const nextMilestone = currentMilestone + SS_SAVE_GOAL;
+  const pct = milestonesPassed > 0
+    ? ((count - currentMilestone) / SS_SAVE_GOAL) * 100
+    : (count / SS_SAVE_GOAL) * 100;
+  fillEl.style.width = Math.min(100, pct) + '%';
+  numsEl.innerHTML = milestonesPassed > 0
+    ? `🎉 ${currentMilestone.toLocaleString()} reached — ${count.toLocaleString()}<span> / ${nextMilestone.toLocaleString()} pre-saves</span>`
+    : `${count.toLocaleString()}<span> / ${SS_SAVE_GOAL.toLocaleString()} pre-saves</span>`;
+}
+
+function saveSunShowers() {
+  if (ssLive()) return;
+  if (!localStorage.getItem(SS_SAVE_LS)) {
+    localStorage.setItem(SS_SAVE_LS, '1');
+    _showShareToast(_buSignedIn ? '🏆 Badge unlocked: Early Supporter!' : '✅ Pre-saved! Sign in on My Badges to claim your Early Supporter badge.');
+    try { sb?.auth.updateUser({ data: { ss_early_supporter: true } }); } catch {}
+    refreshSupporterChips();
+  }
+  countPresaveOnce(SS_COUNTED_LS, 'sunshowers_save', renderSsSaveCount);
+}
+
+async function ssEarlySupporterEarned() {
+  const localFlag = !!localStorage.getItem(SS_SAVE_LS);
+  let metaFlag = false;
+  try {
+    const user = (await sb?.auth.getUser())?.data?.user || null;
+    if (user) {
+      metaFlag = !!user.user_metadata?.ss_early_supporter;
+      if (localFlag && !metaFlag) {
+        await sb.auth.updateUser({ data: { ss_early_supporter: true } });
+        metaFlag = true;
+      } else if (metaFlag && !localFlag) {
+        localStorage.setItem(SS_SAVE_LS, '1');
+      }
+    }
+  } catch (e) {}
+  return localFlag || metaFlag;
+}
+
+async function loadSsSaveCount() {
+  renderSsBadge();
+  try {
+    const r = await fetch('/api/proxy-image?sunshowers_save=count');
+    const d = await r.json();
+    renderSsSaveCount(d.count || 0);
+  } catch (e) {}
 }
 
 async function loadSthSaveCount() {
