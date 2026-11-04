@@ -66,6 +66,18 @@ export default async function handler(req, res) {
       if (!nr.error) for (const row of (nr.data || [])) ntByDay[row.day_key] = row.newtrick || 0;
     } catch {}
 
+    // ADDICTED (JISOO, 2026-10-30) in its OWN tolerant query, for the same
+    // reason newtrick has one: kept out of the NEW group so a missing
+    // `addicted` column cannot collapse the ladder above it and drop
+    // sawadika/click/fallenangel/heaven from the grid. It had no column at all
+    // until the 2026-11 migration, which is why this grid showed no ADDICTED
+    // row from release day — the count was being computed and had nowhere to go.
+    const adByDay = {};
+    try {
+      const ar = await runQuery('day_key,addicted');
+      if (!ar.error) for (const row of (ar.data || [])) adByDay[row.day_key] = row.addicted || 0;
+    } catch {}
+
     const days = {};
     for (const row of (data || [])) {
       days[row.day_key] = {
@@ -79,6 +91,7 @@ export default async function handler(req, res) {
         fallenangel: hasNew ? (row.fallenangel || 0) : 0,
         heaven:      hasNew ? (row.heaven      || 0) : 0,
         newtrick:    ntByDay[row.day_key] || 0,
+        addicted:    adByDay[row.day_key] || 0,
         by_source: hasBySource ? (row.by_source || null) : null,
       };
     }

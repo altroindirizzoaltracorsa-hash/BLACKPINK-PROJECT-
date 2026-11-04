@@ -926,7 +926,7 @@ async function handlerInner(req, res) {
     // only when the submit is for the same day/week the cron last wrote.
     if (existingEntry?.scores && scores) {
       const ex = existingEntry.scores;
-      for (const id of ['fallenangel', 'heaven', 'sawadika', 'click', 'newtrick']) {
+      for (const id of ['fallenangel', 'heaven', 'sawadika', 'click', 'newtrick', 'addicted']) {
         if (scores[`overall_${id}`] == null && ex[`overall_${id}`] != null) scores[`overall_${id}`] = ex[`overall_${id}`];
         if (ex.daily_date === scores.daily_date && scores[`daily_${id}`] == null && ex[`daily_${id}`] != null) scores[`daily_${id}`] = ex[`daily_${id}`];
         if (ex.weekly_start === scores.weekly_start && scores[`weekly_${id}`] == null && ex[`weekly_${id}`] != null) scores[`weekly_${id}`] = ex[`weekly_${id}`];
@@ -1100,6 +1100,18 @@ async function handlerInner(req, res) {
             newtrick: Math.max(val('newtrick'), Number((ntEx && ntEx[0])?.newtrick) || 0) };
           await sb.from('user_daily_counts').upsert(nt, { onConflict: 'app_user_id,day_key' });
         } catch (_) { /* newtrick column not migrated yet */ }
+        // ADDICTED (JISOO) in its OWN isolated guarded upsert, same reason as
+        // newtrick above: it had no column until the 2026-11 migration, and a
+        // missing column here must not take the others down with it.
+        try {
+          const { data: adEx } = await sb
+            .from('user_daily_counts')
+            .select('addicted')
+            .eq('app_user_id', user.id).eq('day_key', dk).limit(1);
+          const ad = { app_user_id: user.id, day_key: dk,
+            addicted: Math.max(val('addicted'), Number((adEx && adEx[0])?.addicted) || 0) };
+          await sb.from('user_daily_counts').upsert(ad, { onConflict: 'app_user_id,day_key' });
+        } catch (_) { /* addicted column not migrated yet */ }
       }
     } catch (e) {
       console.error('user_daily_counts live persist failed:', e?.message || e);

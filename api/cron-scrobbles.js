@@ -1432,6 +1432,33 @@ export default async function handler(req, res) {
       } catch (eNt) {
         console.error('user_daily_counts newtrick upsert skipped (column migrated yet?):', eNt.message || eNt);
       }
+
+      // JISOO "ADDICTED" (2026-10-30) persisted in its OWN isolated guarded
+      // upsert, for the same reason newtrick has one: a missing `addicted`
+      // column must not disturb any column above it. It had no column at all
+      // until the 2026-11 migration, so the badges grid showed no ADDICTED row
+      // from release day onward while every other count kept working.
+      //   ALTER TABLE user_daily_counts ADD COLUMN IF NOT EXISTS addicted integer NOT NULL DEFAULT 0;
+      try {
+        const { data: adEx } = await sb
+          .from('user_daily_counts')
+          .select('app_user_id,addicted')
+          .eq('day_key', todayKey)
+          .in('app_user_id', ids);
+        const adMap = new Map((adEx || []).map(r => [r.app_user_id, r]));
+        const adRows = ids.map(id => ({
+          app_user_id: id, day_key: todayKey,
+          addicted: Math.max(dailyByUser.get(id).addicted || 0, adMap.get(id)?.addicted || 0),
+        }));
+        if (adRows.length) {
+          const { error: adErr } = await sb
+            .from('user_daily_counts')
+            .upsert(adRows, { onConflict: 'app_user_id,day_key' });
+          if (adErr) throw adErr;
+        }
+      } catch (eAd) {
+        console.error('user_daily_counts addicted upsert skipped (column migrated yet?):', eAd.message || eAd);
+      }
     } catch (e) {
       console.error('user_daily_counts upsert failed:', e.message || e);
     }
