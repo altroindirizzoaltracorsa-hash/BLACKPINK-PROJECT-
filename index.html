@@ -23975,7 +23975,17 @@ function drawPresaveCard(canvas, d) {
     // Measuring only — nothing is drawn until the block below.
     const spacing = ctx.letterSpacing;
     ctx.letterSpacing = '1px';
-    titleTextSize = Math.round(H * 0.13);
+    // ON A FITTED CARD THE TITLE IS A HEADING, NOT THE HEADLINE, so it is
+    // sized against the countdown it heads rather than against the canvas.
+    // H * 0.13 is a fraction of a card the artwork fills; here the artwork is
+    // an object on the card and every pixel the type takes is one the picture
+    // loses. On the 1080 square that fraction came to a 140px title — larger
+    // than the countdown under it — and cost the sleeve a third of its height.
+    // 0.68 rather than something nearer 1: on the EARNED card the line under
+    // the title is the claim, which is set in the same face and the same
+    // chrome, and at a similar size the two read as two headlines arguing
+    // instead of a heading over a headline.
+    titleTextSize = FIT ? Math.round(cdBigSize * 0.68) : Math.round(H * 0.13);
     for (let i = 0; i < 32 && titleTextSize > 12; i++) {
       ctx.font = HEADFONT.replace('%SPX%', titleTextSize + 'px');
       if (ctx.measureText(titleText).width <= titleW) break;
@@ -26286,6 +26296,9 @@ const SS_CARD_FONT  = '%SPX% "Anton", "Bebas Neue", sans-serif';
 // on the card and the My Badges row use, named once here because the share
 // card needs it as an Image rather than as markup.
 const SS_BADGE_IMG  = '/sunshowers/shumon.webp';
+// The heading on the share card's type column. Caps, because the face it is
+// set in is the film's own all-caps lettering.
+const SS_CARD_TITLE = 'SUN SHOWERS';
 
 async function selectSunShowersCardArt(url, thumbEl) {
   document.querySelectorAll('.release-pic-thumb').forEach(t => t.classList.remove('active'));
@@ -26304,13 +26317,19 @@ async function selectSunShowersCardArt(url, thumbEl) {
   _presaveCardData.stampStack  = false;
   _presaveCardData.stampCenter = false;
   _presaveCardData.artHasLockup = pick.hasLockup;
-  // No wordmark PNG exists for this release, so the name is SET rather than
-  // drawn from an image — and only over the picture that does not already
-  // carry it. Both halves assigned every time: the sleeve must not inherit a
-  // second title from the cast strip, and the cast strip must not inherit the
-  // sleeve's silence, which is what left it with no title at all.
+  // THE NAME GOES IN THE TYPE COLUMN FOR EVERY PICTURE, including the sleeve,
+  // which letters it already. That reads as a repeat only while the artwork is
+  // the card's background — and it is not one any more. The picture is a
+  // contained object with its own edge, so the line above the claim is this
+  // card's own heading, the way a caption names the picture beside it rather
+  // than competing with what is printed inside it. Suppressing it left the
+  // whole right-hand column headed by nothing.
+  //
+  // `artHasLockup` still rides along above, because the ADDICTED overlay reads
+  // it to decide whether to lay its heart over the art; it no longer has any
+  // say in whether the name is set.
   _presaveCardData.titleImg  = null;
-  _presaveCardData.titleText = pick.hasLockup ? null : 'SUN SHOWERS';
+  _presaveCardData.titleText = SS_CARD_TITLE;
   if (label) label.textContent = _presaveCardData.earned ? "I'M AN EARLY SUPPORTER" : 'SUN SHOWERS';
   drawPresaveCard(canvas, _presaveCardData);
   _markCardReady(canvas);
@@ -26362,10 +26381,10 @@ async function openSunShowersCard() {
     // which is right on a photo and wrong here — a yellow pill on the black
     // card is the brightest thing on it, louder than the artwork.
     stampPill: 'rgba(255,255,255,0.09)', stampInk: '#f3efe6', stampScale: 1.3,
-    // The sleeve letters SUN SHOWERS · JISOO · ANGRY BIRDS 3 itself, so the
-    // default card sets no title of its own. selectSunShowersCardArt turns
-    // titleText on for the cast strip, which carries no lettering.
-    artHasLockup: true, titleText: null,
+    // The name heads the type column on every picture — see the note in
+    // selectSunShowersCardArt. Set here too so the FIRST card drawn carries it
+    // as well; this object is what the card opens on, before any pick.
+    artHasLockup: true, titleText: SS_CARD_TITLE,
     // THE PICTURE IS NOT CROPPED. Everything else here follows from that:
     // black ground because the artwork no longer bleeds to the edges and has
     // to sit on something, no scrimRGB because there is no scrim over a

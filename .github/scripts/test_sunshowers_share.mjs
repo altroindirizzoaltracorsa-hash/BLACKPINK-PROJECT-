@@ -232,12 +232,21 @@ await checkNoDate('sleeve');
       ? bad('and the link carries no tracking tail', cta)
       : ok('and the link carries no tracking tail');
   }
-  // hasLockup: the sleeve already letters the title, so the renderer must NOT
-  // set it a second time. The reverse of the cast strip below.
+  // THIS RULE INVERTED, and that is worth saying out loud rather than quietly
+  // editing. It used to FORBID the title here: the sleeve letters its own
+  // name, so setting it again was printing it twice over the same artwork.
+  // That held while the sleeve was the card's full-bleed background. It is now
+  // a contained picture with its own edge, and the line sits in a type column
+  // beside it — a caption naming the picture, not a second lockup across it.
+  // Suppressing it left that column headed by nothing at all.
+  //
+  // A check that silently flips meaning is worse than no check, so the
+  // mutation list for this commit drives it in the new direction too.
   const titled = t.filter(s => /^sun showers$/i.test(s.trim()));
-  titled.length === 0
-    ? ok('and does not set the title twice', 'the sleeve letters it already')
-    : bad('and does not set the title twice', `printed ${JSON.stringify(titled)} over artwork that already says it`);
+  titled.length
+    ? ok('and the type column is headed by the title', `"${titled[0]}"`)
+    : bad('and the type column is headed by the title',
+          `printed ${JSON.stringify(t.slice(0, 12))} — the column has no heading`);
 }
 
 // The pixels answer whether picking actually redraws; the text answers whether
@@ -267,13 +276,14 @@ castSrc === '/sunshowers/sunshowers-cast.webp'
   : bad('and the card is holding the cast strip', String(castSrc));
 await checkNoDate('cast');
 {
-  // The cast picture carries no lettering, so here the title MUST be drawn —
-  // the mirror of the sleeve check above. Same flag, opposite expectation.
+  // Same expectation as the sleeve now, where it used to be the opposite one.
+  // The cast picture never carried lettering of its own, so this was always
+  // required here; what changed is that it is required on both.
   const t = await texts();
   const titled = t.filter(s => /sun showers/i.test(s));
   titled.length
-    ? ok('and this one does get a drawn title', `"${titled[0]}"`)
-    : bad('and this one does get a drawn title', 'untitled artwork with no title set');
+    ? ok('and this one is headed by it too', `"${titled[0]}"`)
+    : bad('and this one is headed by it too', 'untitled artwork with no title set');
 }
 
 // THE FORMAT TOGGLE, which is where the picker used to change releases.

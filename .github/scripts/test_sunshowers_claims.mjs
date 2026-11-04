@@ -169,6 +169,25 @@ openFn ? ok('found openSunShowersCard()') : bad('found openSunShowersCard()', 'i
   const oDate = openFn.replace(/sunshowers|sun[- ]showers/ig, ' ').match(DATEY);
   oDate ? bad('and names no date anywhere in it', `"${oDate[0]}"`) : ok('and names no date anywhere in it');
 }
+// THE TITLE HEADS THE TYPE COLUMN ON EVERY PICTURE, including the sleeve that
+// letters its own name. That was forbidden while the artwork was the card's
+// background — setting it again printed it twice over the same picture — and
+// is required now that the picture is a contained object with the type beside
+// it rather than over it. Pinned in BOTH places because they are two separate
+// assignments: the object the card opens on, and the one each pick rewrites.
+/titleText:\s*SS_CARD_TITLE/.test(openFn)
+  ? ok('the card opens with the title set')
+  : bad('the card opens with the title set', 'the first card drawn has no heading over its type');
+{
+  const selFn = (site.match(/async function selectSunShowersCardArt\([\s\S]*?\n\}/) || [''])[0]
+    .replace(/\/\/[^\n]*/g, ' ');
+  /titleText\s*=\s*SS_CARD_TITLE\s*;/.test(selFn)
+    ? ok('and every pick keeps it', 'not conditional on the artwork')
+    : bad('and every pick keeps it',
+          /hasLockup\s*\?/.test(selFn)
+            ? 'it is back to being suppressed on artwork that letters its own name'
+            : 'selectSunShowersCardArt no longer sets it');
+}
 /fitWhole:\s*true/.test(openFn)
   ? ok('and asks for the picture whole', 'fitWhole: true')
   : bad('and asks for the picture whole', 'the card is back to cropping a canvas out of the artwork');
