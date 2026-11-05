@@ -430,6 +430,44 @@ console.log('\n--- Someone to Hold');
   relAt && relAt === target
     ? ok('  and it is the same instant the card counts to', relAt)
     : bad('  and it is the same instant the card counts to', `STH_RELEASE_AT ${relAt} vs card ${target}`);
+
+  // 8. The community playlists, in order and clean — the same rules ADDICTED's
+  //    and PRESS PLAY's blocks are held to. Order is checked rather than
+  //    membership: a set passes while FOCUSED sits third, and the order is the
+  //    only thing distinguishing these three to someone scanning the card.
+  const card  = (ix.match(/<div class="cd-card cd-card-steps"[\s\S]*?(?=<div class="cd-card )/) || [''])[0];
+  const block = (card.match(/<details class="cd-times cd-playlists">[\s\S]*?<\/details>/) || [''])[0];
+  block ? ok('  the card lists our playlists') : bad('  the card lists our playlists');
+  const WANT = [
+    ['STH FOCUSED', '5gH4blOZKANYBKzKzsyhCB'],
+    ['STH x PINKS', '2XgI7jbPYtf9pV1DtiJxCH'],
+    ['STH x BP',    '4unCkvJ8oJCFQzA7d7zKae'],
+  ];
+  const links = [...block.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)]
+    .map((m) => [m[2].replace(/\s*→\s*$/, '').trim(), m[1]]);
+  links.length === WANT.length
+    ? ok(`  ${links.length} playlists listed`, links.map((l) => l[0]).join(', '))
+    : bad(`  ${WANT.length} playlists listed`, `${links.length}: ${links.map((l) => l[0]).join(', ')}`);
+  WANT.forEach(([name, id], i) => {
+    const got = links[i] || [];
+    got[0] === name && got[1] === `https://open.spotify.com/playlist/${id}`
+      ? ok(`    ${i + 1}. ${name}`)
+      : bad(`    ${i + 1}. ${name}`, got[0] ? `got ${got[0]} → ${got[1]}` : 'missing');
+  });
+  // ?si= identifies whoever copied the link and would be handed to every
+  // visitor alike. Every other playlist list here is stripped of it.
+  !/[?&]si=/.test(block)
+    ? ok('  and none carries a share-tracking parameter')
+    : bad('  and none carries a share-tracking parameter', (block.match(/[^"]*[?&]si=[^"]*/g) || []).join(' '));
+  // THE NOTE IS NOT IN THE MARKUP, and that is the point. PRESS PLAY's still
+  // reads "Pre-save them — they fill up when PRESS PLAY lands" two weeks after
+  // it landed, and ADDICTED's had to be rewritten by hand the morning after.
+  // This one is set from sthLive(), so it cannot be counting down while its
+  // own copy says the song is out. The two wordings are driven below.
+  /id="sth-pl-note"[^>]*>\s*<\/p>/.test(block)
+    ? ok('  and the note is left empty for the script to set')
+    : bad('  and the note is left empty for the script to set',
+          /pre-?save them/i.test(block) ? 'it is hardcoded, so it goes stale at release' : 'no #sth-pl-note');
 }
 
 if (errs.length) { console.log('    page errors: ' + errs.slice(0,3).join(' | ')); fails += errs.length; }
@@ -526,6 +564,55 @@ console.log('\n--- new trick after release');
     ? ok('and clicking it no longer grants ROSÉ Early Supporter')
     : bad('and clicking it no longer grants ROSÉ Early Supporter', `${r2.key} became ${r2.got}`);
   await pg.close();
+}
+
+// ── THE STEPS PLAYLIST NOTE, ON BOTH SIDES OF ITS RELEASE ───────────────────
+// The markup check above proves the note is left to the script. This proves
+// the script says the right thing — and says a DIFFERENT thing once the song
+// is out, which is the only reason it is script-driven at all. Driven by
+// pinning the clock either side of STH_RELEASE_AT rather than by calling the
+// function with an argument, so what is tested is the page's own notion of
+// whether the song is out.
+console.log('\n--- the Steps playlist note follows the release');
+{
+  const STH_AT = Date.parse((ix.match(/const STH_RELEASE_AT = '([^']+)'/) || [])[1]);
+  const read = async (at) => {
+    const pg = await browser.newPage({ viewport: { width: 414, height: 900 } });
+    await pg.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen','1');
+      localStorage.setItem('ltal_reminder_dismissed_v1','1'); localStorage.setItem('ext_update_dismissed_1.9.8','1'); } catch (e) {} });
+    await pinClock(pg, at);
+    await pg.goto(`http://127.0.0.1:${server.address().port}/countdowns/steps`, { waitUntil: 'load' });
+    await pg.waitForFunction(() => {
+      const el = document.getElementById('sth-pl-note');
+      return el && el.textContent.trim().length > 0;
+    }, { timeout: 20000 }).catch(() => {});
+    const out = await pg.evaluate(() => ({
+      note: (document.getElementById('sth-pl-note') || {}).textContent || '',
+      live: typeof sthLive === 'function' ? sthLive() : null,
+    }));
+    await pg.close();
+    return out;
+  };
+  const before = await read(STH_AT - 3600e3);
+  const after  = await read(STH_AT + 3600e3);
+
+  before.live === false
+    ? ok('an hour before, the page says it is not out yet')
+    : bad('an hour before, the page says it is not out yet', `sthLive() is ${before.live}`);
+  /pre-?save/i.test(before.note)
+    ? ok('  and the note asks for a pre-save', before.note.trim())
+    : bad('  and the note asks for a pre-save', before.note.trim() || '(empty)');
+
+  after.live === true
+    ? ok('an hour after, the page says it is out')
+    : bad('an hour after, the page says it is out', `sthLive() is ${after.live}`);
+  after.note.trim() && !/pre-?save/i.test(after.note)
+    ? ok('  and the note stops asking for one', after.note.trim())
+    : bad('  and the note stops asking for one',
+          after.note.trim() ? `still says: ${after.note.trim()}` : '(empty)');
+  after.note.trim() !== before.note.trim()
+    ? ok('  so the two sides really do differ')
+    : bad('  so the two sides really do differ', 'the same sentence on both sides of the release');
 }
 
 await browser.close(); server.close();

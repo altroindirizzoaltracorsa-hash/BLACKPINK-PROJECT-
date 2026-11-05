@@ -4357,6 +4357,26 @@
               <a class="cd-btn" href="https://netflixmusic.ffm.to/someonetohold" target="_blank" rel="noopener" onclick="saveSomeoneToHold()">Pre-save ↗</a>
               <button class="cd-btn cd-btn-ghost" onclick="openSomeoneToHoldCard()">📸 Share</button>
             </div>
+            <!-- Our three playlists for this release.
+                 The note is SET BY SCRIPT, not written here, because the one
+                 thing it says stops being true in a few hours: the card is
+                 counting down tonight and the song is out tomorrow. PRESS
+                 PLAY's note still reads "Pre-save them — they fill up when
+                 PRESS PLAY lands" two weeks after it landed, and ADDICTED's
+                 had to be rewritten by hand the morning after. Same instant
+                 the countdown uses (sthLive), so the two cannot disagree.
+                 No ?si= on the links, as everywhere else here: that token is
+                 tied to whoever copied the link and would be handed to every
+                 visitor alike. -->
+            <details class="cd-times cd-playlists">
+              <summary>🎧 Community Playlists</summary>
+              <div class="cd-times-body">
+                <p class="cd-pl-note" id="sth-pl-note"></p>
+                <a href="https://open.spotify.com/playlist/5gH4blOZKANYBKzKzsyhCB" target="_blank" rel="noopener">STH FOCUSED →</a>
+                <a href="https://open.spotify.com/playlist/2XgI7jbPYtf9pV1DtiJxCH" target="_blank" rel="noopener">STH x PINKS →</a>
+                <a href="https://open.spotify.com/playlist/4unCkvJ8oJCFQzA7d7zKae" target="_blank" rel="noopener">STH x BP →</a>
+              </div>
+            </details>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
               <div class="cd-times-body" data-times-for="2026-11-06T05:00:00Z"></div>
@@ -19133,8 +19153,21 @@ async function loadSsSaveCount() {
   } catch (e) {}
 }
 
+// The playlists note, which changes at the release and nowhere else. Before:
+// pre-save them. After: they are filling up, go and play one. Read off
+// sthLive() — the same instant the countdown and the pre-save bar use — so a
+// card cannot be counting down while its own copy says the song is out.
+function renderSthPlaylistNote() {
+  const el = document.getElementById('sth-pl-note');
+  if (!el) return;
+  el.textContent = sthLive()
+    ? '“Someone to Hold” is out — open one and let it run.'
+    : 'Pre-save them — they fill up the moment “Someone to Hold” lands.';
+}
+
 async function loadSthSaveCount() {
   renderSthBadge();
+  renderSthPlaylistNote();
   try {
     const r = await fetch('/api/proxy-image?sth_save=count');
     const d = await r.json();
