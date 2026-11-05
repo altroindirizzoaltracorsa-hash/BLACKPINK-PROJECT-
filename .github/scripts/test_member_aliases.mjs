@@ -104,18 +104,43 @@ console.log('\n--- and a real slug is never shadowed by a name');
   // printed on every Fallen Angel share card already posted; an alias that
   // swallowed it would quietly change where those land.
   const r = await open('/countdowns/jenn.ie');
-  r.shown.length === 1 && r.shown[0] === 'jenn.ie'
+  r.shown.includes('jenn.ie')
     ? ok('/countdowns/jenn.ie still shows Fallen Angel', 'the posted share cards still land where they did')
     : bad('/countdowns/jenn.ie still shows Fallen Angel', `showed ${r.shown.join(', ') || 'nothing'}`);
   r.url === '/countdowns/jenn.ie'
     ? ok('and is not rewritten')
     : bad('and is not rewritten', r.url);
+  // THIS ASSERTION INVERTED, which is worth saying rather than quietly
+  // editing. It used to require that this URL show Fallen Angel and NOTHING
+  // ELSE. That was right while jenn.ie was only Fallen Angel's address. It has
+  // since been shared as JENNIE's link for Someone to Hold, so the URL now has
+  // two jobs and has to answer both: the share cards already posted still find
+  // Fallen Angel, and everyone who followed it for the new single finds that.
+  r.shown.includes('steps')
+    ? ok('and shows Someone to Hold as well', r.shown.join(' then '))
+    : bad('and shows Someone to Hold as well',
+          `showed only ${r.shown.join(', ')} — the link was shared for the new single`);
+  // Order matters: people arriving here were sent for the new release. Fallen
+  // Angel keeps its place under Past countdowns, below.
+  r.shown[0] === 'steps'
+    ? ok('with the live one first')
+    : bad('with the live one first', r.shown.join(' then '));
 }
 {
   const r = await open('/countdowns/steps');
   r.shown.length === 1 && r.shown[0] === 'steps'
     ? ok('/countdowns/steps still shows Someone to Hold')
     : bad('/countdowns/steps still shows Someone to Hold', `showed ${r.shown.join(', ') || 'nothing'}`);
+}
+{
+  // The companion is OPT-IN, on one card. Every other release deep link is
+  // still exactly its own card — a rule that quietly added a second card to
+  // every past release's link would be a different feature than the one asked
+  // for, and nobody would notice until they followed one.
+  const r = await open('/countdowns/jisoo.io');
+  r.shown.length === 1 && r.shown[0] === 'jisoo.io'
+    ? ok('/countdowns/jisoo.io is still one card', 'data-also-live is opt-in, not a blanket rule')
+    : bad('/countdowns/jisoo.io is still one card', `showed ${r.shown.join(', ')}`);
 }
 
 // THE PART THAT MATTERS IN SIX MONTHS. Everything above is also true of a
@@ -190,6 +215,40 @@ console.log('\n--- the alias follows the dates, not a list');
   moved.restored === 'steps'
     ? ok('and the page is as it was')
     : bad('and the page is as it was', moved.restored);
+}
+{
+  // Same proof for the companion: the card says "also my member's live one",
+  // not "also steps". If it were named, this would keep showing Someone to
+  // Hold after JENNIE's next release lands — which is the whole reason it is
+  // not named.
+  const moved = await page.evaluate(() => {
+    const view = (p) => resolveCountdownView(p).show;
+    const out = { before: view('jenn.ie') };
+    const steps = document.querySelector('[data-slug="steps"]');
+    const sunsh = document.querySelector('[data-slug="sunshowers"]');
+    const keptS = steps.dataset.target, keptM = sunsh.dataset.member;
+    // Someone to Hold is out, and something of JENNIE's is dated ahead.
+    steps.dataset.target = new Date(Date.now() - 86400000).toISOString();
+    sunsh.dataset.member = 'jennie';
+    sunsh.dataset.target = '2099-01-01T00:00:00Z';
+    out.afterNext = view('jenn.ie');
+    steps.dataset.target = keptS; sunsh.dataset.member = keptM;
+    sunsh.removeAttribute('data-target');
+    out.restored = view('jenn.ie');
+    return out;
+  });
+  JSON.stringify(moved.before) === JSON.stringify(['steps', 'jenn.ie'])
+    ? ok('today jenn.ie pairs with Someone to Hold', moved.before.join(' then '))
+    : bad('today jenn.ie pairs with Someone to Hold', JSON.stringify(moved.before));
+  moved.afterNext[0] === 'sunshowers'
+    ? ok('and a newer dated release takes that place', 'the companion is resolved, not named')
+    : bad('and a newer dated release takes that place',
+          `${JSON.stringify(moved.afterNext)} — ` + (moved.afterNext.includes('sunshowers')
+            ? 'it found the new one but put it second'
+            : 'the companion is pinned to a slug'));
+  JSON.stringify(moved.restored) === JSON.stringify(['steps', 'jenn.ie'])
+    ? ok('and the page is as it was')
+    : bad('and the page is as it was', JSON.stringify(moved.restored));
 }
 
 console.log('\n--- and nothing threw');

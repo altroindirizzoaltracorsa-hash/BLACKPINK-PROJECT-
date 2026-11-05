@@ -4665,7 +4665,16 @@
         <div id="cd-past" hidden>
           <p class="cd-past-label">◇ Past countdowns</p>
           <div class="cd-wrap">
-          <div class="cd-card cd-card-hero cd-card-jennie" id="fa-card" data-slug="jenn.ie" data-member="jennie" data-target="2026-08-28T04:00:00Z" data-live="OUT NOW ✨">
+          <!-- data-also-live: /countdowns/jenn.ie shows JENNIE's live release
+               above this card as well as this one.
+               This URL is Fallen Angel's own address AND has been shared as
+               "Jennie's countdown" for Someone to Hold, so it has to answer
+               both: the Fallen Angel share cards already posted still land on
+               Fallen Angel, and everyone who followed the link for the new
+               single finds it at the top of the page.
+               The companion is resolved from this card's data-member, not
+               named — so it follows her next release without an edit here. -->
+          <div class="cd-card cd-card-hero cd-card-jennie" id="fa-card" data-slug="jenn.ie" data-member="jennie" data-also-live data-target="2026-08-28T04:00:00Z" data-live="OUT NOW ✨">
             <div class="cd-hero">
               <div class="fa-look-toggle" role="group" aria-label="Cover style">
                 <button type="button" data-look="white" onclick="setFaLook('white')">White</button>
@@ -7445,6 +7454,27 @@ const COUNTDOWN_MEMBER_ALIASES = {
   jennie: 'jennie', 'jenn.ie': null,   // null = a real slug, never an alias
   jisoo: 'jisoo', rose: 'rose', 'rosé': 'rose', rosie: 'rose', lisa: 'lisa',
 };
+// One definition of "the live one", used by both rules below, so an alias and
+// a companion can never disagree about which release that is.
+function liveCountdownFor(member) {
+  if (!member) return '';
+  const now = Date.now();
+  const mine = [...document.querySelectorAll('#home-countdowns .cd-card')]
+    .filter(c => (c.dataset.member || '').toLowerCase() === member.toLowerCase())
+    .map(c => {
+      const t = c.dataset.target ? Date.parse(c.dataset.target) : NaN;
+      const dated = Number.isFinite(t);
+      // rank 0 = still ahead, 1 = no date announced, 2 = already out
+      return { slug: (c.dataset.slug || '').toLowerCase(), t,
+               rank: dated ? (t > now ? 0 : 2) : 1 };
+    });
+  if (!mine.length) return '';
+  mine.sort((a, b) =>
+    a.rank - b.rank ||
+    // soonest first among the upcoming, most recent first among the released
+    (a.rank === 2 ? b.t - a.t : a.t - b.t));
+  return mine[0].slug || '';
+}
 function resolveCountdownSlug(slug) {
   if (!slug) return slug;
   const cards = [...document.querySelectorAll('#home-countdowns .cd-card')];
@@ -7452,22 +7482,39 @@ function resolveCountdownSlug(slug) {
   if (cards.some(c => (c.dataset.slug || '').toLowerCase() === slug)) return slug;
   const member = COUNTDOWN_MEMBER_ALIASES[slug];
   if (!member) return slug;
-  const now = Date.now();
-  const mine = cards
-    .filter(c => (c.dataset.member || '').toLowerCase() === member)
-    .map(c => {
-      const t = c.dataset.target ? Date.parse(c.dataset.target) : NaN;
-      const dated = Number.isFinite(t);
-      // rank 0 = still ahead, 1 = no date announced, 2 = already out
-      return { slug: (c.dataset.slug || '').toLowerCase(), t, dated,
-               rank: dated ? (t > now ? 0 : 2) : 1 };
-    });
-  if (!mine.length) return slug;
-  mine.sort((a, b) =>
-    a.rank - b.rank ||
-    // soonest first among the upcoming, most recent first among the released
-    (a.rank === 2 ? b.t - a.t : a.t - b.t));
-  return mine[0].slug || slug;
+  return liveCountdownFor(member) || slug;
+}
+
+// WHICH CARDS A COUNTDOWN URL SHOWS. Normally the one it names.
+//
+// `data-also-live` on a card asks for that member's live release to be shown
+// ALONGSIDE it. One card uses it: Fallen Angel. /countdowns/jenn.ie is Fallen
+// Angel's own address and has been shared as JENNIE's link for Someone to
+// Hold, so both things are true at once — the Fallen Angel share cards
+// already posted still land on Fallen Angel, and everyone who followed the
+// link expecting Someone to Hold finds it there.
+//
+// The companion is RESOLVED, not named: the card says "also my member's live
+// one", not "also steps". When Someone to Hold is old and JENNIE has
+// something newer, this follows without an edit — which is the difference
+// between a rule and a note that will be wrong by the next release.
+//
+// The live one goes FIRST. People arriving on this link were sent for the new
+// release; the card the URL is named after sits under Past countdowns where
+// it already lives.
+function resolveCountdownView(asked) {
+  const canonical = resolveCountdownSlug(asked);
+  if (!canonical) return { show: [], canonical: '' };
+  const show = [canonical];
+  const card = [...document.querySelectorAll('#home-countdowns .cd-card')]
+    .find(c => (c.dataset.slug || '').toLowerCase() === canonical);
+  if (card && card.dataset.alsoLive != null) {
+    const live = liveCountdownFor(card.dataset.member);
+    if (live && live !== canonical) show.unshift(live);
+  }
+  // Only an alias rewrites the address bar. A real slug keeps its own URL,
+  // which is the entire point of jenn.ie continuing to be jenn.ie.
+  return { show, canonical: canonical !== asked ? canonical : '' };
 }
 
 // The /countdowns hub reuses the SAME cards as the home row (no duplicate ids):
@@ -7476,25 +7523,29 @@ function resolveCountdownSlug(slug) {
 let _cdMountedInHub = false;
 function setupCountdownsPage() {
   const asked = currentCountdownSlug();
-  const slug  = resolveCountdownSlug(asked);
+  const view  = resolveCountdownView(asked);
   // The address bar gets the card's REAL slug, so that whoever copies it from
   // there is sharing a link with that release's own preview behind it rather
   // than a name that has to be resolved again. replaceState, not push: the
-  // alias and the card are one page, not two steps of history.
-  if (slug && slug !== asked) {
-    try { history.replaceState(history.state, '', '/countdowns/' + slug + location.search + location.hash); } catch (e) {}
+  // alias and the card are one page, not two steps of history. Only an ALIAS
+  // is rewritten — a real slug keeps its own URL.
+  if (view.canonical) {
+    try { history.replaceState(history.state, '', '/countdowns/' + view.canonical + location.search + location.hash); } catch (e) {}
   }
   const sec = document.getElementById('home-countdowns');
   const mount = document.getElementById('countdowns-mount');
   if (sec && mount && sec.parentElement !== mount) { mount.appendChild(sec); _cdMountedInHub = true; }
   _initCountdownsCardClicks();
-  applyCountdownFilter(slug);
+  applyCountdownFilter(view.show);
   // The hub is the page you go to in order to SEE them all. A carousel there
   // hides five of six behind a swipe and makes the page about the one you
   // happen to be on — so on the hub they are a list, one under another, each
   // at its own full height. A deep link shows one card and the question does
   // not arise. The home page keeps the carousel.
-  cdListMode(!slug);
+  // A deep link — one card, or the two that jenn.ie shows — is a list, not a
+  // carousel. Read off the view rather than off a slug variable that no
+  // longer exists here.
+  cdListMode(!view.show.length);
   renderHomeCountdowns();
   syncCarousels(mount || undefined);
 }
@@ -7576,16 +7627,21 @@ function restoreHomeCountdowns() {
   cdListMode(false);
   applyCountdownFilter('');
 }
+// Takes a slug, or a LIST of them: a deep link is normally one card, but
+// /countdowns/jenn.ie shows Fallen Angel and JENNIE's live release together
+// (see resolveCountdownView). A falsy value, or an empty list, is "show all".
 function applyCountdownFilter(slug) {
+  const wanted = (Array.isArray(slug) ? slug : [slug]).filter(Boolean).map(s => String(s).toLowerCase());
   const cards = document.querySelectorAll('#home-countdowns .cd-card');
   let matched = 0;
   cards.forEach(c => {
     const s = (c.dataset.slug || '').toLowerCase();
-    const show = !slug || s === slug;
+    const show = !wanted.length || wanted.includes(s);
     c.style.display = show ? '' : 'none';
-    if (show && slug) matched++;
+    if (show && wanted.length) matched++;
   });
-  if (slug && !matched) cards.forEach(c => { c.style.display = ''; }); // unknown slug → show all
+  if (wanted.length && !matched) cards.forEach(c => { c.style.display = ''; }); // unknown slug → show all
+  slug = wanted.length ? wanted[0] : '';   // what the rest of this reads as "a deep link"
   // The past block appears only in the hub, and only when it still has a visible
   // card: filtered to a live countdown it would otherwise leave a "Past
   // countdowns" heading standing over nothing.
