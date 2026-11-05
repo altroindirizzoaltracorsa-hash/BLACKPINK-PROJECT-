@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-05T05:50:10.389Z",
+  "generatedAt": "2026-11-05T14:19:55.839Z",
   "date": "2026-11-05",
   "regions": {
     "us": {
@@ -8,7 +8,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 72,
+          "position": 75,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -25,7 +25,20 @@
       "region": "Australia",
       "cc": "au",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 27,
+          "name": "Dracula (with JENNIE)",
+          "artists": "Tame Impala",
+          "member": "JENNIE"
+        },
+        {
+          "position": 191,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
     },
     "ca": {
       "region": "Canada",
@@ -33,7 +46,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 62,
+          "position": 46,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -46,7 +59,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 49,
+          "position": 57,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -57,26 +70,20 @@
       "region": "France",
       "cc": "fr",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 146,
-          "name": "Dracula (with JENNIE)",
-          "artists": "Tame Impala",
-          "member": "JENNIE"
-        },
-        {
-          "position": 173,
-          "name": "ADDICTED",
-          "artists": "JISOO",
-          "member": "JISOO"
-        }
-      ]
+      "hits": []
     },
     "it": {
       "region": "Italy",
       "cc": "it",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 136,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
     },
     "es": {
       "region": "Spain",
@@ -94,14 +101,7 @@
       "region": "Mexico",
       "cc": "mx",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 107,
-          "name": "One Of The Girls",
-          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
-          "member": "JENNIE"
-        }
-      ]
+      "hits": []
     },
     "tw": {
       "region": "Taiwan",
@@ -109,16 +109,28 @@
       "totalEntries": 99,
       "hits": [
         {
-          "position": 8,
+          "position": 12,
           "name": "ADDICTED",
           "artists": "JISOO",
           "member": "JISOO"
         },
         {
-          "position": 41,
-          "name": "Dracula (with JENNIE)",
-          "artists": "Tame Impala",
+          "position": 38,
+          "name": "Tarantino",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 58,
+          "name": "FALLEN ANGEL",
+          "artists": "JENNIE",
           "member": "JENNIE"
+        },
+        {
+          "position": 96,
+          "name": "SaWaDiKa",
+          "artists": "LISA",
+          "member": "LISA"
         }
       ]
     },
@@ -128,16 +140,16 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 7,
+          "position": 16,
           "name": "ADDICTED",
           "artists": "JISOO",
           "member": "JISOO"
         },
         {
-          "position": 131,
-          "name": "As If It's Your Last",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
+          "position": 111,
+          "name": "Moonlit Floor",
+          "artists": "LISA",
+          "member": "LISA"
         }
       ]
     },
@@ -147,16 +159,10 @@
       "totalEntries": 99,
       "hits": [
         {
-          "position": 14,
+          "position": 52,
           "name": "Ice Cream (with Selena Gomez)",
           "artists": "BLACKPINK & Selena Gomez",
           "member": "BLACKPINK"
-        },
-        {
-          "position": 90,
-          "name": "ADDICTED",
-          "artists": "JISOO",
-          "member": "JISOO"
         }
       ]
     },
@@ -166,22 +172,16 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 52,
+          "position": 6,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
         },
         {
-          "position": 62,
-          "name": "ADDICTED",
-          "artists": "JISOO",
-          "member": "JISOO"
-        },
-        {
-          "position": 108,
-          "name": "APT.",
-          "artists": "ROSÉ & Bruno Mars",
-          "member": "ROSÉ"
+          "position": 15,
+          "name": "Dracula (Boys Noize Disko Version)",
+          "artists": "Tame Impala, JENNIE & Boys Noize",
+          "member": "JENNIE"
         }
       ]
     },
@@ -197,74 +197,50 @@
           "member": "LISA"
         },
         {
-          "position": 12,
-          "name": "Sweat",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 27,
+          "position": 18,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 29,
+          "position": 20,
+          "name": "Sweat",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 32,
           "name": "ADDICTED",
           "artists": "JISOO",
           "member": "JISOO"
         },
         {
-          "position": 46,
+          "position": 92,
+          "name": "Dream",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 93,
           "name": "Cut U Off",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 57,
+          "position": 108,
           "name": "One Of The Girls",
           "artists": "The Weeknd, JENNIE & Lily Rose Depp",
           "member": "JENNIE"
         },
         {
-          "position": 67,
+          "position": 140,
           "name": "FALLEN ANGEL",
           "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 78,
+          "position": 183,
           "name": "Tarantino",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 89,
-          "name": "Moonlit Floor",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 100,
-          "name": "Less than a Lover",
-          "artists": "JENNIE",
-          "member": "JENNIE"
-        },
-        {
-          "position": 111,
-          "name": "V12",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 117,
-          "name": "Cobra",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 128,
-          "name": "Dream",
           "artists": "LISA",
           "member": "LISA"
         }
@@ -276,22 +252,34 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 82,
-          "name": "ADDICTED",
-          "artists": "JISOO",
-          "member": "JISOO"
-        },
-        {
-          "position": 170,
-          "name": "One Of The Girls",
-          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "position": 16,
+          "name": "Dracula (with JENNIE)",
+          "artists": "Tame Impala",
           "member": "JENNIE"
         },
         {
-          "position": 179,
-          "name": "new trick",
-          "artists": "ROSÉ",
-          "member": "ROSÉ"
+          "position": 34,
+          "name": "SaWaDiKa",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 86,
+          "name": "Less than a Lover",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 160,
+          "name": "Mantra",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 163,
+          "name": "You & Me",
+          "artists": "JENNIE",
+          "member": "JENNIE"
         }
       ]
     },
@@ -301,10 +289,10 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 161,
-          "name": "Kill This Love",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
+          "position": 44,
+          "name": "ADDICTED",
+          "artists": "JISOO",
+          "member": "JISOO"
         }
       ]
     },
@@ -314,28 +302,28 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 7,
+          "position": 14,
           "name": "ADDICTED",
           "artists": "JISOO",
           "member": "JISOO"
         },
         {
-          "position": 77,
-          "name": "Tarantino",
-          "artists": "LISA",
-          "member": "LISA"
+          "position": 17,
+          "name": "number one girl",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
         },
         {
-          "position": 151,
-          "name": "Kill This Love",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
-        },
-        {
-          "position": 156,
+          "position": 38,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
+        },
+        {
+          "position": 66,
+          "name": "One Of The Girls",
+          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "member": "JENNIE"
         }
       ]
     },
@@ -343,20 +331,20 @@
       "region": "India",
       "cc": "in",
       "totalEntries": 199,
-      "hits": []
-    },
-    "nz": {
-      "region": "New Zealand",
-      "cc": "nz",
-      "totalEntries": 199,
       "hits": [
         {
-          "position": 157,
+          "position": 91,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
         }
       ]
+    },
+    "nz": {
+      "region": "New Zealand",
+      "cc": "nz",
+      "totalEntries": 199,
+      "hits": []
     },
     "nl": {
       "region": "Netherlands",
@@ -400,34 +388,28 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 22,
+          "position": 100,
           "name": "like JENNIE (EDM Remix)",
           "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 23,
+          "position": 101,
           "name": "like JENNIE (Extended Remix)",
           "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 24,
+          "position": 102,
           "name": "like JENNIE (Peggy Gou Remix)",
           "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 33,
+          "position": 137,
           "name": "like JENNIE (Peggy Gou Remix - EXTENDED MIX)",
           "artists": "JENNIE & Peggy Gou",
           "member": "JENNIE"
-        },
-        {
-          "position": 117,
-          "name": "APT.",
-          "artists": "ROSÉ & Bruno Mars",
-          "member": "ROSÉ"
         }
       ]
     },
@@ -435,14 +417,7 @@
       "region": "Colombia",
       "cc": "co",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 171,
-          "name": "new trick",
-          "artists": "ROSÉ",
-          "member": "ROSÉ"
-        }
-      ]
+      "hits": []
     },
     "pe": {
       "region": "Peru",
@@ -450,7 +425,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 87,
+          "position": 147,
           "name": "One Of The Girls",
           "artists": "The Weeknd, JENNIE & Lily Rose Depp",
           "member": "JENNIE"
@@ -479,26 +454,20 @@
       "region": "Austria",
       "cc": "at",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 117,
+          "name": "Shut Down",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        }
+      ]
     },
     "ch": {
       "region": "Switzerland",
       "cc": "ch",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 132,
-          "name": "Dracula (with JENNIE)",
-          "artists": "Tame Impala",
-          "member": "JENNIE"
-        },
-        {
-          "position": 150,
-          "name": "APT.",
-          "artists": "ROSÉ & Bruno Mars",
-          "member": "ROSÉ"
-        }
-      ]
+      "hits": []
     },
     "pt": {
       "region": "Portugal",
@@ -512,16 +481,10 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 77,
+          "position": 176,
           "name": "JUMP",
           "artists": "BLACKPINK",
           "member": "BLACKPINK"
-        },
-        {
-          "position": 196,
-          "name": "like JENNIE",
-          "artists": "JENNIE",
-          "member": "JENNIE"
         }
       ]
     },
@@ -529,14 +492,7 @@
       "region": "Denmark",
       "cc": "dk",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 153,
-          "name": "APT.",
-          "artists": "ROSÉ & Bruno Mars",
-          "member": "ROSÉ"
-        }
-      ]
+      "hits": []
     },
     "ie": {
       "region": "Ireland",
@@ -546,7 +502,7 @@
     }
   },
   "summary": {
-    "totalHits": 49,
+    "totalHits": 42,
     "regionsChecked": 38
   }
 }
