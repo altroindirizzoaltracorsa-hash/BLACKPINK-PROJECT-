@@ -37,21 +37,24 @@ jobs:
           -- A song column is now DERIVED: an integer column on a table that
           -- carries per-song counts, minus the few structural ones. New
           -- releases appear here by existing.
-          with t as (
-            select distinct table_name from information_schema.columns
-             where table_schema='public' and column_name in ('daily_sawadika','sawadika')
-          ), c as (
+          -- Both halves in ONE statement, with the names on the same row as the
+          -- count. A WITH clause only scopes to the statement it opens, so the
+          -- first attempt at this counted 12 columns and then failed with
+          -- 'relation "c" does not exist' on a second SELECT that reused the
+          -- CTE — the count printed, the names did not, and the step went red
+          -- having answered half the question it exists to answer.
+          with c as (
             select col.table_name, col.column_name, col.data_type
-              from information_schema.columns col join t on t.table_name = col.table_name
+              from information_schema.columns col
              where col.table_schema='public'
+               and col.table_name in (select table_name from information_schema.columns
+                                       where table_schema='public'
+                                         and column_name in ('daily_sawadika','sawadika'))
                and col.data_type in ('integer','bigint','numeric')
                and col.column_name not in ('id','app_user_id','day_key','user_id')
           )
-          select 'TABLE ' || table_name || ' — ' || count(*) || ' song columns'
-            from c group by table_name order by table_name;
-          -- ...and exactly what they are called in each. Every one of them, so
-          -- a column that exists but is not being written is visible here.
-          select '  ' || table_name || ': ' || string_agg(column_name || ' ' || data_type, ', ' order by column_name)
+          select 'TABLE ' || table_name || ' — ' || count(*) || ' song columns: '
+              || string_agg(column_name, ', ' order by column_name)
             from c group by table_name order by table_name;
           SQL
           rc=$?
