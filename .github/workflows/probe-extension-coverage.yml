@@ -67,7 +67,10 @@ jobs:
             select app_user_id from public.linked_accounts
              where lower(source_username) = lower(:qacct) limit 1
           )
-          select 'PROFILE  ' || coalesce((select app_user_id from me), '(no linked_accounts row for ' || :qacct || ')');
+          -- app_user_id is a uuid; cast INSIDE the subquery, because coalesce
+          -- refuses to match uuid against the text fallback.
+          select 'PROFILE  ' || coalesce((select app_user_id::text from me),
+                                         '(no linked_accounts row for ' || :qacct || ')');
 
           with me as (
             select app_user_id from public.linked_accounts
@@ -190,8 +193,13 @@ jobs:
           # extension can only ever be a subset of what a scrobbler saw, so a
           # day where Last.fm has plays and the extension has none is a day the
           # browser was not the thing playing.
+          # The cap must be high enough that it is not the answer. At 20 pages
+          # this reported exactly 4000 scrobbles — 20 x 200, i.e. the cap
+          # rendered as a total, which is the kind of round number that reads
+          # like data. It now says when it stopped early instead.
+          MAXPAGES = 80
           per_day, page, pages = {}, 1, 1
-          while page <= pages and page <= 20:
+          while page <= pages and page <= MAXPAGES:
               d = lfm(method="user.getRecentTracks", user=user, **{"from": frm, "to": to},
                       limit=200, page=page)
               rt = d.get("recenttracks")
@@ -213,7 +221,11 @@ jobs:
               page += 1
               time.sleep(0.25)          # the key is shared; stay well inside its budget
 
-          note(f"{user}: {sum(per_day.values())} scrobbles over {len(per_day)} day(s), last {days} days")
+          capped = pages > MAXPAGES
+          note(f"{user}: {sum(per_day.values())} scrobbles over {len(per_day)} day(s), "
+               f"last {days} days" +
+               (f"  ** TRUNCATED: Last.fm reports {pages} pages, read {MAXPAGES}; "
+                "this is a FLOOR, not a total **" if capped else ""))
           for day in sorted(per_day):
               note(f"  day {day}  scrobbles={per_day[day]}")
           note("Read the two day lists against each other: Last.fm is everything "
