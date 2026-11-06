@@ -72,13 +72,23 @@ jobs:
 
             -- Last row per profile, quietest first. A cluster of profiles whose
             -- last row shares a date is the signal worth acting on.
+            -- WITH the profile's linked accounts, because a busy extension on
+            -- a profile that no Last.fm/ListenBrainz account points at is a
+            -- worse problem than a quiet one: those plays reach no board row.
+            -- refreshUser() attaches extension counts by walking a profile's
+            -- linkedAccounts, so a profile with none is invisible to it.
             select 'LAST  ' || to_char(last_row, 'YYYY-MM-DD HH24:MI')
                 || '  rows=' || lpad(n::text, 6)
                 || '  accounts=' || lpad(accts::text, 3)
                 || '  silent_days=' || lpad(round(extract(epoch from (now() - last_row)) / 86400)::text, 4)
+                || '  linked=' || coalesce(la.names, '(NONE — counts toward no board row)')
               from (select app_user_id, max(listened_at) as last_row, count(*) as n,
                            count(distinct spotify_account) as accts
                       from public.extension_scrobbles group by app_user_id) s
+              left join (select app_user_id,
+                                string_agg(source || ':' || source_username, ' ' order by source_username) as names
+                           from public.linked_accounts group by app_user_id) la
+                on la.app_user_id = s.app_user_id
              order by last_row;
 
             -- And the shape of it: how many profiles stopped on each date.
