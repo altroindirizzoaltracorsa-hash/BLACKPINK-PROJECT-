@@ -116,30 +116,52 @@ jobs:
               note(f"    median spacing {round(med / 60, 1)} min  "
                    f"(≈ track length while listening continuously)")
 
-              # A hole worth looking at: clearly wider than the cadence, but
-              # still short enough that "went out for the evening" does not
-              # explain it. Below 2x median is just a longer song; past ~45 min
-              # it is a break, and no amount of staring settles that one.
-              lo, hi = max(med * 2, 300), 45 * 60
-              susp = [(i, g) for i, g in enumerate(gaps) if lo <= g <= hi]
-              if not susp:
-                  note("    no one-track-sized holes — the cadence is clean, "
-                       "so nothing here looks like a dropped scrobble")
-              else:
-                  note(f"    {len(susp)} suspicious gap(s) — wide for the cadence, "
-                       f"too short for a break:")
-                  for i, g in susp[:25]:
-                      missed = max(1, round(g / med) - 1)
-                      a, b = plays[i], plays[i + 1]
-                      note(f"      {hhmm(a[0])} -> {hhmm(b[0])}  gap {round(g/60)} min "
-                           f"(~{missed} track(s) wide)   after: {a[1]} - {a[2]}   "
-                           f"before: {b[1]} - {b[2]}")
+              # EVERY STRETCH WITH NO DATA, INCLUDING THE EDGES.
+              #
+              # The first version reported spacing BETWEEN scrobbles and called
+              # anything over 45 minutes "just time not listening". Both of
+              # those hide the case this probe exists for. A scrobbler that is
+              # off does not leave a wide gap, it leaves NOTHING — so the
+              # silence IS the evidence, and the long silences were the ones
+              # being explained away. Worse, a list of gaps only covers the
+              # span between the first and last scrobble: if the scrobbler was
+              # down all morning the silence sits BEFORE the first one, where
+              # the old code could not see it at all.
+              #
+              # So every silent stretch is listed, edges included, with no
+              # verdict attached. Which is "I was not listening" and which is
+              # "it was disconnected" cannot be known from here; only the
+              # person who was at the keyboard can say, and this gives them
+              # the timestamps to say it against.
+              QUIET = 10 * 60
+              silences = []
+              if plays[0][0] - frm >= QUIET:
+                  silences.append((frm, plays[0][0], "before the first scrobble"))
+              for i, g in enumerate(gaps):
+                  if g >= QUIET:
+                      silences.append((plays[i][0], plays[i + 1][0], "mid-session"))
+              if to - plays[-1][0] >= QUIET:
+                  silences.append((plays[-1][0], to, "since the last scrobble"))
 
-              # Long gaps reported separately and NOT counted as drops: these
-              # are where listening stopped, and calling them drops would be
-              # inventing a problem.
-              longs = [g for g in gaps if g > hi]
-              if longs:
-                  note(f"    plus {len(longs)} break(s) over 45 min — "
-                       "not counted as drops, that is just time not listening")
+              if not silences:
+                  note("    no silent stretch over 10 min anywhere in the window")
+              else:
+                  quiet_total = sum(b - a for a, b, _ in silences)
+                  note(f"    {len(silences)} silent stretch(es) over 10 min — "
+                       f"{round(quiet_total/3600, 1)}h of this {hours}h window has NO data:")
+                  for a, b, where in silences:
+                      note(f"      {hhmm(a)} -> {hhmm(b)}  "
+                           f"{round((b-a)/60)} min silent   ({where})")
+
+              # Narrow holes stay as a separate, much weaker signal: a hole one
+              # or two tracks wide inside a steady cadence suggests a single
+              # dropped play rather than a stretch of downtime.
+              lo = max(med * 2, 300)
+              susp = [(i, g) for i, g in enumerate(gaps) if lo <= g < QUIET]
+              if susp:
+                  note(f"    and {len(susp)} narrow hole(s), one or two tracks wide:")
+                  for i, g in susp[:15]:
+                      a, b = plays[i], plays[i + 1]
+                      note(f"      {hhmm(a[0])} -> {hhmm(b[0])}  gap {round(g/60)} min   "
+                           f"after: {a[1]} - {a[2]}   before: {b[1]} - {b[2]}")
           PY
