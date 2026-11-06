@@ -32,8 +32,9 @@ on:
   workflow_dispatch:
     inputs:
       account:
-        description: 'A linked account username (Last.fm or ListenBrainz), e.g. howyoulikedat'
-        required: true
+        description: 'A linked account username (Last.fm or ListenBrainz). BLANK = scan every profile instead.'
+        required: false
+        default: ''
       days:
         description: 'How many days back to break down (default 14)'
         required: false
@@ -56,6 +57,46 @@ jobs:
           if [ -z "$SUPABASE_DB_URL" ]; then echo "::error::SUPABASE_DB_URL is not set."; exit 1; fi
           DAYS="${DAYS:-14}"
           case "$DAYS" in ''|*[!0-9]*) DAYS=14 ;; esac
+
+          # SCAN MODE — no account given. One profile going quiet is a browser
+          # that stopped; every profile going quiet on the same day is ours.
+          # That distinction decides whether the answer is "re-link it" or
+          # "we broke ingest", and it cannot be made from a single account.
+          # Aggregates only: a row count and two timestamps per profile, no
+          # titles, no artists.
+          if [ -z "${ACCOUNT:-}" ]; then
+            set +e
+            psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -t -A >/tmp/scan.txt 2>&1 <<'SQL'
+            select 'TOTAL profiles with extension rows = ' || count(*)
+              from (select 1 from public.extension_scrobbles group by app_user_id) s;
+
+            -- Last row per profile, quietest first. A cluster of profiles whose
+            -- last row shares a date is the signal worth acting on.
+            select 'LAST  ' || to_char(last_row, 'YYYY-MM-DD HH24:MI')
+                || '  rows=' || lpad(n::text, 6)
+                || '  accounts=' || lpad(accts::text, 3)
+                || '  silent_days=' || lpad(round(extract(epoch from (now() - last_row)) / 86400)::text, 4)
+              from (select app_user_id, max(listened_at) as last_row, count(*) as n,
+                           count(distinct spotify_account) as accts
+                      from public.extension_scrobbles group by app_user_id) s
+             order by last_row;
+
+            -- And the shape of it: how many profiles stopped on each date.
+            select 'STOPPED ON ' || d || '  profiles=' || count(*)
+              from (select (max(listened_at) at time zone 'UTC')::date as d
+                      from public.extension_scrobbles group by app_user_id) t
+             group by d order by d;
+          SQL
+            rc=$?
+            set -e
+            while IFS= read -r line; do
+              [ -z "$line" ] && continue
+              echo "::notice title=scan::${line}"
+            done < /tmp/scan.txt
+            if [ "$rc" -ne 0 ]; then echo "::error::psql exited $rc"; exit "$rc"; fi
+            exit 0
+          fi
+
           set +e
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -t -A -v acct="$ACCOUNT" -v days="$DAYS" >/tmp/out.txt 2>&1 <<'SQL'
           \set qacct '''' :acct ''''
@@ -179,6 +220,12 @@ jobs:
           LBASE   = "https://ws.audioscrobbler.com/2.0/"
 
           user = os.environ["ACCOUNT"].strip()
+          if not user:
+              # Scan mode: the question there is which profiles went quiet and
+              # when, which is answered entirely from our own rows. Asking
+              # Last.fm about an empty username would just be an error.
+              print("::notice title=lastfm::scan mode — no account, nothing to compare")
+              raise SystemExit(0)
           try:
               days = max(1, min(30, int(os.environ.get("DAYS") or 14)))
           except ValueError:
