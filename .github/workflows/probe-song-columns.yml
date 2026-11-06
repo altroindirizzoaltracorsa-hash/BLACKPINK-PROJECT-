@@ -26,28 +26,33 @@ jobs:
           if [ -z "$SUPABASE_DB_URL" ]; then echo "::error::SUPABASE_DB_URL is not set."; exit 1; fi
           set +e
           psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -t -A >/tmp/out.txt 2>&1 <<'SQL'
-          -- Every table that already has a per-song column, found by one song
-          -- that certainly has one, so nothing depends on me recalling names.
+          -- THE SONG NAMES ARE NOT WRITTEN DOWN HERE, and that is the whole
+          -- point of this probe. The first version carried the list inline
+          -- ('jump','shutdown',…,'newtrick') under a comment claiming nothing
+          -- depended on recalling names. It did: the list stopped at newtrick,
+          -- so after ADDICTED and Someone to Hold were migrated this answered
+          -- "10 song columns" and named neither — a probe whose job is to say
+          -- which columns exist, reporting the ones it already knew about.
+          --
+          -- A song column is now DERIVED: an integer column on a table that
+          -- carries per-song counts, minus the few structural ones. New
+          -- releases appear here by existing.
+          with t as (
+            select distinct table_name from information_schema.columns
+             where table_schema='public' and column_name in ('daily_sawadika','sawadika')
+          ), c as (
+            select col.table_name, col.column_name, col.data_type
+              from information_schema.columns col join t on t.table_name = col.table_name
+             where col.table_schema='public'
+               and col.data_type in ('integer','bigint','numeric')
+               and col.column_name not in ('id','app_user_id','day_key','user_id')
+          )
           select 'TABLE ' || table_name || ' — ' || count(*) || ' song columns'
-            from information_schema.columns
-           where table_schema = 'public'
-             and (column_name like 'daily\_%' or column_name like 'weekly\_%'
-               or column_name like 'total\_%' or column_name in
-                  ('jump','shutdown','ddududu','ltal','go','sawadika','click',
-                   'fallenangel','heaven','newtrick'))
-             and table_name in (select table_name from information_schema.columns
-                                 where table_schema='public'
-                                   and column_name in ('daily_sawadika','sawadika'))
-           group by table_name order by table_name;
-          -- ...and exactly what they are called in each.
+            from c group by table_name order by table_name;
+          -- ...and exactly what they are called in each. Every one of them, so
+          -- a column that exists but is not being written is visible here.
           select '  ' || table_name || ': ' || string_agg(column_name || ' ' || data_type, ', ' order by column_name)
-            from information_schema.columns
-           where table_schema='public'
-             and table_name in (select table_name from information_schema.columns
-                                 where table_schema='public'
-                                   and column_name in ('daily_sawadika','sawadika'))
-             and (column_name like '%sawadika%' or column_name like '%newtrick%' or column_name like '%\_all')
-           group by table_name order by table_name;
+            from c group by table_name order by table_name;
           SQL
           rc=$?
           set -e
