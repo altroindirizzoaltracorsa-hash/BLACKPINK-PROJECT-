@@ -1,0 +1,224 @@
+name: Probe extension coverage for one account (read-only)
+
+# DID THE BROWSER EXTENSION ACTUALLY CATCH THE PLAYS?
+#
+# The extension writes to extension_scrobbles, and those rows are added ON TOP
+# OF a profile's Last.fm/ListenBrainz counts (api/cron-scrobbles.js:718 —
+# `totalPlays[t.id] += ext.total[t.id]`), with no cross-source de-duplication.
+# So there are two opposite ways for an extension-linked profile to be wrong
+# and NEITHER of them announces itself:
+#
+#   UNDER  the extension only sees what this browser plays. A phone, the
+#          desktop Spotify app, or a closed tab are invisible to it, and a
+#          suspended MV3 service worker can sleep through plays. Those plays
+#          are simply absent from extension_scrobbles.
+#   OVER   a play scrobbled to Last.fm AND seen by the extension is counted
+#          once by each, because the two sources are summed. For someone who
+#          runs both, that is a genuine double count.
+#
+# A third case looks like UNDER but is recoverable: a play the matcher did not
+# recognise is not dropped, it is filed under a bucket id (solo_jisoo,
+# solo_jennie, bp_group) with its real artist and title kept alongside. That is
+# what happened to every extension-scrobbled ADDICTED play before its matcher
+# entry existed, and what the 2026_11_backfill_addicted_* pair repaired. This
+# probe lists those rows so the same repair can be aimed at the next one.
+#
+# Scoped to ONE account on purpose — pass a linked Last.fm/ListenBrainz
+# username and it reports only that profile. Read-only: selects and counts, no
+# writes, no row contents beyond artist/title which the owner already sees on
+# their own page.
+
+on:
+  workflow_dispatch:
+    inputs:
+      account:
+        description: 'A linked account username (Last.fm or ListenBrainz), e.g. howyoulikedat'
+        required: true
+      days:
+        description: 'How many days back to break down (default 14)'
+        required: false
+        default: '14'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ask the database
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          ACCOUNT: ${{ github.event.inputs.account }}
+          DAYS: ${{ github.event.inputs.days }}
+        run: |
+          set -u
+          if [ -z "$SUPABASE_DB_URL" ]; then echo "::error::SUPABASE_DB_URL is not set."; exit 1; fi
+          DAYS="${DAYS:-14}"
+          case "$DAYS" in ''|*[!0-9]*) DAYS=14 ;; esac
+          set +e
+          psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -t -A -v acct="$ACCOUNT" -v days="$DAYS" >/tmp/out.txt 2>&1 <<'SQL'
+          \set qacct '''' :acct ''''
+
+          -- Who this is, and every account on the same profile. A profile with
+          -- two Last.fm accounts and an extension is exactly the shape where
+          -- the sum of sources stops being obvious.
+          with me as (
+            select app_user_id from public.linked_accounts
+             where lower(source_username) = lower(:qacct) limit 1
+          )
+          select 'PROFILE  ' || coalesce((select app_user_id from me), '(no linked_accounts row for ' || :qacct || ')');
+
+          with me as (
+            select app_user_id from public.linked_accounts
+             where lower(source_username) = lower(:qacct) limit 1
+          )
+          select '  linked  ' || source || ' = ' || source_username
+            from public.linked_accounts
+           where app_user_id = (select app_user_id from me)
+           order by source, source_username;
+
+          -- Extension rows overall: how many, over what span, from how many
+          -- Spotify accounts. A span that stops days ago is the extension
+          -- having quietly stopped reporting.
+          with me as (
+            select app_user_id from public.linked_accounts
+             where lower(source_username) = lower(:qacct) limit 1
+          )
+          select 'EXTENSION  rows=' || count(*)
+              || '  spotify_accounts=' || count(distinct spotify_account)
+              || '  first=' || coalesce(min(listened_at)::text, '-')
+              || '  last='  || coalesce(max(listened_at)::text, '-')
+            from public.extension_scrobbles
+           where app_user_id = (select app_user_id from me);
+
+          -- Per day. A day with zero rows beside a day with hundreds is the
+          -- shape of a browser that was closed, not of a bug.
+          with me as (
+            select app_user_id from public.linked_accounts
+             where lower(source_username) = lower(:qacct) limit 1
+          )
+          select '  day ' || (listened_at at time zone 'UTC')::date || '  rows=' || count(*)
+            from public.extension_scrobbles
+           where app_user_id = (select app_user_id from me)
+             and listened_at >= now() - (:'days' || ' days')::interval
+           group by 1 order by 1;
+
+          -- Per track id. Bucket ids (solo_*, bp_group) are the ones worth
+          -- looking at twice: a campaign song sitting in one is a matcher miss,
+          -- and those rows are repairable because the real title is kept.
+          with me as (
+            select app_user_id from public.linked_accounts
+             where lower(source_username) = lower(:qacct) limit 1
+          )
+          select '  track ' || rpad(track_id, 14) || ' rows=' || count(*)
+            from public.extension_scrobbles
+           where app_user_id = (select app_user_id from me)
+           group by track_id order by count(*) desc;
+
+          -- The recoverable set: rows in a bucket whose TITLE matches a song we
+          -- track. Mirrors the ADDICTED backfill's predicate (strip (...) and
+          -- [...], drop non-alphanumerics) so whatever this lists is what a
+          -- backfill would move.
+          with me as (
+            select app_user_id from public.linked_accounts
+             where lower(source_username) = lower(:qacct) limit 1
+          ), norm as (
+            select track_id, artist, title,
+                   regexp_replace(lower(regexp_replace(coalesce(title,''), '\(.*?\)|\[.*?\]', '', 'g')),
+                                  '[^a-z0-9]', '', 'g') as tkey
+              from public.extension_scrobbles
+             where app_user_id = (select app_user_id from me)
+               and (track_id like 'solo\_%' or track_id = 'bp_group')
+          )
+          select 'MISFILED?  bucket=' || track_id || '  artist=' || artist
+              || '  title=' || title || '  rows=' || count(*)
+            from norm
+           where tkey in ('jump','shutdown','dududududu','go','sawadika','click',
+                          'lessthanalover','fallenangel','heaven','newtrick',
+                          'v12','cobra','tarantino','cutuoff','sweat','addicted',
+                          'someonetohold')
+           group by track_id, artist, title
+           order by count(*) desc
+           limit 40;
+          SQL
+          rc=$?
+          set -e
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
+            echo "::notice title=ext::${line}"
+          done < /tmp/out.txt
+          if [ "$rc" -ne 0 ]; then echo "::error::psql exited $rc"; exit "$rc"; fi
+
+      - name: Compare against Last.fm for the same days
+        if: always()
+        env:
+          ACCOUNT: ${{ github.event.inputs.account }}
+          DAYS: ${{ github.event.inputs.days }}
+        run: |
+          python3 - <<'PY'
+          import os, json, time, datetime, urllib.parse, urllib.request
+
+          # The same public key the rest of the repo uses (hardcoded in
+          # index.html, which is public). Read-only calls only.
+          LFM_KEY = "666b8ef2f3cc360fbc20df275fba2981"
+          LBASE   = "https://ws.audioscrobbler.com/2.0/"
+
+          user = os.environ["ACCOUNT"].strip()
+          try:
+              days = max(1, min(30, int(os.environ.get("DAYS") or 14)))
+          except ValueError:
+              days = 14
+
+          def note(s):
+              print("::notice title=lastfm::" + str(s).replace("%", "%25"))
+
+          def lfm(**p):
+              p.update(api_key=LFM_KEY, format="json")
+              try:
+                  with urllib.request.urlopen(LBASE + "?" + urllib.parse.urlencode(p), timeout=25) as r:
+                      return json.load(r)
+              except Exception as e:
+                  return {"__error": str(e)}
+
+          now = datetime.datetime.now(datetime.timezone.utc)
+          start = (now - datetime.timedelta(days=days)).replace(hour=0, minute=0, second=0, microsecond=0)
+          frm, to = int(start.timestamp()), int(now.timestamp())
+
+          # Per-UTC-day scrobble counts straight from their own history. This is
+          # the figure the extension's per-day row counts get read against: the
+          # extension can only ever be a subset of what a scrobbler saw, so a
+          # day where Last.fm has plays and the extension has none is a day the
+          # browser was not the thing playing.
+          per_day, page, pages = {}, 1, 1
+          while page <= pages and page <= 20:
+              d = lfm(method="user.getRecentTracks", user=user, **{"from": frm, "to": to},
+                      limit=200, page=page)
+              rt = d.get("recenttracks")
+              if not rt:
+                  note(f"{user}: {d.get('message') or d.get('__error') or 'no recenttracks'}")
+                  break
+              pages = int((rt.get("@attr") or {}).get("totalPages") or 1)
+              tracks = rt.get("track") or []
+              if isinstance(tracks, dict):
+                  tracks = [tracks]
+              for t in tracks:
+                  if (t.get("@attr") or {}).get("nowplaying") == "true":
+                      continue
+                  uts = (t.get("date") or {}).get("uts")
+                  if not uts:
+                      continue
+                  day = datetime.datetime.fromtimestamp(int(uts), datetime.timezone.utc).date().isoformat()
+                  per_day[day] = per_day.get(day, 0) + 1
+              page += 1
+              time.sleep(0.25)          # the key is shared; stay well inside its budget
+
+          note(f"{user}: {sum(per_day.values())} scrobbles over {len(per_day)} day(s), last {days} days")
+          for day in sorted(per_day):
+              note(f"  day {day}  scrobbles={per_day[day]}")
+          note("Read the two day lists against each other: Last.fm is everything "
+               "this account scrobbled, the extension rows are only what this "
+               "browser saw. Extension < Last.fm on a day is normal (phone, "
+               "desktop app, closed tab). Extension > 0 where Last.fm is 0 means "
+               "the two sources are counting different plays, and they are SUMMED.")
+          PY
