@@ -1,0 +1,114 @@
+name: Probe a title's spellings on Last.fm (read-only)
+
+# ONE QUESTION: do two spellings of a title resolve to the SAME Last.fm track?
+#
+# WHY IT MATTERS. Two different mechanisms on this site count a track, and only
+# one of them tolerates a spelling difference:
+#
+#   today / this week   user.getRecentTracks, matched with trackKey() — which
+#                       strips (...) and [...], so a parenthetical suffix is
+#                       harmless. This path is fine by construction.
+#   ALL-TIME per track  track.getInfo(artist, track).userplaycount — an EXACT
+#                       artist+title string lookup. No normalisation at all.
+#
+# So a release whose real title carries a suffix can show correct daily numbers
+# and a flat or near-zero all-time figure, which is the shape a fan reports as
+# "the card says 2". Every campaign track until now had a plain title, so the
+# exact-string path had never been tested against one that does not:
+#
+#   Someone to Hold (from the Netflix Film "Steps")     JENNIE, 2026-11-06
+#
+# WHAT THIS PRINTS, per spelling: the canonical name Last.fm returns, its url,
+# mbid, global listeners and playcount, with autocorrect off AND on. Two
+# spellings that come back with the same url are one track and the bare title
+# in TRACKS is safe. Different urls mean they are two tracks and the all-time
+# figure is reading the wrong one.
+#
+# It asks about the TRACK, not about a person, so it needs no account and works
+# from the moment a song is released — before anyone has scrobbled it, which is
+# exactly when this needs answering.
+#
+# Read-only: public Last.fm API, no secret. The key is the one already in the
+# repo (it is hardcoded in index.html, which is public).
+
+on:
+  workflow_dispatch:
+    inputs:
+      artist:
+        description: 'Artist, as the scrobbler writes it'
+        required: true
+        default: 'Jennie'
+      titles:
+        description: 'Spellings to compare, separated by ||| (NOT comma — titles contain commas)'
+        required: true
+        default: 'Someone to Hold|||Someone to Hold (from the Netflix Film "Steps")'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask Last.fm
+        env:
+          ARTIST: ${{ github.event.inputs.artist }}
+          TITLES: ${{ github.event.inputs.titles }}
+        run: |
+          python3 - <<'PY'
+          import os, json, urllib.parse, urllib.request
+
+          LFM_KEY = "666b8ef2f3cc360fbc20df275fba2981"
+          LBASE   = "https://ws.audioscrobbler.com/2.0/"
+
+          def lfm(**params):
+              params.update(api_key=LFM_KEY, format="json")
+              url = LBASE + "?" + urllib.parse.urlencode(params)
+              try:
+                  with urllib.request.urlopen(url, timeout=25) as r:
+                      return json.load(r)
+              except Exception as e:
+                  return {"__error": str(e)}
+
+          artist = os.environ["ARTIST"].strip()
+          titles = [t.strip() for t in os.environ["TITLES"].split("|||") if t.strip()]
+
+          def note(s):
+              print("::notice::" + s.replace("%", "%25"))
+
+          note(f"artist as queried: {artist!r}")
+          seen = {}
+          for title in titles:
+              for ac in (0, 1):
+                  d = lfm(method="track.getInfo", artist=artist, track=title, autocorrect=ac)
+                  t = d.get("track")
+                  tag = f"autocorrect={ac}"
+                  if not t:
+                      why = d.get("message") or d.get("__error") or "no track object"
+                      note(f"MISS  {tag}  {title!r} -> {why}")
+                      continue
+                  url = t.get("url") or ""
+                  note(
+                      f"HIT   {tag}  {title!r} -> name={t.get('name')!r} "
+                      f"artist={(t.get('artist') or {}).get('name')!r} "
+                      f"listeners={t.get('listeners')} playcount={t.get('playcount')} "
+                      f"mbid={t.get('mbid') or '-'} url={url}"
+                  )
+                  if ac == 0:
+                      seen[title] = url
+
+          # The verdict, stated rather than left to be inferred from four lines.
+          urls = {t: u for t, u in seen.items() if u}
+          if len(urls) < 2:
+              note("VERDICT: fewer than two spellings resolved — cannot compare. "
+                   "A spelling that MISSes has no Last.fm track yet, which is "
+                   "normal within hours of a release and is itself the answer: "
+                   "nothing has been scrobbled under it.")
+          elif len(set(urls.values())) == 1:
+              note("VERDICT: SAME Last.fm track. The bare title in TRACKS picks "
+                   "up plays scrobbled under either spelling, so the all-time "
+                   "track.getInfo figure is correct.")
+          else:
+              note("VERDICT: DIFFERENT Last.fm tracks. track.getInfo on the bare "
+                   "title will NOT see plays scrobbled under the other spelling, "
+                   "so the all-time per-track figure reads low while today/week "
+                   "(trackKey-matched) read correctly. TRACKS must carry the "
+                   "spelling fans actually scrobble.")
+          PY
