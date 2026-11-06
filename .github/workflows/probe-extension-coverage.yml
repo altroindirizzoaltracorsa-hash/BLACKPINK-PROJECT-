@@ -101,11 +101,19 @@ jobs:
             select app_user_id from public.linked_accounts
              where lower(source_username) = lower(:qacct) limit 1
           )
-          select '  day ' || (listened_at at time zone 'UTC')::date || '  rows=' || count(*)
-            from public.extension_scrobbles
-           where app_user_id = (select app_user_id from me)
-             and listened_at >= now() - (:'days' || ' days')::interval
-           group by 1 order by 1;
+          -- Aggregate in a subquery and format outside it. Formatting inline
+          -- put count(*) inside the GROUP BY expression, which Postgres
+          -- rejects outright ("aggregate functions are not allowed in GROUP
+          -- BY") — and because each statement is independent, that killed
+          -- this query and the two below it while the ones above still
+          -- printed, which reads like "no data" rather than like an error.
+          select '  day ' || d || '  rows=' || n
+            from (select (listened_at at time zone 'UTC')::date as d, count(*) as n
+                    from public.extension_scrobbles
+                   where app_user_id = (select app_user_id from me)
+                     and listened_at >= now() - (:'days' || ' days')::interval
+                   group by 1) s
+           order by d;
 
           -- Per track id. Bucket ids (solo_*, bp_group) are the ones worth
           -- looking at twice: a campaign song sitting in one is a matcher miss,
@@ -114,10 +122,12 @@ jobs:
             select app_user_id from public.linked_accounts
              where lower(source_username) = lower(:qacct) limit 1
           )
-          select '  track ' || rpad(track_id, 14) || ' rows=' || count(*)
-            from public.extension_scrobbles
-           where app_user_id = (select app_user_id from me)
-           group by track_id order by count(*) desc;
+          select '  track ' || rpad(t, 14) || ' rows=' || n
+            from (select track_id as t, count(*) as n
+                    from public.extension_scrobbles
+                   where app_user_id = (select app_user_id from me)
+                   group by 1) s
+           order by n desc;
 
           -- The recoverable set: rows in a bucket whose TITLE matches a song we
           -- track. Mirrors the ADDICTED backfill's predicate (strip (...) and
@@ -134,15 +144,16 @@ jobs:
              where app_user_id = (select app_user_id from me)
                and (track_id like 'solo\_%' or track_id = 'bp_group')
           )
-          select 'MISFILED?  bucket=' || track_id || '  artist=' || artist
-              || '  title=' || title || '  rows=' || count(*)
-            from norm
-           where tkey in ('jump','shutdown','dududududu','go','sawadika','click',
-                          'lessthanalover','fallenangel','heaven','newtrick',
-                          'v12','cobra','tarantino','cutuoff','sweat','addicted',
-                          'someonetohold')
-           group by track_id, artist, title
-           order by count(*) desc
+          select 'MISFILED?  bucket=' || t || '  artist=' || a
+              || '  title=' || ti || '  rows=' || n
+            from (select track_id as t, artist as a, title as ti, count(*) as n
+                    from norm
+                   where tkey in ('jump','shutdown','dududududu','go','sawadika','click',
+                                  'lessthanalover','fallenangel','heaven','newtrick',
+                                  'v12','cobra','tarantino','cutuoff','sweat','addicted',
+                                  'someonetohold')
+                   group by 1, 2, 3) s
+           order by n desc
            limit 40;
           SQL
           rc=$?
