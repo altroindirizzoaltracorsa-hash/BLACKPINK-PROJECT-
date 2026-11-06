@@ -436,15 +436,23 @@ console.log('\n--- Someone to Hold');
   //    membership: a set passes while FOCUSED sits third, and the order is the
   //    only thing distinguishing these three to someone scanning the card.
   const card  = (ix.match(/<div class="cd-card cd-card-steps"[\s\S]*?(?=<div class="cd-card )/) || [''])[0];
-  const block = (card.match(/<details class="cd-times cd-playlists">[\s\S]*?<\/details>/) || [''])[0];
-  block ? ok('  the card lists our playlists') : bad('  the card lists our playlists');
+  // OPEN, not a <details>. The three playlists are something to go and do, so
+  // they sit on the card as pills the way new trick's do; the collapsed row
+  // this replaced read as reference material next to them. Matching the open
+  // block specifically is what stops it quietly folding back into a summary.
+  const block = (card.match(/<div class="cd-pl-pills">[\s\S]*?<\/div>\s*<\/div>/) || [''])[0];
+  block ? ok('  the card lists our playlists, open on the card') : bad('  the card lists our playlists, open on the card',
+    /cd-times cd-playlists/.test(card) ? 'they are back behind a collapsed summary' : 'no .cd-pl-pills block');
   const WANT = [
     ['STH FOCUSED', '5gH4blOZKANYBKzKzsyhCB'],
     ['STH x PINKS', '2XgI7jbPYtf9pV1DtiJxCH'],
     ['STH x BP',    '4unCkvJ8oJCFQzA7d7zKae'],
   ];
-  const links = [...block.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)]
-    .map((m) => [m[2].replace(/\s*→\s*$/, '').trim(), m[1]]);
+  // The label now sits after an inline Spotify glyph, so the visible text is
+  // what is left once tags are stripped — reading up to the first '<' would
+  // measure the <svg> instead and every name would come back empty.
+  const links = [...block.matchAll(/<a class="cd-pl-pill" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)]
+    .map((m) => [m[2].replace(/<[^>]*>/g, '').replace(/\s*→\s*$/, '').trim(), m[1]]);
   links.length === WANT.length
     ? ok(`  ${links.length} playlists listed`, links.map((l) => l[0]).join(', '))
     : bad(`  ${WANT.length} playlists listed`, `${links.length}: ${links.map((l) => l[0]).join(', ')}`);
@@ -613,6 +621,54 @@ console.log('\n--- the Steps playlist note follows the release');
   after.note.trim() !== before.note.trim()
     ? ok('  so the two sides really do differ')
     : bad('  so the two sides really do differ', 'the same sentence on both sides of the release');
+}
+
+// ── THE TWO NEWEST CARDS USE THE ROW'S OWN BUTTON SHAPE ────────────────────
+// SaWaDiKa, new trick and ADDICTED all draw their controls as 99px pills;
+// Someone to Hold and Sun Showers shipped square, which is what made the pair
+// look like a different site next to their neighbours. Measured against new
+// trick's own rendered radius rather than against the number 99, so this says
+// "the same as the cards that already had it" and keeps saying it if that
+// shape is ever changed in one place.
+console.log('\n--- the rounded controls, on the two cards that were missing them');
+{
+  const pg = await browser.newPage({ viewport: { width: 414, height: 900 } });
+  await pg.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen','1');
+    localStorage.setItem('ltal_reminder_dismissed_v1','1'); localStorage.setItem('ext_update_dismissed_1.9.8','1'); } catch (e) {} });
+  await pg.goto(`http://127.0.0.1:${server.address().port}/`, { waitUntil: 'load' });
+  await pg.locator('.cd-card-steps').waitFor({ timeout: 20000 }).catch(() => {});
+  const shape = await pg.evaluate(() => {
+    const rad = (sel) => { const e = document.querySelector(sel);
+      return e ? parseFloat(getComputedStyle(e).borderTopLeftRadius) || 0 : null; };
+    const pills = [...document.querySelectorAll('.cd-card-steps .cd-pl-pill')];
+    return {
+      ref:   rad('.cd-card-newtrick .cd-btn'),
+      steps: rad('.cd-card-steps .cd-btn'),
+      sun:   rad('.cd-card-sunshowers .cd-btn'),
+      pill:  pills.length ? parseFloat(getComputedStyle(pills[0]).borderTopLeftRadius) || 0 : null,
+      // Visible without opening anything — the whole point of moving them out
+      // of the <details>. A pill inside a closed <details> has height 0.
+      shown: pills.filter((p) => p.getBoundingClientRect().height > 0).length,
+      count: pills.length,
+    };
+  });
+  await pg.close();
+  shape.ref > 20
+    ? ok('new trick’s buttons are pills', `${shape.ref}px`)
+    : bad('new trick’s buttons are pills', `${shape.ref}px — the reference shape is gone, so the rest proves nothing`);
+  shape.steps === shape.ref
+    ? ok('  Someone to Hold matches it', `${shape.steps}px`)
+    : bad('  Someone to Hold matches it', `${shape.steps}px vs ${shape.ref}px`);
+  shape.sun === shape.ref
+    ? ok('  Sun Showers matches it', `${shape.sun}px`)
+    : bad('  Sun Showers matches it', `${shape.sun}px vs ${shape.ref}px`);
+  shape.pill === shape.ref
+    ? ok('  and so do the playlist pills', `${shape.pill}px`)
+    : bad('  and so do the playlist pills', `${shape.pill}px vs ${shape.ref}px`);
+  shape.count === 3 && shape.shown === 3
+    ? ok('  all three playlists are on the card without opening anything')
+    : bad('  all three playlists are on the card without opening anything',
+          `${shape.shown} of ${shape.count} visible`);
 }
 
 await browser.close(); server.close();
