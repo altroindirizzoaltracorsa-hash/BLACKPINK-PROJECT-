@@ -10029,15 +10029,34 @@ const TRACKS = [
   // CLICK above. `track` is the Spotify spelling because that is what the
   // scrobble matchers key on, and api/cron-scrobbles.js carries it verbatim.
   { id: 'addicted',    title: 'ADDICTED',          artist: 'JISOO',  track: 'ADDICTED',           year: '2026', era: 'ADDICTED',     spotify: 'https://open.spotify.com/track/0SqDNsDiJyvrbXGsIvt0hN' },
-  // JENNIE for the Netflix film "Steps" (2026-11-06). Spotify's own title is
-  //   Someone to Hold (from the Netflix Film "Steps")
-  // and `track` here is the BARE title on purpose: _trackKey() strips (...)
-  // and [...] before comparing, so both spellings collapse to the same key,
-  // and the bare one is what the server matchers carry verbatim. A " - From
-  // the Netflix Film ..." suffix would NOT be stripped by any of them — the
-  // parenthesised form is what Spotify actually shipped, confirmed against
-  // the discography rather than assumed.
-  { id: 'sth',         title: 'SOMEONE TO HOLD',   artist: 'Jennie', track: 'Someone to Hold',    year: '2026', era: 'STEPS',        spotify: 'https://open.spotify.com/track/41GdHxKlxBzXZde4io6tbz' },
+  // JENNIE for the Netflix film "Steps" (2026-11-06). `track` IS THE FULL
+  // TITLE, SUFFIX AND ALL, and it has to be — this entry feeds two matchers
+  // that behave differently:
+  //
+  //   today / this week   _trackKey() strips (...) and [...], so either
+  //                       spelling works. This is the one I checked first.
+  //   ALL-TIME per track  fetchTrackPlays -> track.getInfo(artist, track)
+  //                       is an EXACT string lookup with no normalisation.
+  //
+  // It shipped with the bare title and that second path returned nothing.
+  // Measured on two linked accounts, 2026-11-06: 43 and 25 plays scrobbled
+  // as artist='Jennie' track='Someone to Hold (from the Netflix Film
+  // "Steps")', while track.getInfo for the bare title answered
+  // userplaycount=None under BOTH 'Jennie' and 'JENNIE' and with autocorrect
+  // on and off, and user.getTrackScrobbles answered total=0. Last.fm does
+  // not fold the two spellings together, so the all-time figure read 0 while
+  // today and this week read correctly — the exact shape of the "ADDICTED
+  // shows 2" report.
+  //
+  // The full title is safe for the other matchers precisely because they all
+  // strip the parenthetical: trackKey, ingest's keyName and statsfm's prefix
+  // every one of them still resolves it to someonetohold. Verified by
+  // running those functions out of their own files, not retyped.
+  //
+  // So: the string here must be the one fans' scrobblers actually write.
+  // probe-lastfm-title.yml and probe-track-user.yml both answer that for the
+  // next release; the latter prints the exact strings and flags a mismatch.
+  { id: 'sth',         title: 'SOMEONE TO HOLD',   artist: 'Jennie', track: 'Someone to Hold (from the Netflix Film "Steps")', year: '2026', era: 'STEPS',        spotify: 'https://open.spotify.com/track/41GdHxKlxBzXZde4io6tbz' },
 ];
 
 // Display name for a leaderboard sub-tab, taken from TRACKS rather than typed

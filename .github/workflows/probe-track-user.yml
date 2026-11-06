@@ -83,13 +83,13 @@ jobs:
             "cutuoff":     ("LISA",      "Cut U Off"),
             "sweat":       ("LISA",      "Sweat"),
             "addicted":    ("JISOO",     "ADDICTED"),
-            # The BARE title, as TRACKS carries it. Spotify ships this one as
-            # 'Someone to Hold (from the Netflix Film "Steps")' — the first
-            # campaign track whose real title has a parenthetical, and
-            # track.getInfo is an EXACT-string lookup, so that difference is
-            # precisely what cause (2) above is about. probe-lastfm-title.yml
-            # answers whether the two spellings are one Last.fm track.
-            "sth":         ("Jennie",    "Someone to Hold"),
+            # The FULL title, as TRACKS now carries it. It shipped bare, and
+            # this probe is what caught that: cause (2) above, live — 43 and
+            # 25 plays under the full spelling while the exact-string lookup
+            # for the bare one answered nothing. Keep this in step with
+            # TRACKS or the probe starts lying about the thing it exists to
+            # check.
+            "sth":         ("Jennie",    'Someone to Hold (from the Netflix Film "Steps")'),
           }
 
           tid = (os.environ.get("TRACK") or "addicted").strip()

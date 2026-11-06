@@ -405,6 +405,18 @@ jobs:
         if: always()
         run: node .github/scripts/test_scrobbler_track_lists.mjs
 
+      # The step above proves every path knows every track ID. One path does
+      # not match on an ID or a normalised key though — track.getInfo takes
+      # the RAW title string, with no normalisation, from TRACKS. Both
+      # index.html and api/cron-scrobbles.js make that call from their own
+      # copy, so the copies must agree character for character. "Someone to
+      # Hold" shipped bare while Last.fm files it as 'Someone to Hold (from
+      # the Netflix Film "Steps")', and the all-time figure read 0 against
+      # accounts with 43 and 25 plays while today and this week read fine.
+      - name: Both TRACKS lists carry the same titles
+        if: always()
+        run: node .github/scripts/test_track_titles_match.mjs
+
       # The DURABLE half of the same failure, which the step above cannot see.
       # ADDICTED's column landed a week after the song did, and because every
       # path to user_daily_counts is deliberately forgiving (try/catch, or

@@ -88,14 +88,19 @@ const TRACKS = [
   { id: 'cutuoff',    artist: 'LISA',   track: 'Cut U Off' },
   { id: 'sweat',      artist: 'LISA',   track: 'Sweat' },
   { id: 'addicted',   artist: 'JISOO',  track: 'ADDICTED' },
-  // JENNIE for the Netflix film "Steps" (2026-11-06). The TRACK NAME HERE IS
-  // THE BARE TITLE, not Spotify's full one: a soundtrack single ships as
-  // "Someone to Hold (From the Netflix Film 'Steps')" or similar, and
-  // trackKey() strips (...) and [...] before comparing, so the bare title is
-  // what both spellings collapse to. A " - From the Netflix Film Steps"
-  // suffix would NOT be stripped — if the scrobbles ever come in under that
-  // spelling, the fix is here, not a second entry.
-  { id: 'sth',        artist: 'Jennie', track: 'Someone to Hold' },
+  // JENNIE for the Netflix film "Steps" (2026-11-06). THE FULL TITLE, SUFFIX
+  // AND ALL. This list feeds two matchers with different tolerances:
+  // trackKey() (the week's scrobbles) strips (...) and so takes either
+  // spelling, but fetchTrackPlays -> track.getInfo is an EXACT string lookup
+  // and takes only the one fans actually scrobble. It shipped bare, and that
+  // second path answered userplaycount=None against two accounts carrying 43
+  // and 25 plays of it — Last.fm keeps the spellings as separate tracks and
+  // autocorrect does not bridge them, so the all-time figure read 0 while
+  // today and this week read correctly.
+  // Must stay byte-identical to index.html's TRACKS entry; the two copies
+  // feed the same Last.fm call from different surfaces and
+  // test_track_titles_match.mjs fails if they drift.
+  { id: 'sth',        artist: 'Jennie', track: 'Someone to Hold (from the Netflix Film "Steps")' },
 ];
 
 // Less Than a Lover leaves the campaign at the reset cutoff. Per-track ltal values
