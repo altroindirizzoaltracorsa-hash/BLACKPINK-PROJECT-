@@ -72,6 +72,12 @@ jobs:
           frm = int((now - datetime.timedelta(hours=hours)).timestamp())
           to  = int(now.timestamp())
           hhmm = lambda ts: datetime.datetime.fromtimestamp(ts, datetime.timezone.utc).strftime("%H:%M")
+          # A silence can start on the previous day, and an hour-only stamp
+          # then renders it backwards — the 17-hour lead-in printed as
+          # "22:48 -> 16:09", which reads like an error rather than like a
+          # span. Silences carry the date; the narrow holes are minutes wide
+          # by definition and stay on the short form.
+          dthm = lambda ts: datetime.datetime.fromtimestamp(ts, datetime.timezone.utc).strftime("%b %d %H:%M")
 
           note(f"window: last {hours}h, up to {now.strftime('%Y-%m-%d %H:%M')} UTC")
 
@@ -150,7 +156,7 @@ jobs:
                   note(f"    {len(silences)} silent stretch(es) over 10 min — "
                        f"{round(quiet_total/3600, 1)}h of this {hours}h window has NO data:")
                   for a, b, where in silences:
-                      note(f"      {hhmm(a)} -> {hhmm(b)}  "
+                      note(f"      {dthm(a)} -> {dthm(b)}  "
                            f"{round((b-a)/60)} min silent   ({where})")
 
               # Narrow holes stay as a separate, much weaker signal: a hole one
