@@ -74,6 +74,23 @@ jobs:
               print("::notice::" + s.replace("%", "%25"))
 
           note(f"artist as queried: {artist!r}")
+
+          # SEARCH FIRST, because "Track not found" is two answers in one and
+          # they need separating: Last.fm has no page for this song at all, or
+          # it has one under an artist string we did not guess. A soundtrack
+          # single is exactly the case where the credited artist can differ
+          # from the member's own name, and guessing it is how an hour gets
+          # spent on the wrong question. track.search is artist-agnostic.
+          q = titles[0]
+          d = lfm(method="track.search", track=q, limit=10)
+          hits = (((d.get("results") or {}).get("trackmatches") or {}).get("track")) or []
+          if isinstance(hits, dict):
+              hits = [hits]
+          if not hits:
+              note(f"SEARCH {q!r} -> nothing on Last.fm under any artist")
+          for h in hits[:10]:
+              note(f"SEARCH {q!r} -> artist={h.get('artist')!r} name={h.get('name')!r} "
+                   f"listeners={h.get('listeners')}")
           seen = {}
           for title in titles:
               for ac in (0, 1):
