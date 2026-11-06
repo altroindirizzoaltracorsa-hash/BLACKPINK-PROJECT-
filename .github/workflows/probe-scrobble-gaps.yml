@@ -1,0 +1,145 @@
+name: Probe scrobble gaps (read-only)
+
+# DID THE SCROBBLER DROP PLAYS, OR DID YOU STOP LISTENING?
+#
+# WebScrobbler writes straight to Last.fm, so this site holds no record of what
+# it failed to send. The only evidence is the SHAPE of the Last.fm history, and
+# the two cases look different:
+#
+#   stopped listening   one long gap, and the scrobbles resume later
+#   dropped a play      a hole about ONE TRACK long inside an otherwise steady
+#                       cadence — the tracks either side are minutes apart,
+#                       which is what a scrobbler that missed one looks like
+#
+# So this prints the cadence rather than a verdict: how many scrobbles, over
+# what span, the median spacing (≈ track length for continuous listening), and
+# every gap that is suspiciously wide but too narrow to be a break — with the
+# tracks on either side, so the judgement can be made from the actual plays.
+#
+# IT CANNOT PROVE A NEGATIVE. A scrobbler that was off for an hour leaves the
+# same shape as an hour not listening, and nothing in Last.fm distinguishes
+# them. What it can do is show a cadence with one-track holes punched in it,
+# which is the signature worth acting on.
+#
+# Read-only: public Last.fm API, the key already in the repo.
+
+on:
+  workflow_dispatch:
+    inputs:
+      users:
+        description: 'Last.fm usernames, comma separated'
+        required: true
+        default: 'howyoulikedat'
+      hours:
+        description: 'How many hours back (default 24)'
+        required: false
+        default: '24'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Ask Last.fm
+        env:
+          USERS: ${{ github.event.inputs.users }}
+          HOURS: ${{ github.event.inputs.hours }}
+        run: |
+          python3 - <<'PY'
+          import os, json, time, datetime, statistics, urllib.parse, urllib.request
+
+          LFM_KEY = "666b8ef2f3cc360fbc20df275fba2981"
+          LBASE   = "https://ws.audioscrobbler.com/2.0/"
+
+          users = [u.strip() for u in os.environ["USERS"].split(",") if u.strip()]
+          try:
+              hours = max(1, min(168, int(os.environ.get("HOURS") or 24)))
+          except ValueError:
+              hours = 24
+
+          def note(s):
+              print("::notice title=gaps::" + str(s).replace("%", "%25"))
+
+          def lfm(**p):
+              p.update(api_key=LFM_KEY, format="json")
+              try:
+                  with urllib.request.urlopen(LBASE + "?" + urllib.parse.urlencode(p), timeout=25) as r:
+                      return json.load(r)
+              except Exception as e:
+                  return {"__error": str(e)}
+
+          now = datetime.datetime.now(datetime.timezone.utc)
+          frm = int((now - datetime.timedelta(hours=hours)).timestamp())
+          to  = int(now.timestamp())
+          hhmm = lambda ts: datetime.datetime.fromtimestamp(ts, datetime.timezone.utc).strftime("%H:%M")
+
+          note(f"window: last {hours}h, up to {now.strftime('%Y-%m-%d %H:%M')} UTC")
+
+          for user in users:
+              plays, page, pages = [], 1, 1
+              while page <= pages and page <= 40:
+                  d = lfm(method="user.getRecentTracks", user=user,
+                          **{"from": frm, "to": to}, limit=200, page=page)
+                  rt = d.get("recenttracks")
+                  if not rt:
+                      note(f"{user}: {d.get('message') or d.get('__error') or 'no recenttracks'}")
+                      break
+                  pages = int((rt.get("@attr") or {}).get("totalPages") or 1)
+                  tracks = rt.get("track") or []
+                  if isinstance(tracks, dict):
+                      tracks = [tracks]
+                  for t in tracks:
+                      if (t.get("@attr") or {}).get("nowplaying") == "true":
+                          continue
+                      uts = (t.get("date") or {}).get("uts")
+                      if uts:
+                          plays.append((int(uts),
+                                        (t.get("artist") or {}).get("#text") or "?",
+                                        t.get("name") or "?"))
+                  page += 1
+                  time.sleep(0.25)
+
+              if not plays:
+                  note(f"--- {user}: NOTHING in this window")
+                  continue
+
+              plays.sort()
+              note(f"--- {user}: {len(plays)} scrobbles, {hhmm(plays[0][0])} -> {hhmm(plays[-1][0])} UTC")
+              note(f"    last scrobble was {round((to - plays[-1][0]) / 60)} min ago")
+
+              if len(plays) < 3:
+                  note("    too few to read a cadence")
+                  continue
+
+              gaps = [plays[i + 1][0] - plays[i][0] for i in range(len(plays) - 1)]
+              med  = statistics.median(gaps)
+              note(f"    median spacing {round(med / 60, 1)} min  "
+                   f"(≈ track length while listening continuously)")
+
+              # A hole worth looking at: clearly wider than the cadence, but
+              # still short enough that "went out for the evening" does not
+              # explain it. Below 2x median is just a longer song; past ~45 min
+              # it is a break, and no amount of staring settles that one.
+              lo, hi = max(med * 2, 300), 45 * 60
+              susp = [(i, g) for i, g in enumerate(gaps) if lo <= g <= hi]
+              if not susp:
+                  note("    no one-track-sized holes — the cadence is clean, "
+                       "so nothing here looks like a dropped scrobble")
+              else:
+                  note(f"    {len(susp)} suspicious gap(s) — wide for the cadence, "
+                       f"too short for a break:")
+                  for i, g in susp[:25]:
+                      missed = max(1, round(g / med) - 1)
+                      a, b = plays[i], plays[i + 1]
+                      note(f"      {hhmm(a[0])} -> {hhmm(b[0])}  gap {round(g/60)} min "
+                           f"(~{missed} track(s) wide)   after: {a[1]} - {a[2]}   "
+                           f"before: {b[1]} - {b[2]}")
+
+              # Long gaps reported separately and NOT counted as drops: these
+              # are where listening stopped, and calling them drops would be
+              # inventing a problem.
+              longs = [g for g in gaps if g > hi]
+              if longs:
+                  note(f"    plus {len(longs)} break(s) over 45 min — "
+                       "not counted as drops, that is just time not listening")
+          PY
