@@ -405,6 +405,18 @@ jobs:
         if: always()
         run: node .github/scripts/test_scrobbler_track_lists.mjs
 
+      # The DURABLE half of the same failure, which the step above cannot see.
+      # ADDICTED's column landed a week after the song did, and because every
+      # path to user_daily_counts is deliberately forgiving (try/catch, or
+      # tiered on "did this query error") nothing threw, nothing logged, and
+      # the badges grid simply had no ADDICTED row — which reads as nobody
+      # having streamed it. Checks that a column the cron computes exists, that
+      # a column that exists is returned to the grid, and that it is in both
+      # halves of the voting rank gate. Plain text, no browser.
+      - name: Every per-day column is written, read and summed
+        if: always()
+        run: node .github/scripts/test_daily_count_columns.mjs
+
       # Two things about Sun Showers are NOT known: whether JISOO performs it,
       # and when it comes out. The card must claim neither. This site made the
       # mirror-image mistake six days ago — the Steps card asserted a writing

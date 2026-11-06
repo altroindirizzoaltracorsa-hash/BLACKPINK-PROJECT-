@@ -5613,6 +5613,11 @@
         <button class="lb-subtab" onclick="switchLbSong('click', this)">CLICK</button>
         <button class="lb-subtab" onclick="switchLbSong('addicted', this)">ADDICTED</button>
         <button class="lb-subtab" id="lb-subtab-newtrick" style="display:none" onclick="switchLbSong('newtrick', this)">NEW TRICK</button>
+        <!-- Hidden until the song is out, the way NEW TRICK's is, rather than
+             shipped visible because it happens to be out today: a tab for a
+             board that cannot have a single play on it invites a click that
+             shows an empty list. Revealed by sthLive() below. -->
+        <button class="lb-subtab" id="lb-subtab-sth" style="display:none" onclick="switchLbSong('sth', this)">SOMEONE TO HOLD</button>
       </div>
       <!-- Nested per-track row for PRESS PLAY — shown only when that tab is open.
            SaWaDiKa is track 1 and leads it; it kept the `sawadika` id it had as a
@@ -7389,6 +7394,10 @@ window.addEventListener('DOMContentLoaded', () => {
   loadReleaseCommunityScrobbles('jisoo', 'click');
   // Reveal the NEW TRICK leaderboard sub-tab once the single is out (auto-flips).
   if (newtrickLive()) { const _nt = document.getElementById('lb-subtab-newtrick'); if (_nt) _nt.style.display = ''; }
+  // Same for "Someone to Hold" (JENNIE), off the same instant the card and the
+  // playlist note read — sthLive() — so the tab, the countdown and the copy
+  // cannot disagree about whether the song is out.
+  if (sthLive()) { const _sth = document.getElementById('lb-subtab-sth'); if (_sth) _sth.style.display = ''; }
   loadLisaSaveCount();
   loadJisooSaveCount();
   loadNewTrickSaveCount();
@@ -10020,6 +10029,15 @@ const TRACKS = [
   // CLICK above. `track` is the Spotify spelling because that is what the
   // scrobble matchers key on, and api/cron-scrobbles.js carries it verbatim.
   { id: 'addicted',    title: 'ADDICTED',          artist: 'JISOO',  track: 'ADDICTED',           year: '2026', era: 'ADDICTED',     spotify: 'https://open.spotify.com/track/0SqDNsDiJyvrbXGsIvt0hN' },
+  // JENNIE for the Netflix film "Steps" (2026-11-06). Spotify's own title is
+  //   Someone to Hold (from the Netflix Film "Steps")
+  // and `track` here is the BARE title on purpose: _trackKey() strips (...)
+  // and [...] before comparing, so both spellings collapse to the same key,
+  // and the bare one is what the server matchers carry verbatim. A " - From
+  // the Netflix Film ..." suffix would NOT be stripped by any of them — the
+  // parenthesised form is what Spotify actually shipped, confirmed against
+  // the discography rather than assumed.
+  { id: 'sth',         title: 'SOMEONE TO HOLD',   artist: 'Jennie', track: 'Someone to Hold',    year: '2026', era: 'STEPS',        spotify: 'https://open.spotify.com/track/41GdHxKlxBzXZde4io6tbz' },
 ];
 
 // Display name for a leaderboard sub-tab, taken from TRACKS rather than typed
@@ -10079,7 +10097,7 @@ const EP_TRACK_IDS = ['ltal', 'fallenangel', 'heaven'];
 // STAMP stays campaign-only — see CAMPAIGN_TRACK_IDS above).
 // PRESS PLAY's other five join SaWaDiKa here: the EP counts toward the
 // community goal, the way the Fallen Angel EP does.
-const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'sawadika', 'click', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted'];
+const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'sawadika', 'click', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted', 'sth'];
 function campaignTotalOf(tp) { return CAMPAIGN_TOTAL_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
 
 // ── MOMENTARY: Fallen Angel EP push ──────────────────────────
@@ -13091,6 +13109,10 @@ const DAILY_TIERS = {
   sweat:       makeTiers(30, 'SWEAT'),
   // JISOO solo single — 40, the singles' bar, as CLICK and SAWADIKA have.
   addicted:    makeTiers(40, 'ADDICTED'),
+  // JENNIE for the Netflix film "Steps" — 40, the singles' bar. It leads a
+  // soundtrack album but it is released as a single two weeks ahead of the
+  // film, so it is a single's bar, not an EP track's 30.
+  sth:         makeTiers(40, 'SOMEONE TO HOLD'),
 };
 
 const WEEKLY_TIERS = {
@@ -13114,6 +13136,8 @@ const WEEKLY_TIERS = {
   sweat:       makeTiers(30 * 7, 'SWEAT', '/wk'),
   // JISOO solo single — 40, the singles' bar, as CLICK and SAWADIKA have.
   addicted:    makeTiers(40 * 7, 'ADDICTED', '/wk'),
+  // JENNIE for the Netflix film "Steps" — 40, the singles' bar, as above.
+  sth:         makeTiers(40 * 7, 'SOMEONE TO HOLD', '/wk'),
 };
 
 function getDailyBadge(trackId, count) {
@@ -13403,6 +13427,10 @@ function countLbByTrack(listens) {
       if (k === 'lessthanalover') counts.ltal++;
       else if (k === 'fallenangel') counts.fallenangel++;
       else if (k === 'heaven')      counts.heaven++;
+      // "Someone to Hold" (from the Netflix film Steps). _trackKey strips
+      // (...) and [...] before comparing, so Spotify's soundtrack suffix
+      // collapses to the bare title — the same rule the server matchers use.
+      else if (k === 'someonetohold') counts.sth++;
     } else if (_lbMemberKey(l.track_metadata?.artist_name) === 'lisa') {
       if (k === 'sawadika') counts.sawadika++;
       else if (PRESS_PLAY_KEYS.includes(k)) counts[k]++;
@@ -16119,7 +16147,7 @@ function computeDailyCommunityTotal(users) {
     // Heaven) and PRESS PLAY (SaWaDiKa + the five new tracks) — so a
     // release lifts the community goal — mirrors CAMPAIGN_TOTAL_IDS / daily_all.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_newtrick || 0) + (s.daily_addicted || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_newtrick || 0) + (s.daily_addicted || 0) + (s.daily_sth || 0);
   }, 0);
 }
 
@@ -16221,6 +16249,8 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       // posted for the reason newtrick must be: the server stores what this
       // payload carries, so a field left out is not "unchanged", it is zero.
       overall_addicted: totalPlays.addicted || 0,
+      // JENNIE "Someone to Hold" (Netflix film Steps) — same three reasons.
+      overall_sth:      totalPlays.sth      || 0,
       // Fallen Angel EP tracks — submitted so the per-track boards fill live from
       // badges visits (the daily cron only recomputes them once at 01:15 UTC). Kept
       // out of overall_all/daily_all/weekly_all so they never inflate campaign totals.
@@ -16254,6 +16284,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       daily_sawadika:   todayCounts.sawadika || 0,
       daily_click:      todayCounts.click    || 0,
       daily_addicted:   todayCounts.addicted || 0,
+      daily_sth:        todayCounts.sth      || 0,
       daily_fallenangel: todayCounts.fallenangel || 0,
       daily_heaven:      todayCounts.heaven      || 0,
       daily_newtrick:    todayCounts.newtrick    || 0,
@@ -16268,6 +16299,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       weekly_sawadika:  weekCounts.sawadika || 0,
       weekly_click:     weekCounts.click    || 0,
       weekly_addicted:  weekCounts.addicted || 0,
+      weekly_sth:       weekCounts.sth      || 0,
       weekly_fallenangel: weekCounts.fallenangel || 0,
       weekly_heaven:      weekCounts.heaven      || 0,
       weekly_newtrick:    weekCounts.newtrick    || 0,

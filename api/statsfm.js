@@ -173,6 +173,12 @@ export default async function handler(request) {
       // JISOO solo single (2026-10-30) — missed when the song shipped, so
       // Stats.fm/Musicat reported 0 for it however much it was played.
       { id: 'addicted',    prefix: 'addicted',          artist: 'JISOO' },
+      // JENNIE for the Netflix film "Steps" (2026-11-06). A PREFIX match, so
+      // whatever soundtrack attribution Spotify hangs off the end of the title
+      // — "(From the Netflix Film ...)", "- From the Netflix Film ..." — is
+      // matched either way. This is the one of the three matchers that does
+      // not care which punctuation the suffix arrives with.
+      { id: 'sth',         prefix: 'someone to hold',   artist: 'JENNIE' },
     ];
 
     function countTracks(list) {

@@ -42,6 +42,12 @@ const TRACKS = [
   // scrobbling through the extension. The plays were stored with their real
   // artist/title, so they are recoverable by re-classifying those rows.
   { id: 'addicted',    artist: 'jisoo',     track: 'addicted' },
+  // JENNIE for the Netflix film "Steps" (2026-11-06). BARE TITLE on purpose:
+  // keyName() runs norm() first, which strips (...) and [...], so Spotify's
+  // "Someone to Hold (From the Netflix Film ...)" collapses to the same key.
+  // Added on release day rather than a week later, which is what left every
+  // extension-scrobbled ADDICTED play in the generic solo_jisoo bucket.
+  { id: 'sth',         artist: 'jennie',    track: 'someone to hold' },
 ];
 
 function norm(s) {

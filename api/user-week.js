@@ -78,6 +78,15 @@ export default async function handler(req, res) {
       if (!ar.error) for (const row of (ar.data || [])) adByDay[row.day_key] = row.addicted || 0;
     } catch {}
 
+    // "Someone to Hold" (JENNIE, 2026-11-06) in its own tolerant query, same
+    // reason as the two above. Added with the release rather than after the
+    // grid is noticed to be missing a row.
+    const sthByDay = {};
+    try {
+      const sr = await runQuery('day_key,sth');
+      if (!sr.error) for (const row of (sr.data || [])) sthByDay[row.day_key] = row.sth || 0;
+    } catch {}
+
     const days = {};
     for (const row of (data || [])) {
       days[row.day_key] = {
@@ -92,6 +101,7 @@ export default async function handler(req, res) {
         heaven:      hasNew ? (row.heaven      || 0) : 0,
         newtrick:    ntByDay[row.day_key] || 0,
         addicted:    adByDay[row.day_key] || 0,
+        sth:         sthByDay[row.day_key] || 0,
         by_source: hasBySource ? (row.by_source || null) : null,
       };
     }

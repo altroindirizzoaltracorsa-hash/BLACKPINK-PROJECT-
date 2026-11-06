@@ -105,6 +105,22 @@ const RELEASE = {
   // be inventing it. The 7-day mark below is still ahead, and this entry plus
   // DEFAULT_IDS is what makes it recordable.
   'Pksr9T8m_aA': '2026-10-29T23:00:09Z',
+  // JENNIE "Someone to Hold" (Netflix film Steps) — NOT HERE YET, AND THAT IS
+  // A MEASUREMENT, NOT AN OVERSIGHT. The song went out 2026-11-06T05:00:00Z.
+  // Checked at 05:05Z: youtube.com/@jennierubyjane/videos lists 30 uploads,
+  // newest first, and not one of them is this song — so there is no official
+  // video on her channel to track, and an id put here on a guess would pin a
+  // mark to the wrong video.
+  //
+  // WHEN ONE APPEARS, ADD IT IMMEDIATELY. Its 24h mark is 2026-11-07T05:00:00Z
+  // (release + 24h; use the video's own publishedAt if it differs, the way the
+  // ADDICTED entry above carries :09), and its 7-day mark is
+  // 2026-11-13T05:00:00Z in EXTRA_MARKS. An entry here plus DEFAULT_IDS is what
+  // makes a mark recordable at all: ADDICTED went onto vs.html and into the
+  // capture job but into NEITHER list, and its 24h figure is permanently gone —
+  // a 15h50m hole with 4,012,016 views across it, which no interpolation can
+  // honestly fill. The window to avoid repeating that closes at the instant
+  // above, not when someone next looks.
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;

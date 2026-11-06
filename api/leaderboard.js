@@ -58,7 +58,7 @@ function communityGoalTotalFromUsers(users, dayDDMM) {
     // Whole campaign incl. the Fallen Angel EP — matches computeDailyCommunityTotal
     // (client) and communityGoalTotal in cron-scrobbles.js so all three agree.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_newtrick || 0) + (s.daily_addicted || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_newtrick || 0) + (s.daily_addicted || 0) + (s.daily_sth || 0);
   }, 0);
 }
 
@@ -91,7 +91,7 @@ const TRACK_EVENTS = new Set(['pageview', 'playlist_click', 'share_click', 'vote
 // leaderboard. LTAL's old reset cutoff no longer drops it — it's back as part of
 // the EP. (Client mirror: CAMPAIGN_TOTAL_IDS in index.html.)
 const LTAL_STOP_MS = Date.UTC(2026, 7, 17, 0, 0, 0); // 2026-08-17 00:00 UTC = 2 AM Rome
-const rankTids = () => ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted'];
+const rankTids = () => ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted', 'sth'];
 
 
 // Chat shares this file (instead of its own /api/chat.js) to stay under
@@ -170,7 +170,7 @@ function bpWeekBounds() {
 // Additive on top of Last.fm/LB scores; 0 for anyone who hasn't linked the
 // extension, so regular submissions are byte-for-byte unaffected.
 async function extensionCountsForUser(sb, appUserId, dayFrom, dayTo, weekFrom, weekTo) {
-  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 , v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0 });
+  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0 , v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0 });
   const out = { total: empty(), week: empty(), today: empty() };
   if (!sb || !appUserId) return out;
   // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
@@ -867,7 +867,7 @@ async function handlerInner(req, res) {
       const { from: exDayFrom, to: exDayTo }   = bpDayBounds();
       const { from: exWeekFrom, to: exWeekTo } = bpWeekBounds();
       const ext = await extensionCountsForUser(sb, user.id, exDayFrom, exDayTo, exWeekFrom, exWeekTo);
-      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted'];
+      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted', 'sth'];
       const hasAny = TIDS.some(id => ext.total[id] || ext.week[id] || ext.today[id]);
       if (hasAny) {
         for (const id of TIDS) {
@@ -907,7 +907,7 @@ async function handlerInner(req, res) {
     // disconnected scrobbler can still reduce it. Mirrors the cron's floor.
     if (existingEntry?.scores && scores) {
       const ex = existingEntry.scores;
-      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted'];
+      const TIDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'sawadika', 'click', 'fallenangel', 'heaven', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted', 'sth'];
       if (ex.daily_date === scores.daily_date) {
         for (const id of TIDS) scores[`daily_${id}`] = Math.max(scores[`daily_${id}`] || 0, ex[`daily_${id}`] || 0);
         scores.daily_all = rankTids().reduce((n, id) => n + (scores[`daily_${id}`] || 0), 0);
@@ -926,7 +926,7 @@ async function handlerInner(req, res) {
     // only when the submit is for the same day/week the cron last wrote.
     if (existingEntry?.scores && scores) {
       const ex = existingEntry.scores;
-      for (const id of ['fallenangel', 'heaven', 'sawadika', 'click', 'newtrick', 'addicted']) {
+      for (const id of ['fallenangel', 'heaven', 'sawadika', 'click', 'newtrick', 'addicted', 'sth']) {
         if (scores[`overall_${id}`] == null && ex[`overall_${id}`] != null) scores[`overall_${id}`] = ex[`overall_${id}`];
         if (ex.daily_date === scores.daily_date && scores[`daily_${id}`] == null && ex[`daily_${id}`] != null) scores[`daily_${id}`] = ex[`daily_${id}`];
         if (ex.weekly_start === scores.weekly_start && scores[`weekly_${id}`] == null && ex[`weekly_${id}`] != null) scores[`weekly_${id}`] = ex[`weekly_${id}`];
@@ -1112,6 +1112,19 @@ async function handlerInner(req, res) {
             addicted: Math.max(val('addicted'), Number((adEx && adEx[0])?.addicted) || 0) };
           await sb.from('user_daily_counts').upsert(ad, { onConflict: 'app_user_id,day_key' });
         } catch (_) { /* addicted column not migrated yet */ }
+        // "Someone to Hold" (JENNIE) in its OWN isolated guarded upsert, same
+        // reason again: a missing `sth` column must not take the others down
+        // with it. Written from release day, not a week after — ADDICTED's
+        // column arrived late and its badge row was empty until it did.
+        try {
+          const { data: sthEx } = await sb
+            .from('user_daily_counts')
+            .select('sth')
+            .eq('app_user_id', user.id).eq('day_key', dk).limit(1);
+          const sr = { app_user_id: user.id, day_key: dk,
+            sth: Math.max(val('sth'), Number((sthEx && sthEx[0])?.sth) || 0) };
+          await sb.from('user_daily_counts').upsert(sr, { onConflict: 'app_user_id,day_key' });
+        } catch (_) { /* sth column not migrated yet */ }
       }
     } catch (e) {
       console.error('user_daily_counts live persist failed:', e?.message || e);
