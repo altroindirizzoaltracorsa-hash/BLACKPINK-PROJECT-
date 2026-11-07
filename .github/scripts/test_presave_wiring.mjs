@@ -467,7 +467,7 @@ console.log('\n--- Someone to Hold');
   const WANT = [
     ['STH FOCUSED', '5gH4blOZKANYBKzKzsyhCB'],
     ['STH x PINKS', '2XgI7jbPYtf9pV1DtiJxCH'],
-    ['STH x BP',    '4unCkvJ8oJCFQzA7d7zKae'],
+    ['STH x BP',    '4hEpHpliRzd1bfhm8smqCl'],
   ];
   // The label now sits after an inline Spotify glyph, so the visible text is
   // what is left once tags are stripped — reading up to the first '<' would
