@@ -23,6 +23,10 @@ import { readFile } from 'node:fs/promises';
 import { chromium } from './_playwright.mjs';
 const ROOT = new URL('../..', import.meta.url).pathname.replace(/\/$/, '');
 const ix  = await readFile(ROOT + '/index.html', 'utf8');
+// Read alongside index.html so the card's MV link and the capture's mark can be
+// checked against each other: they name the same video from two files, and a
+// drift between them puts the countdown card and the 24h pin on different ones.
+const ytHistory = await readFile(ROOT + '/api/youtube-history.js', 'utf8');
 const api = await readFile(ROOT + '/api/proxy-image.js', 'utf8');
 
 let fails = 0;
@@ -493,6 +497,33 @@ console.log('\n--- Someone to Hold');
     ? ok('  and the note is left empty for the script to set')
     : bad('  and the note is left empty for the script to set',
           /pre-?save them/i.test(block) ? 'it is hardcoded, so it goes stale at release' : 'no #sth-pl-note');
+
+  // 9. The MV. Its id is pinned here because the id is the one thing a wrong
+  //    link gets silently right-looking: any YouTube URL renders a video, and
+  //    only the id says WHICH. qbr271qnviI is on the Netflix channel — the
+  //    video for a soundtrack single belongs to the film's distributor, which
+  //    is why looking on @jennierubyjane found nothing — and it is the same id
+  //    api/youtube-history.js pins the 24h and 7-day marks to, so a mismatch
+  //    between the two would have the card and the capture on different videos.
+  const MV = 'qbr271qnviI';
+  const mvLink = (card.match(/<a[^>]*href="(https:\/\/www\.youtube\.com\/watch\?v=[^"]+)"[^>]*>[^<]*Watch MV[^<]*<\/a>/) || [])[1];
+  mvLink
+    ? ok('  the card links to the MV', mvLink)
+    : bad('  the card links to the MV', 'no Watch MV button on the card');
+  mvLink && mvLink.includes(`v=${MV}`)
+    ? ok(`    and it is the right video (${MV})`)
+    : bad(`    and it is the right video (${MV})`, mvLink || '(none)');
+  // feature=shared / si= identify whoever copied the link. Same rule the
+  // playlist links are held to a few lines above.
+  mvLink && !/[?&](feature|si|t)=/.test(mvLink.replace(/^[^?]*\?v=[^&]*/, ''))
+    ? ok('    and carries no share-tracking parameter')
+    : bad('    and carries no share-tracking parameter', mvLink || '(none)');
+
+  const histMark = ytHistory.includes(`'${MV}': '2026-11-06T21:00:00Z'`);
+  histMark
+    ? ok('    and the capture pins the same id, at the video\'s own publishedAt')
+    : bad('    and the capture pins the same id, at the video\'s own publishedAt',
+          'api/youtube-history.js does not carry this id at 21:00Z — the card and the 24h mark would be on different videos');
 }
 
 if (errs.length) { console.log('    page errors: ' + errs.slice(0,3).join(' | ')); fails += errs.length; }
