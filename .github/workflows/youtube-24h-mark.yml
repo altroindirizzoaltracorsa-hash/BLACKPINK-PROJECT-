@@ -72,6 +72,18 @@ on:
     # scheduled runs, and each run waits for the mark itself, so any one
     # surviving is enough. One set per pending mark's hour: 22:xx-23:xx covers a
     # 00:00 mark, 02:xx-03:xx a 04:00 one.
+    #
+    # A SET IS NEEDED PER MARK HOUR, and that is the trap. Adding a mark to
+    # MARK_UTC does nothing on its own: a run only serves a mark it starts
+    # within 5h before, so a 21:00Z mark with every cron sitting at 22:xx-03:xx
+    # has no run that can reach it — the entry looks complete and captures
+    # nothing. That is how ADDICTED's 24h figure was lost, one layer down.
+    # These four cover the 21:00Z marks (Someone to Hold, 24h and 7d). Minutes
+    # are off :00/:30 because GitHub queues behind the top-of-hour crush.
+    - cron: '17 16 * * *'
+    - cron: '47 17 * * *'
+    - cron: '23 19 * * *'
+    - cron: '41 20 * * *'
     - cron: '35 22 * * *'
     - cron: '55 22 * * *'
     - cron: '15 23 * * *'
@@ -103,7 +115,11 @@ jobs:
         env:
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
           BASE: https://www.blinksunited.com
-          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-10-24T04:00:00Z,2026-10-30T04:00:00Z,2026-10-30T23:00:09Z,2026-11-05T23:00:09Z' }}
+          # qbr271qnviI (JENNIE — Someone to Hold, Netflix channel) publishes at
+          # 21:00Z, sixteen hours after the single's own 05:00Z. Its marks are
+          # taken from the VIDEO's publishedAt, not from the release: 24h on
+          # 2026-11-07T21:00Z and 7d on 2026-11-13T21:00Z.
+          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-10-24T04:00:00Z,2026-10-30T04:00:00Z,2026-10-30T23:00:09Z,2026-11-05T23:00:09Z,2026-11-07T21:00:00Z,2026-11-13T21:00:00Z' }}
         run: |
           set -u
           now=$(date -u +%s)

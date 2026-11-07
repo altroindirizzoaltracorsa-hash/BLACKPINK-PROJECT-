@@ -37,7 +37,7 @@ const YT_API = 'https://www.googleapis.com/youtube/v3/videos';
 // to freeze. A release has to be in ALL THREE lists; test_youtube_marks.mjs
 // now fails if a marked video is missing from this one.
 const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc', 'FyS5dAywkEo', 'sf02ugzPFE4', 's466YCiHfKw', 'Lufa9QAFFeY',
-  '-5ZXrO_lYSA', 'Pksr9T8m_aA'];
+  '-5ZXrO_lYSA', 'Pksr9T8m_aA', 'qbr271qnviI'];
 const MAX_POINTS = 2400;              // ~100 days at hourly — keep the full-life gain list
 const MIN_GAP_MS = 55 * 60 * 1000;    // don't store more than ~once an hour
 const key = id => `bu_yt_hist_${id}`;
@@ -105,22 +105,19 @@ const RELEASE = {
   // be inventing it. The 7-day mark below is still ahead, and this entry plus
   // DEFAULT_IDS is what makes it recordable.
   'Pksr9T8m_aA': '2026-10-29T23:00:09Z',
-  // JENNIE "Someone to Hold" (Netflix film Steps) — NOT HERE YET, AND THAT IS
-  // A MEASUREMENT, NOT AN OVERSIGHT. The song went out 2026-11-06T05:00:00Z.
-  // Checked at 05:05Z: youtube.com/@jennierubyjane/videos lists 30 uploads,
-  // newest first, and not one of them is this song — so there is no official
-  // video on her channel to track, and an id put here on a guess would pin a
-  // mark to the wrong video.
+  // JENNIE "Someone to Hold" (Netflix film Steps) — ON THE NETFLIX CHANNEL,
+  // not hers, which is why looking for it on @jennierubyjane found nothing.
+  // The note that stood here said there was no official video; it was looking
+  // in the wrong place. A soundtrack single's video belongs to the film's
+  // distributor, so the member's channel is the wrong first guess.
   //
-  // WHEN ONE APPEARS, ADD IT IMMEDIATELY. Its 24h mark is 2026-11-07T05:00:00Z
-  // (release + 24h; use the video's own publishedAt if it differs, the way the
-  // ADDICTED entry above carries :09), and its 7-day mark is
-  // 2026-11-13T05:00:00Z in EXTRA_MARKS. An entry here plus DEFAULT_IDS is what
-  // makes a mark recordable at all: ADDICTED went onto vs.html and into the
-  // capture job but into NEITHER list, and its 24h figure is permanently gone —
-  // a 15h50m hole with 4,012,016 views across it, which no interpolation can
-  // honestly fill. The window to avoid repeating that closes at the instant
-  // above, not when someone next looks.
+  // publishedAt is 21:00:00Z, SIXTEEN HOURS AFTER THE SONG (05:00:00Z). The
+  // 24h mark is therefore 2026-11-07T21:00:00Z, not the 05:00Z one that a
+  // release+24h assumption would have produced — which would have fired the
+  // capture sixteen hours early, pinned a figure from the wrong instant, and
+  // looked entirely plausible doing it. Taken from the video's own
+  // publishedAt via /api/youtube-stats rather than inferred from the single.
+  'qbr271qnviI': '2026-11-06T21:00:00Z',
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -142,6 +139,7 @@ const EXTRA_MARKS = {
   'Lufa9QAFFeY': [{ key: '7d', label: '7 DAYS', at: '2026-09-24T23:00:00Z' }], // ROSÉ new trick — release + 7d
   '-5ZXrO_lYSA': [{ key: '7d', label: '7 DAYS', at: '2026-10-30T04:00:00Z' }], // LISA Tarantino — release + 7d
   'Pksr9T8m_aA': [{ key: '7d', label: '7 DAYS', at: '2026-11-05T23:00:09Z' }], // JISOO ADDICTED — release + 7d
+  'qbr271qnviI': [{ key: '7d', label: '7 DAYS', at: '2026-11-13T21:00:00Z' }], // JENNIE Someone to Hold (Netflix) — release + 7d
 };
 const marksOf = id => [
   ...(RELEASE[id] ? [{ key: '24h', label: '24H', at: Date.parse(RELEASE[id]) + DAY_MS }] : []),

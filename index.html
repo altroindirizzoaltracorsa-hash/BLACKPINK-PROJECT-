@@ -2469,6 +2469,11 @@
   .cd-pl-pill:hover { background: var(--pl-ink, rgba(255,255,255,0.88));
     color: var(--pl-on-ink, #08050a); border-color: var(--pl-ink, rgba(255,255,255,0.88)); }
   .cd-pl-pill svg { flex: 0 0 auto; }
+  /* The share button inherits .cd-pl-share, which was drawn for the collapsed
+     <details> panel and carries a 10px radius. Among 99px pills that one
+     square-ish corner is exactly the mismatch this block was created to fix,
+     so it takes the pill radius here and nowhere else. */
+  .cd-pl-pills .cd-pl-share { width: 100%; margin: 0.7rem 0 0; border-radius: 99px; }
   .cd-card-jisoo .js-park { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; height: auto; opacity: 0.9; mix-blend-mode: multiply; pointer-events: none; z-index: 2; }
   .cd-badge-chip.js-locket { color: var(--js-ink); background: rgba(255,251,250,0.28);
@@ -4385,7 +4390,12 @@
               on Netflix on <b>Nov 20</b>.
             </div>
             <div class="cd-links">
-              <a class="cd-btn" href="https://netflixmusic.ffm.to/someonetohold" target="_blank" rel="noopener" onclick="saveSomeoneToHold()">Pre-save ↗</a>
+              <!-- Label SET BY SCRIPT (renderSthCta), not typed here. ADDICTED,
+                   new trick and Fallen Angel all carry a hand-edited "Listen ↗"
+                   that somebody had to remember to change on release morning,
+                   and this card's own playlist note was made script-driven for
+                   exactly that reason. Same instant drives both. -->
+              <a class="cd-btn" id="sth-cta" href="https://netflixmusic.ffm.to/someonetohold" target="_blank" rel="noopener" onclick="saveSomeoneToHold()">Pre-save ↗</a>
               <button class="cd-btn cd-btn-ghost" onclick="openSomeoneToHoldCard()">📸 Share</button>
             </div>
             <!-- Our three playlists for this release.
@@ -4407,6 +4417,12 @@
                 <a class="cd-pl-pill" href="https://open.spotify.com/playlist/2XgI7jbPYtf9pV1DtiJxCH" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>STH x PINKS</a>
                 <a class="cd-pl-pill" href="https://open.spotify.com/playlist/4unCkvJ8oJCFQzA7d7zKae" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>STH x BP</a>
               </div>
+              <!-- Three links are not a picture, so this shares TEXT — the same
+                   shape as ADDICTED's and PRESS PLAY's, which copy to the
+                   clipboard inside the tap gesture before opening the sheet
+                   because Instagram, X and TikTok drop a share `text` when
+                   anything else rides along. -->
+              <button class="cd-pl-share" onclick="shareSomeoneToHoldPlaylists()">🎧 Share these playlists</button>
             </div>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
               <summary>Release times worldwide</summary>
@@ -19247,9 +19263,51 @@ function renderSthPlaylistNote() {
     : 'Pre-save them — they fill up the moment “Someone to Hold” lands.';
 }
 
+// The call to action, off the same instant. ADDICTED, new trick and Fallen
+// Angel each carry a hand-edited "Listen ↗" that someone had to remember to
+// change on release morning; this card asks nobody to remember.
+// Only the LABEL moves. The badge guard is already inside saveSomeoneToHold(),
+// which refuses new grants once sthLive() — renaming a button without that
+// guard is how you end up handing "Early Supporter" to someone who tapped
+// Listen, which is the mistake the ADDICTED comment describes.
+function renderSthCta() {
+  const btn = document.getElementById('sth-cta');
+  if (btn) btn.textContent = sthLive() ? 'Listen ↗' : 'Pre-save ↗';
+}
+
+// Our three playlists as a post. Text, not a picture: there is no image of
+// three links, and attaching one makes the targets that drop `text` swallow
+// the whole thing. Mirrors _addictedPlaylistPost.
+function _sthPlaylistPost() {
+  const links = [...document.querySelectorAll('.cd-card-steps .cd-pl-pill')];
+  if (!links.length) return null;
+  const rows = links.map(a => `▶ ${a.textContent.trim()}\n${a.href}`).join('\n\n');
+  // The opening line moves at release for the same reason the note does: a
+  // post asking fans to pre-save a song that is already out reads as stale
+  // the moment it is pasted anywhere.
+  const lead = sthLive()
+    ? 'JENNIE’s “Someone to Hold” is out. Put one on and let it run.'
+    : 'JENNIE’s “Someone to Hold” lands soon. Pre-save these and they fill up the moment it does.';
+  return 'BLINKs — our “Someone to Hold” playlists 🎧\n' + lead + '\n\n'
+       + rows + '\n\n' + PRESAVE_CARD_LINKS.sth;
+}
+
+async function shareSomeoneToHoldPlaylists() {
+  const post = _sthPlaylistPost();
+  if (!post) { _showShareToast('Playlists not loaded — try again'); return; }
+  // Clipboard FIRST, inside the tap gesture: a write attempted after the share
+  // sheet opens has lost the gesture that permits it, so copying here means the
+  // post is always pasteable whatever the target does with `text`.
+  let copied = false;
+  try { await navigator.clipboard?.writeText(post); copied = true; } catch {}
+  if (navigator.share) navigator.share({ title: 'JENNIE — Someone to Hold playlists', text: post }).catch(() => {});
+  else _showShareToast(copied ? 'Playlists copied — paste them anywhere ✨' : 'Copy failed — try again');
+}
+
 async function loadSthSaveCount() {
   renderSthBadge();
   renderSthPlaylistNote();
+  renderSthCta();
   try {
     const r = await fetch('/api/proxy-image?sth_save=count');
     const d = await r.json();
@@ -26576,8 +26634,12 @@ async function openSomeoneToHoldCard() {
     // The host, not the whole path: on a fitted card the CTA shares a column
     // barely a third of the card wide, and the full ffm.to path shrinks to
     // unreadable there. The button on the page is where the link is.
-    cta: '▶ PRE-SAVE · NETFLIXMUSIC.FFM.TO',
-    verb: 'drops', verbCta: 'Pre-save it',
+    // Also off sthLive(), for the same reason as the button and the note: a
+    // shared card is a picture that outlives the moment it was made, so one
+    // reading "PRE-SAVE" after release is wrong on every timeline it lands on.
+    cta: sthLive() ? '▶ LISTEN · NETFLIXMUSIC.FFM.TO' : '▶ PRE-SAVE · NETFLIXMUSIC.FFM.TO',
+    verb: sthLive() ? 'is out' : 'drops',
+    verbCta: sthLive() ? 'Listen now' : 'Pre-save it',
   };
   label.textContent = earned ? "I'M AN EARLY SUPPORTER" : 'SOMEONE TO HOLD · COUNTDOWN';
   drawPresaveCard(canvas, _presaveCardData);

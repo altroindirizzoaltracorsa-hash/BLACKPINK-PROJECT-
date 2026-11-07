@@ -440,7 +440,24 @@ console.log('\n--- Someone to Hold');
   // they sit on the card as pills the way new trick's do; the collapsed row
   // this replaced read as reference material next to them. Matching the open
   // block specifically is what stops it quietly folding back into a summary.
-  const block = (card.match(/<div class="cd-pl-pills">[\s\S]*?<\/div>\s*<\/div>/) || [''])[0];
+  // Bounded by DIV DEPTH, not by a shape. The first version ended at the
+  // first `</div>` that happened to be followed by another one, which was
+  // true only while the pill list was the block's last child — adding the
+  // share button after it silently matched nothing, and six checks reported
+  // the playlists missing when they were right there. A bound that merely
+  // happens to be tight is not a bound.
+  const block = (() => {
+    const open = card.indexOf('<div class="cd-pl-pills">');
+    if (open < 0) return '';
+    let depth = 0;
+    const tag = /<div\b[^>]*>|<\/div>/g;
+    tag.lastIndex = open;
+    for (let m; (m = tag.exec(card)); ) {
+      depth += m[0] === '</div>' ? -1 : 1;
+      if (depth === 0) return card.slice(open, m.index + m[0].length);
+    }
+    return '';
+  })();
   block ? ok('  the card lists our playlists, open on the card') : bad('  the card lists our playlists, open on the card',
     /cd-times cd-playlists/.test(card) ? 'they are back behind a collapsed summary' : 'no .cd-pl-pills block');
   const WANT = [
@@ -596,6 +613,7 @@ console.log('\n--- the Steps playlist note follows the release');
     }, { timeout: 20000 }).catch(() => {});
     const out = await pg.evaluate(() => ({
       note: (document.getElementById('sth-pl-note') || {}).textContent || '',
+      cta:  (document.getElementById('sth-cta')     || {}).textContent || '',
       live: typeof sthLive === 'function' ? sthLive() : null,
     }));
     await pg.close();
@@ -621,6 +639,33 @@ console.log('\n--- the Steps playlist note follows the release');
   after.note.trim() !== before.note.trim()
     ? ok('  so the two sides really do differ')
     : bad('  so the two sides really do differ', 'the same sentence on both sides of the release');
+
+  // THE BUTTON MOVES TOO, and for the same reason. ADDICTED, new trick and
+  // Fallen Angel each carry a hand-typed "Listen ↗" that somebody had to
+  // remember on release morning — this card's said "Pre-save ↗" for a day and
+  // a half after the song was out, under a heading reading OUT NOW. Driven off
+  // sthLive() now, so it is pinned here rather than remembered.
+  /pre-?save/i.test(before.cta)
+    ? ok('  an hour before, the button asks for a pre-save', before.cta.trim())
+    : bad('  an hour before, the button asks for a pre-save', before.cta.trim() || '(empty)');
+  /listen/i.test(after.cta) && !/pre-?save/i.test(after.cta)
+    ? ok('  an hour after, it says listen instead', after.cta.trim())
+    : bad('  an hour after, it says listen instead',
+          after.cta.trim() ? `still says: ${after.cta.trim()}` : '(empty)');
+
+  // And the playlists can be posted. Three links are not a picture, so this
+  // shares text; the check is that the button and its handler both exist,
+  // since a button wired to a missing function fails silently on tap.
+  // Matched against the whole page, not the block above: that one is scoped to
+  // the markup section and out of reach here. The handler name is unique to
+  // this card, so there is nothing else it could match.
+  const hasShare = /<button class="cd-pl-share" onclick="shareSomeoneToHoldPlaylists\(\)"/.test(ix);
+  const hasFn    = /function shareSomeoneToHoldPlaylists\s*\(/.test(ix)
+                && /function _sthPlaylistPost\s*\(/.test(ix);
+  hasShare && hasFn
+    ? ok('  and the playlists can be shared as a post')
+    : bad('  and the playlists can be shared as a post',
+          !hasShare ? 'no .cd-pl-share button on the card' : 'button present but the handler is missing');
 }
 
 // ── THE TWO NEWEST CARDS USE THE ROW'S OWN BUTTON SHAPE ────────────────────
