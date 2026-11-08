@@ -232,6 +232,16 @@
     border:1px solid var(--line);border-radius:99px;padding:8px 16px;font-family:inherit;
     font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;}
   .gc-share:hover{background:#1d0a12;border-color:var(--pink);}
+  /* THE hidden ATTRIBUTE ONLY WORKS IF NOTHING OUTRANKS IT. Its display:none
+     comes from the browser's own stylesheet, which ANY author rule beats — so
+     every `.x{display:flex}` / `{display:block}` on this page silently made
+     el.hidden = true a no-op. That is how "Share standings" stayed above the
+     Road to 1B board after being correctly hidden: the attribute was set, the
+     property read back true, and .gc-share{display:block} kept painting it.
+     .modes and .b-ctl had the same latent bug (both flash before their data).
+     Declared once here rather than per class, because the next element given a
+     display and a hidden would repeat it. */
+  [hidden]{display:none !important;}
   .gc-ov{position:fixed;inset:0;background:rgba(5,2,4,.93);z-index:60;
     display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto;}
   .gc-ov.on{display:flex;}
@@ -270,6 +280,11 @@
   <button class="gc-share" id="gc-race" hidden onclick="shareRaceCard()">📸 Share standings</button>
 
   <div id="race1b" hidden>
+    <!-- Above the board, in the same place as the race tab's button, not under
+         the long "how this is worked out" note. Each view's share control sits
+         directly below the tabs, so switching tabs swaps one for the other in
+         place instead of moving it a screen and a half down. -->
+    <button class="gc-share" id="gc-1b" hidden onclick="share1BCard()">📸 Share board</button>
     <div class="b-ctl" id="b-ctl" hidden>
       <div class="b-sorts" id="b-sorts" role="tablist">
         <button class="b-sort" data-sort="soon" aria-selected="true">Days left</button>
@@ -283,7 +298,6 @@
     </div>
     <div id="b-body" class="b-empty">loading…</div>
     <div class="note" id="b-note"></div>
-    <button class="gc-share" id="gc-1b" hidden onclick="share1BCard()">📸 Share board</button>
   </div>
 
   <div id="catchup" class="catchup" hidden>

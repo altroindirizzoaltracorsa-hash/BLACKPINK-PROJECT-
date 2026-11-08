@@ -228,19 +228,30 @@ if (typeof sh === 'string' || !sh.shared) {
 }
 
 console.log('\n--- the share button belongs to the section showing');
-const vis = async (v) => pg.evaluate((v) => {
-  const b = document.querySelector(`.mode[data-view="${v}"]`); if (b) b.click();
-  const g = document.getElementById('gc-race'), o = document.getElementById('gc-1b');
-  return { race: g ? !g.hidden : null, b1: o ? !o.hidden : null };
-}, v);
+// ON SCREEN, not el.hidden. The first version of this check read the property
+// back and passed while the button was still painted: `hidden` carries
+// display:none from the BROWSER's stylesheet, which any author rule outranks,
+// and .gc-share{display:block} outranked it. The attribute was set, the
+// property read true, and the button sat there anyway. A visibility test that
+// asks the DOM what it was told rather than what it shows cannot see that.
+const onScreen = () => pg.evaluate(() => {
+  const shown = (id) => {
+    const e = document.getElementById(id);
+    if (!e) return null;
+    const r = e.getBoundingClientRect();
+    return getComputedStyle(e).display !== 'none' && r.width > 0 && r.height > 0;
+  };
+  return { race: shown('gc-race'), b1: shown('gc-1b') };
+});
+const vis = async (v) => {
+  await pg.evaluate((v) => { const b = document.querySelector(`.mode[data-view="${v}"]`); if (b) b.click(); }, v);
+  return onScreen();
+};
 const vRace = await vis('race');
 await pg.waitForTimeout(1200);
 const v1b = await vis('1b');
 await pg.waitForTimeout(1200);
-const v1bSettled = await pg.evaluate(() => {
-  const g = document.getElementById('gc-race'), o = document.getElementById('gc-1b');
-  return { race: g ? !g.hidden : null, b1: o ? !o.hidden : null };
-});
+const v1bSettled = await onScreen();
 vRace.race === true
   ? ok('Share standings shows on the group race')
   : bad('Share standings shows on the group race', 'the race has rows and no way to post them');
@@ -255,6 +266,32 @@ v1b.race === false
 v1bSettled.b1 === true
   ? ok('  and Share board took its place')
   : bad('  and Share board took its place', 'the 1B board has rows and no way to post them');
+
+// Where it took its place matters: under the long "how this is worked out"
+// note it is a screen and a half below the tabs, so switching views appears to
+// lose the button rather than swap it.
+const pos = await pg.evaluate(() => {
+  const t = (id) => { const e = document.getElementById(id); return e ? e.getBoundingClientRect().top + scrollY : null; };
+  return { btn: t('gc-1b'), body: t('b-body'), note: t('b-note') };
+});
+pos.btn != null && pos.body != null && pos.btn < pos.body
+  ? ok('  directly below the tabs, not under the board')
+  : bad('  directly below the tabs, not under the board',
+        `button at ${pos.btn}px, board at ${pos.body}px — the race tab puts its button above the content`);
+
+// The invariant the whole bug came down to. Page-wide, because the next
+// element given both a display rule and a hidden attribute repeats it.
+console.log('\n--- everything marked hidden is actually hidden');
+for (const v of ['race', '1b']) {
+  await pg.evaluate((v) => { const b = document.querySelector(`.mode[data-view="${v}"]`); if (b) b.click(); }, v);
+  await pg.waitForTimeout(1200);
+  const leaks = await pg.evaluate(() => [...document.querySelectorAll('[hidden]')]
+    .filter(e => getComputedStyle(e).display !== 'none')
+    .map(e => e.id || e.className || e.tagName));
+  leaks.length === 0
+    ? ok(`  ${v} view`)
+    : bad(`  ${v} view`, `still painted: ${leaks.join(', ')} — an author display rule outranks the browser's [hidden]`);
+}
 
 if (errs.length) { console.log('\n  page errors: ' + errs.slice(0, 3).join(' | ')); fails += errs.length; }
 await browser.close(); server.close();
