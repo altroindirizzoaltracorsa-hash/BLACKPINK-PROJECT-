@@ -405,6 +405,16 @@ jobs:
         if: always()
         run: node .github/scripts/test_scrobbler_track_lists.mjs
 
+      # The admin unlock used /api/control-ranking as its password check and
+      # handed it the whole leaderboard to do it — up to 10 Last.fm requests
+      # per user, ~2,040 at 204 users, against a ~5/s budget. It never settled,
+      # so the page sat on "Checking…" and girlgroups.html kept sending people
+      # there to unlock. Pinned by shape: there is no board size at which
+      # sending the board is right.
+      - name: The admin unlock answers
+        if: always()
+        run: node .github/scripts/test_admin_unlock.mjs
+
       # The step above proves every path knows every track ID. One path does
       # not match on an ID or a normalised key though — track.getInfo takes
       # the RAW title string, with no normalisation, from TRACKS. Both

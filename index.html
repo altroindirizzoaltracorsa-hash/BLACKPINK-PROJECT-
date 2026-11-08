@@ -17837,10 +17837,26 @@ async function submitAdminKey() {
   const errEl = document.getElementById('admin-err');
   if (!key) { errEl.textContent = 'Enter the admin key.'; return; }
   errEl.textContent = 'Checking…';
-  const users = Object.keys(lbData?.users || {});
-  if (!users.length) { errEl.textContent = 'Leaderboard not loaded yet — try again in a moment.'; return; }
+  // ?check=1 — THE KEY ONLY. This used to send every user on the board
+  // (`users=${Object.keys(lbData.users).join(',')}`) so the endpoint would do
+  // its full control-song count just to decide whether a password was right.
+  // At 204 users that is up to 2,040 Last.fm requests; it never finished
+  // inside the function timeout, so this sat on "Checking…" forever and
+  // girlgroups.html kept telling people to unlock on a page where unlocking
+  // could not complete. It also put a 3,000-character user list in a URL.
+  //
+  // The board dependency is gone with it: the old code refused to even try
+  // until lbData had loaded, which was a second way to be stuck on a page
+  // whose only job is to take a password.
+  //
+  // TIMED OUT rather than left to hang. Every branch below writes a message,
+  // so the only way to stay on "Checking…" was a fetch that never settled —
+  // which is exactly what happened. A promise that cannot resolve must not be
+  // the thing a status line waits on.
   try {
-    const r = await fetch(`/api/control-ranking?key=${encodeURIComponent(key)}&users=${users.join(',')}`);
+    const r = await withTimeout(
+      fetch(`/api/control-ranking?key=${encodeURIComponent(key)}&check=1`, { cache: 'no-store' }),
+      15000, 'admin key check');
     if (r.status === 401) { errEl.textContent = 'Wrong key.'; return; }
     if (!r.ok) { errEl.textContent = `Server error (${r.status}).`; return; }
     await r.json();
@@ -17850,7 +17866,9 @@ async function submitAdminKey() {
     document.getElementById('admin-content').style.display = 'block';
     adminShowMenu();
   } catch(e) {
-    errEl.textContent = 'Request failed — check your connection.';
+    errEl.textContent = /timed out/i.test(e?.message || '')
+      ? 'Timed out — the server did not answer. Try again.'
+      : 'Request failed — check your connection.';
   }
 }
 

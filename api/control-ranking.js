@@ -84,6 +84,30 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  // A KEY CHECK IS A YES/NO QUESTION AND MUST NOT PAY FOR THE ANSWER.
+  //
+  // The admin unlock on the home page used this endpoint as its password
+  // check, and passed it EVERY user on the leaderboard to do it. The answer
+  // was already decided six lines above; everything below is work the check
+  // does not need. Per user that work is 2 countScrobbles calls, each
+  // paginating up to 5 pages — up to 10 Last.fm requests each. At 204 users
+  // that is up to 2,040 requests, eight at a time, against a key whose whole
+  // budget is ~5 requests/second. It cannot finish inside the function
+  // timeout, so the browser sat on "Checking…" with nothing ever resolving,
+  // and it is the same over-spend that answered error 29 and froze three
+  // quarters of the board for days.
+  //
+  // It worked when the board was small, which is why it broke quietly: the
+  // cost grew with the board and nothing announced the crossing.
+  //
+  // Answered BEFORE the CONTROL_ARTIST/TRACK check below on purpose — a
+  // correct key is a correct key whether or not the control song happens to
+  // be configured, and 500ing here would read to the user as a bad password.
+  if (req.query.check === '1') {
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ ok: true });
+  }
+
   // Config
   const artist = process.env.CONTROL_ARTIST;
   const track  = process.env.CONTROL_TRACK;
