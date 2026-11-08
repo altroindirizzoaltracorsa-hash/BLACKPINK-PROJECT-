@@ -21,6 +21,15 @@
 //   · the catch-up card has THREE verdicts and only one is a date. A card
 //     that only knew how to say "overtakes on DATE" would have to invent one
 //     for the two cases that have no date, so all three are driven here.
+//   · a post is a picture AND a caption. The caption is COPIED and the sheet
+//     gets the FILE ONLY, because Instagram, X and TikTok silently drop the
+//     share `text` when a file rides along. Passing both looks right and
+//     posts an image with an empty caption box.
+//   · the race card's button lives OUTSIDE the block it belongs to (#list),
+//     so nothing hid it when the view switched: "Share standings" sat above
+//     the Road to 1B board and drew the race card there. A share control in
+//     the wrong section is worse than none — it answers a question nobody
+//     asked and looks like the section's own summary.
 //
 // Nothing asserts a pixel colour or an exact height: those are design, and a
 // test that pins them turns every visual change into a failure. What is
@@ -64,7 +73,23 @@ const BOARD = { floor:500000000, done:[], tracks: [
 const browser = await chromium.launch();
 const pg = await browser.newPage({ viewport:{ width:430, height:950 }, serviceWorkers:'block' });
 const errs = []; pg.on('pageerror', e => errs.push(e.message));
-await pg.addInitScript(() => { try { localStorage.setItem('bu_admin_key', 'test-key'); } catch {} });
+await pg.addInitScript(() => {
+  try { localStorage.setItem('bu_admin_key', 'test-key'); } catch {}
+  // Stand in for the two APIs the share path uses, and RECORD what they were
+  // given. Headless Chromium has neither, so without these the share branch
+  // under test is never the one that runs.
+  window.__copied = null; window.__shared = null;
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: t => { window.__copied = t; return Promise.resolve(); } },
+  });
+  navigator.canShare = () => true;
+  navigator.share = p => {
+    window.__shared = { keys: Object.keys(p), files: (p.files || []).map(f => f.name),
+                        text: p.text == null ? null : String(p.text) };
+    return Promise.resolve();
+  };
+});
 await pg.route('**/api/girlgroups**', r => r.fulfill({ status:200, contentType:'application/json',
   body: JSON.stringify(/view=1b/.test(r.request().url()) ? BOARD : RACE) }));
 
@@ -93,12 +118,26 @@ const openCard = async (fn) => {
   }, fn);
   if (r !== true) return { open:false, why:r };
   const p = await painted();
+  // The caption, read through the copy path rather than off an internal — what
+  // matters is that the clipboard is what actually receives it.
+  const text = await pg.evaluate(() => {
+    window.__copied = null;
+    try { window.gcCopyText(); } catch (e) { return 'ERR: ' + e.message; }
+    return window.__copied;
+  });
   await pg.evaluate(() => gcClose());
-  return { open:true, ...p };
+  return { open:true, text, ...p };
 };
 
-console.log('\n--- each card opens and paints');
-const sizes = {};
+console.log('\n--- each card opens, paints, and carries its own caption');
+const sizes = {}, texts = {};
+// Something only THIS card's numbers could produce. A caption that is merely
+// non-empty passes while every card copies the first one built.
+const MUST = {
+  'Group race':  ['TWICE', 'BLACKPINK', '3.28B'],
+  'Road to 1B':  ['Magnetic', 'Super Shy', 'days left'],
+  'Catch-up':    ['chasing', '/day'],
+};
 for (const [fn, label, tab] of [
   ['shareRaceCard',    'Group race',  'race'],
   ['share1BCard',      'Road to 1B',  '1b'],
@@ -113,7 +152,26 @@ for (const [fn, label, tab] of [
     ? ok(`  and paints`, `${r.colours} distinct sampled colours, ${r.w}x${r.h}`)
     : bad(`  and paints`, `only ${r.colours} colours — the overlay opened over a blank canvas`);
   sizes[label] = r.h;
+
+  const t = typeof r.text === 'string' && !r.text.startsWith('ERR:') ? r.text : '';
+  t ? ok('  and copies a caption', `${t.split('\n').length} lines`)
+    : bad('  and copies a caption', typeof r.text === 'string' ? r.text : 'nothing reached the clipboard');
+  if (t) {
+    texts[label] = t;
+    const missing = MUST[label].filter(s => !t.includes(s));
+    missing.length === 0
+      ? ok('    with this card\'s own numbers in it')
+      : bad('    with this card\'s own numbers in it', `missing ${missing.join(', ')}`);
+    t.includes('blinksunited.com/girlgroups.html')
+      ? ok('    and the link back')
+      : bad('    and the link back', 'a screenshot with no source is unattributable');
+  }
 }
+
+const seen = Object.values(texts);
+new Set(seen).size === seen.length
+  ? ok('each caption is distinct', `${seen.length} cards`)
+  : bad('each caption is distinct', 'two cards copied the same text — _gcText is not being rebuilt');
 
 console.log('\n--- the card grows with its content');
 sizes['Group race'] && sizes['Road to 1B'] && sizes['Group race'] > sizes['Road to 1B']
@@ -140,6 +198,63 @@ for (const [ci, ti, label] of [[1, 0, 'overtakes on a date'], [1, 6, 'already ah
   p.colours > 6 ? ok(`  ${label}`, `${p.w}x${p.h}`)
                 : bad(`  ${label}`, 'blank canvas');
 }
+
+console.log('\n--- the share sheet gets the file, and only the file');
+const sh = await pg.evaluate(async () => {
+  const b = document.querySelector('.mode[data-view="race"]'); if (b) b.click();
+  window.__copied = null; window.__shared = null;
+  try { window.shareRaceCard(); } catch (e) { return 'ERR: ' + e.message; }
+  try { await window.gcShare(); } catch (e) { return 'ERR: ' + e.message; }
+  try { gcClose(); } catch {}
+  return { shared: window.__shared, copied: window.__copied };
+});
+if (typeof sh === 'string' || !sh.shared) {
+  bad('navigator.share was called', typeof sh === 'string' ? sh : 'the share branch never ran');
+} else {
+  ok('navigator.share was called', sh.shared.files.join(', ') || 'no files');
+  sh.shared.files.length === 1
+    ? ok('  with the card as a file')
+    : bad('  with the card as a file', `${sh.shared.files.length} files`);
+  // The whole point. `text` alongside `files` is dropped by Instagram, X and
+  // TikTok without a word, so the caption must not be sent that way.
+  sh.shared.text === null && !sh.shared.keys.includes('text')
+    ? ok('  and NO text riding along with it')
+    : bad('  and NO text riding along with it',
+          'Instagram, X and TikTok drop share text when a file is present — the caption would vanish');
+  sh.copied
+    ? ok('  while the caption went to the clipboard instead', `${sh.copied.split('\n').length} lines`)
+    : bad('  while the caption went to the clipboard instead',
+          'nothing was copied, so the sharer has the picture and no words');
+}
+
+console.log('\n--- the share button belongs to the section showing');
+const vis = async (v) => pg.evaluate((v) => {
+  const b = document.querySelector(`.mode[data-view="${v}"]`); if (b) b.click();
+  const g = document.getElementById('gc-race'), o = document.getElementById('gc-1b');
+  return { race: g ? !g.hidden : null, b1: o ? !o.hidden : null };
+}, v);
+const vRace = await vis('race');
+await pg.waitForTimeout(1200);
+const v1b = await vis('1b');
+await pg.waitForTimeout(1200);
+const v1bSettled = await pg.evaluate(() => {
+  const g = document.getElementById('gc-race'), o = document.getElementById('gc-1b');
+  return { race: g ? !g.hidden : null, b1: o ? !o.hidden : null };
+});
+vRace.race === true
+  ? ok('Share standings shows on the group race')
+  : bad('Share standings shows on the group race', 'the race has rows and no way to post them');
+v1bSettled.race === false
+  ? ok('  and is gone on Road to 1B')
+  : bad('  and is gone on Road to 1B',
+        'the race button sits above the 1B board and draws the race card — the wrong section\'s share');
+v1b.race === false
+  ? ok('  immediately, not after the 1B fetch resolves')
+  : bad('  immediately, not after the 1B fetch resolves',
+        'it lingers through the load, which is exactly when it gets tapped');
+v1bSettled.b1 === true
+  ? ok('  and Share board took its place')
+  : bad('  and Share board took its place', 'the 1B board has rows and no way to post them');
 
 if (errs.length) { console.log('\n  page errors: ' + errs.slice(0, 3).join(' | ')); fails += errs.length; }
 await browser.close(); server.close();

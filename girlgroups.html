@@ -233,16 +233,21 @@
     font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;}
   .gc-share:hover{background:#1d0a12;border-color:var(--pink);}
   .gc-ov{position:fixed;inset:0;background:rgba(5,2,4,.93);z-index:60;
-    display:none;align-items:center;justify-content:center;padding:16px;}
+    display:none;align-items:center;justify-content:center;padding:16px;overflow-y:auto;}
   .gc-ov.on{display:flex;}
-  .gc-box{width:100%;max-width:min(92vw,400px);text-align:center;}
+  .gc-box{width:100%;max-width:min(92vw,400px);text-align:center;margin:auto;}
   .gc-box canvas{width:100%;height:auto;border:1px solid var(--line);border-radius:12px;display:block;}
-  .gc-acts{display:flex;gap:8px;margin-top:12px;}
-  .gc-acts button{flex:1;background:var(--card);color:var(--text);border:1px solid var(--line);
+  /* Wraps rather than squeezing: four uppercase labels across a 400px box put
+     "COPY TEXT" one letter over its button on a narrow phone. */
+  .gc-acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+  .gc-acts button{flex:1 1 72px;background:var(--card);color:var(--text);border:1px solid var(--line);
     border-radius:99px;padding:10px 8px;font-family:inherit;font-size:11px;
     letter-spacing:.1em;text-transform:uppercase;cursor:pointer;}
   .gc-acts button.primary{background:var(--pink);color:#fff;border-color:var(--pink);}
   .gc-msg{margin-top:8px;font-size:11px;color:var(--muted);min-height:14px;}
+  .gc-ta{width:100%;margin-top:6px;height:92px;background:var(--card);color:var(--text);
+    border:1px solid var(--line);border-radius:8px;padding:8px;font-family:inherit;
+    font-size:11px;line-height:1.5;resize:vertical;}
 </style>
   <script src="/i18n/i18n.js" defer></script>
 </head>
@@ -591,7 +596,14 @@
 
     // The button appears only with rows behind it: an empty card is worse
     // than no button, because it looks like a result.
-    document.getElementById('gc-race').hidden = !groups.length;
+    //
+    // Routed through applyView() rather than un-hidden here, because this
+    // button is the one share control that lives OUTSIDE the block it belongs
+    // to (#list), so nothing hides it when the view switches. Setting .hidden
+    // directly put "Share standings" above the Road to 1B board, where it
+    // rendered the race card — the right button in the wrong section.
+    _hasRace = !!groups.length;
+    applyView();
     renderCatchup(groups, d.asOf);
 
     document.getElementById('note').innerHTML =
@@ -1174,6 +1186,13 @@
   // resized before drawing.
   const GC_W = 1080, GC_ROW = 118, GC_GAP = 12, GC_FOOT = 110;
   let _gcName = 'blinks-united';
+  // The caption that goes with the picture. THE NUMBERS GO IN THE TEXT TOO,
+  // not only in the card: a picture is not searchable, not quotable and not
+  // readable by anyone using a screen reader, so a post that is only an image
+  // loses the figures entirely for part of its audience.
+  let _gcText = '';
+  const GC_TAGS = '🖤💗 #BLACKPINK #BLINKSUNITED';
+  const GC_LINK = 'https://www.blinksunited.com/girlgroups.html';
 
   const _gcFit = (ctx, text, max) => {
     let t = String(text == null ? '' : text);
@@ -1295,8 +1314,9 @@
   // What _gcFrame will consume: kicker, title, and one line per subtitle.
   const _gcHead = subs => 256 + (subs.filter(Boolean).length * 34) + 26;
   const _gcRowsH = n => n * (GC_ROW + GC_GAP);
-  function _gcShow(name) {
+  function _gcShow(name, text) {
     _gcName = name;
+    _gcText = text || '';
     document.getElementById('gc-msg').textContent = '';
     document.getElementById('gc-ov').classList.add('on');
   }
@@ -1325,7 +1345,10 @@
                           bar: (g.ytd || 0) / top, lead: i === 0 });
       y += h + GC_GAP;
     });
-    _gcShow('girl-group-race');
+    _gcShow('girl-group-race',
+      `GIRL GROUP RACE — Spotify streams gained this year\n\n`
+      + gs.map((g, i) => `${i + 1}. ${g.name} — ${big(g.ytd)}`).join('\n')
+      + `\n\n${asOf || ''}\n${GC_TAGS}\n${GC_LINK}`);
   }
 
   function share1BCard() {
@@ -1354,7 +1377,19 @@
                           bar: (t.streams || 0) / 1e9, lead: i === 0 });
       y += h + GC_GAP;
     });
-    _gcShow('road-to-1b');
+    _gcShow('road-to-1b',
+      `ROAD TO 1B — ${_bGroup === 'ALL' ? 'tracks closing in on a billion' : _bGroup}\n`
+      + `${label}\n\n`
+      + racing.map((t, i) => {
+          const left = t.daysLeft != null ? `${t.daysLeft.toLocaleString()} days left` : 'no rate yet';
+          // The same qualifiers the card carries. A merged figure is not this
+          // track's alone and a stale one was never read — dropping that from
+          // the text while keeping it in the picture would make the quotable
+          // half of the post the less honest one.
+          const flag = t.mergedWith > 0 ? ` (merged ×${t.mergedWith + 1})` : (t.stale ? ' (not observed)' : '');
+          return `${i + 1}. ${t.name} — ${t.group} · ${big(t.streams)}${flag} · ${left}`;
+        }).join('\n')
+      + `\n\n${_race && _race.asOf ? `as of ${_race.asOf}` : ''}\n${GC_TAGS}\n${GC_LINK}`);
   }
 
   function shareCatchupCard() {
@@ -1426,28 +1461,79 @@
     ctx.fillText(_gcFit(ctx, `${c.name} +${big(cr)}/day   vs   ${t.name} +${big(tr)}/day`, GC_W - 120),
                  GC_W / 2, boxY + 340);
     ctx.textAlign = 'left';
-    _gcShow('catch-up');
+    _gcShow('catch-up',
+      `CATCH-UP — ${c.name} chasing ${t.name}\n`
+      + `${yearMode ? new Date().getUTCFullYear() + ' streams gained' : 'All-time totals'}\n\n`
+      + `${head}\n${lines.join('\n')}\n\n`
+      + `${c.name} +${big(cr)}/day vs ${t.name} +${big(tr)}/day\n`
+      + `${_race && _race.asOf ? `as of ${_race.asOf}\n` : ''}${GC_TAGS}\n${GC_LINK}`);
   }
 
   // ── Share / save ──────────────────────────────────────────────────────────
-  // Clipboard-free: this is a picture, so the share sheet takes the file and
-  // the fallback is a download. A browser with neither still gets the Save
-  // button, which is why the overlay offers both rather than guessing.
+  // The card is a picture, but a post is a picture AND a caption, so each card
+  // builds its own `_gcText` with the same numbers it drew.
+  //
+  // THE CAPTION IS COPIED, NEVER PASSED TO navigator.share ALONGSIDE THE FILE.
+  // Instagram, X and TikTok drop the share `text` when a file rides along — you
+  // get the image and an empty caption box, with nothing to say it was lost. So
+  // the caption goes to the clipboard and the sheet gets the file only. Same
+  // rule, and same reason, as shareCard() on the home page.
+  //
+  // The copy is attempted BEFORE the await: a clipboard write needs the user
+  // gesture that opened the sheet, and awaiting the blob first spends it.
   const _gcBlob = () => new Promise(res =>
     document.getElementById('gc-canvas').toBlob(b => res(b), 'image/png'));
 
+  // Returns whether the caption actually landed, so no message claims a copy
+  // that a refused clipboard never made.
+  function _gcCopy() {
+    if (!_gcText) return false;
+    try {
+      const p = navigator.clipboard && navigator.clipboard.writeText(_gcText);
+      if (!p) return false;
+      p.catch(() => {});
+      return true;
+    } catch { return false; }
+  }
+
+  function gcCopyText() {
+    const msg = document.getElementById('gc-msg');
+    if (!_gcText) { msg.textContent = 'No caption for this card.'; return; }
+    msg.textContent = _gcCopy()
+      ? 'Caption copied — paste it with the image ✓'
+      : 'Could not copy here — select the caption below.';
+    // A refused clipboard still has to hand the text over somehow, so show it.
+    if (!navigator.clipboard) _gcShowText();
+  }
+
+  // Last resort: put the caption on the page, selected, so it can be copied by
+  // hand. A caption the page holds and will not give you is the same as none.
+  function _gcShowText() {
+    const msg = document.getElementById('gc-msg');
+    const ta = document.createElement('textarea');
+    ta.className = 'gc-ta';
+    ta.readOnly = true;
+    ta.value = _gcText;
+    msg.appendChild(document.createElement('br'));
+    msg.appendChild(ta);
+    ta.focus(); ta.select();
+  }
+
   async function gcShare() {
     const msg = document.getElementById('gc-msg');
+    const copied = _gcCopy();
     try {
       const blob = await _gcBlob();
       if (!blob) { msg.textContent = 'Could not render the card.'; return; }
       const file = new File([blob], `${_gcName}.png`, { type: 'image/png' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        msg.textContent = copied ? 'Caption copied — paste it with the image ✓' : '';
         await navigator.share({ files: [file], title: 'Blinks United' });
         return;
       }
       gcDownload();
-      msg.textContent = 'Sharing images is not supported here — saved instead.';
+      msg.textContent = 'Sharing images is not supported here — saved instead.'
+        + (copied ? ' Caption copied ✓' : '');
     } catch (e) {
       // AbortError is the user closing the sheet, which is not a failure.
       if (e && e.name === 'AbortError') return;
@@ -1456,6 +1542,7 @@
   }
 
   async function gcDownload() {
+    const copied = _gcCopy();
     const blob = await _gcBlob();
     if (!blob) { document.getElementById('gc-msg').textContent = 'Could not render the card.'; return; }
     const url = URL.createObjectURL(blob);
@@ -1463,7 +1550,7 @@
     a.href = url; a.download = `${_gcName}.png`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-    document.getElementById('gc-msg').textContent = 'Saved.';
+    document.getElementById('gc-msg').textContent = 'Saved.' + (copied ? ' Caption copied ✓' : '');
   }
 
   function drawBoard() {
@@ -1578,11 +1665,12 @@
   // be undone a moment later when that fetch resolved, putting the group race's
   // log under the 1B board. Each block's own "do I have data" flag and the
   // current view are tracked separately and applied together.
-  let _view = 'race', _hasCatchup = false, _hasLog = false, _staleShown = false;
+  let _view = 'race', _hasCatchup = false, _hasLog = false, _staleShown = false, _hasRace = false;
   function applyView() {
     const race = _view === 'race';
     const set = (id, show) => { const el = document.getElementById(id); if (el) el.hidden = !show; };
     set('list', race);
+    set('gc-race', race && _hasRace);
     set('note', race);
     set('catchup', race && _hasCatchup);
     set('logsec', race && _hasLog);
@@ -1651,6 +1739,7 @@
     <canvas id="gc-canvas" width="1080" height="1350"></canvas>
     <div class="gc-acts">
       <button class="primary" onclick="gcShare()">Share</button>
+      <button onclick="gcCopyText()">Copy text</button>
       <button onclick="gcDownload()">Save</button>
       <button onclick="gcClose()">Close</button>
     </div>
