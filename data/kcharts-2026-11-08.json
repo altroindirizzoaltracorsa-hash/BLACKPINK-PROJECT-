@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-08T16:23:54.831Z",
+  "generatedAt": "2026-11-08T20:48:48.478Z",
   "date": "2026-11-08",
   "source": "https://xn--o39an51b2re.com",
   "charts": [
@@ -21,8 +21,8 @@
       "kr": "실시간 차트",
       "label": "Melon · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/melon/realtime",
-      "available": true,
-      "totalRows": 100,
+      "available": false,
+      "totalRows": 0,
       "entries": []
     },
     {
@@ -407,7 +407,7 @@
           "link": "https://www.melon.com/song/detail.htm?songId=38629386"
         },
         {
-          "rank": 85,
+          "rank": 84,
           "previous": 85,
           "song": "APT.",
           "artists": "로제 (ROSÉ), Bruno Mars",
@@ -527,8 +527,8 @@
       "totalRows": 42,
       "entries": [
         {
-          "rank": 15,
-          "previous": 15,
+          "rank": 17,
+          "previous": 16,
           "song": "Someone to Hold (from the Netflix Film “Steps”)",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
@@ -555,8 +555,8 @@
           "link": "https://www.melon.com/song/detail.htm?songId=603761119"
         },
         {
-          "rank": 45,
-          "previous": 45,
+          "rank": 47,
+          "previous": 46,
           "song": "Someone to Hold (from the Netflix Film “Steps”)",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
@@ -767,42 +767,9 @@
       "kr": "실시간 차트",
       "label": "Genie · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/genie/realtime",
-      "available": true,
-      "totalRows": 250,
-      "entries": [
-        {
-          "rank": 75,
-          "previous": 81,
-          "song": "toxic till the end",
-          "artists": "로제 (ROSÉ)",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108575614"
-        },
-        {
-          "rank": 96,
-          "previous": 90,
-          "song": "뛰어(JUMP)",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=110931419"
-        },
-        {
-          "rank": 152,
-          "previous": 132,
-          "song": "like JENNIE",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=109342665"
-        },
-        {
-          "rank": 214,
-          "previous": 136,
-          "song": "APT.",
-          "artists": "로제 (ROSÉ), 로제 (ROSÉ) & Bruno Mars, Bruno Mars",
-          "member": "ROSÉ",
-          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108107291"
-        }
-      ]
+      "available": false,
+      "totalRows": 0,
+      "entries": []
     },
     {
       "key": "genie-daily",
@@ -979,8 +946,8 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 88,
-          "previous": 88,
+          "rank": 87,
+          "previous": 87,
           "song": "toxic till the end",
           "artists": "로제 (ROSÉ)",
           "member": "ROSÉ",
@@ -1215,7 +1182,7 @@
   ],
   "summary": {
     "chartsChecked": 26,
-    "chartsAvailable": 25,
-    "totalEntries": 113
+    "chartsAvailable": 23,
+    "totalEntries": 109
   }
 }
