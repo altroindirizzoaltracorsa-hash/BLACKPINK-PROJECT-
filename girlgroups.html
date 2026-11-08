@@ -222,6 +222,27 @@
   /* The caveat about the headline date: true, but only wanted by a reader who
      has already spotted that it differs from both rays. Dim and after. */
   .b-note{font-size:9.5px;color:var(--dim);line-height:1.55;margin-top:4px;}
+
+  /* ── Share cards ──────────────────────────────────────────────────────────
+     Each section can be posted as a picture. The page itself is a dense table
+     that screenshots badly on a phone — the bars and the right-hand numbers
+     fall off the edge — so the card is redrawn at a share-friendly size rather
+     than being a crop of the DOM. */
+  .gc-share{display:block;margin:10px auto 0;background:var(--card);color:var(--pink-soft);
+    border:1px solid var(--line);border-radius:99px;padding:8px 16px;font-family:inherit;
+    font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;}
+  .gc-share:hover{background:#1d0a12;border-color:var(--pink);}
+  .gc-ov{position:fixed;inset:0;background:rgba(5,2,4,.93);z-index:60;
+    display:none;align-items:center;justify-content:center;padding:16px;}
+  .gc-ov.on{display:flex;}
+  .gc-box{width:100%;max-width:min(92vw,400px);text-align:center;}
+  .gc-box canvas{width:100%;height:auto;border:1px solid var(--line);border-radius:12px;display:block;}
+  .gc-acts{display:flex;gap:8px;margin-top:12px;}
+  .gc-acts button{flex:1;background:var(--card);color:var(--text);border:1px solid var(--line);
+    border-radius:99px;padding:10px 8px;font-family:inherit;font-size:11px;
+    letter-spacing:.1em;text-transform:uppercase;cursor:pointer;}
+  .gc-acts button.primary{background:var(--pink);color:#fff;border-color:var(--pink);}
+  .gc-msg{margin-top:8px;font-size:11px;color:var(--muted);min-height:14px;}
 </style>
   <script src="/i18n/i18n.js" defer></script>
 </head>
@@ -241,6 +262,7 @@
   <div id="stale" class="stale"></div>
   <div id="err" class="err"></div>
   <div id="list"></div>
+  <button class="gc-share" id="gc-race" hidden onclick="shareRaceCard()">📸 Share standings</button>
 
   <div id="race1b" hidden>
     <div class="b-ctl" id="b-ctl" hidden>
@@ -256,6 +278,7 @@
     </div>
     <div id="b-body" class="b-empty">loading…</div>
     <div class="note" id="b-note"></div>
+    <button class="gc-share" id="gc-1b" hidden onclick="share1BCard()">📸 Share board</button>
   </div>
 
   <div id="catchup" class="catchup" hidden>
@@ -270,6 +293,7 @@
       <select id="cu-target" class="cu-sel" aria-label="Target group"></select>
     </div>
     <div id="cu-out" class="cu-out"></div>
+    <button class="gc-share" id="gc-cu" hidden onclick="shareCatchupCard()">📸 Share projection</button>
   </div>
 
   <div class="note" id="note"></div>
@@ -342,6 +366,7 @@
     }
     return g.daily != null ? g.daily : null;
   }
+  let _race = null;   // last group-race payload, for the share cards
   let _cuGroups = [];
   let _cuMode = 'year'; // 'year' = 2026 streams gained · 'overall' = all-time total
   function renderCatchup(groups, asOf) {
@@ -460,6 +485,8 @@
     const c = _cuGroups[+document.getElementById('cu-chaser').value];
     const t = _cuGroups[+document.getElementById('cu-target').value];
     if (!out || !c || !t) return;
+    const cuBtn = document.getElementById('gc-cu');
+    if (cuBtn) cuBtn.hidden = true;
     if (c === t) { out.innerHTML = '<span class="cu-note">Pick two different groups.</span>'; return; }
     const cr = _rateOf(c), tr = _rateOf(t);
     if (cr == null || tr == null) { out.innerHTML = '<span class="cu-note">Not enough history yet to project a rate.</span>'; return; }
@@ -499,9 +526,14 @@
     }
     const scopeTag = `<div class="cu-note">Comparing <b>${yearMode ? year + ' streams gained' : 'all-time totals'}</b>.</div>`;
     out.innerHTML = scopeTag + `<div>${rateLine}</div>` + verdict + _cuGraphHtml(c, t, yearMode);
+    // Hidden for the two states that have no projection to post: the same
+    // group picked twice, and not enough history for a rate. Those return
+    // early above, so reaching here means there IS a verdict.
+    document.getElementById('gc-cu').hidden = false;
   }
 
   function render(d) {
+    _race = d;
     const groups = d.groups || [];
     document.getElementById('asof').textContent =
       d.asOf ? `streaming day ${d.asOf}` : 'no data captured yet';
@@ -557,6 +589,9 @@
       }
     }
 
+    // The button appears only with rows behind it: an empty card is worse
+    // than no button, because it looks like a result.
+    document.getElementById('gc-race').hidden = !groups.length;
     renderCatchup(groups, d.asOf);
 
     document.getElementById('note').innerHTML =
@@ -1117,6 +1152,320 @@
     });
   }
 
+  // ── SHARE CARDS ───────────────────────────────────────────────────────────
+  //
+  // Each of the three sections can be posted as a picture. Redrawn rather than
+  // screenshotted: this page is a dense table whose bars and right-hand numbers
+  // run off a phone's width, so a crop of the DOM loses exactly the part that
+  // makes it a race. The card is laid out for the shape people actually post.
+  //
+  // 1080x1350 (4:5) — portrait, because every one of these is a LIST, and the
+  // site's own 1200x675 release cards are the wrong shape for seven ranked rows.
+  //
+  // The font is the page's own fallback, not "DM Mono": the stylesheet names
+  // DM Mono but nothing ever loads it, so the page has always rendered in the
+  // system mono. Naming it here would make the card the only thing on the site
+  // in a different typeface.
+  const GC_FONT = 'ui-monospace, Menlo, monospace';
+  // Width is fixed; HEIGHT IS NOT. A board with three tracks and one with
+  // eight are different amounts of content, and padding the short one out to
+  // a fixed 1350 left half the card empty — which reads as missing data
+  // rather than as a short list. Each card sizes itself and the canvas is
+  // resized before drawing.
+  const GC_W = 1080, GC_ROW = 118, GC_GAP = 12, GC_FOOT = 110;
+  let _gcName = 'blinks-united';
+
+  const _gcFit = (ctx, text, max) => {
+    let t = String(text == null ? '' : text);
+    if (ctx.measureText(t).width <= max) return t;
+    while (t.length > 1 && ctx.measureText(t + '…').width > max) t = t.slice(0, -1);
+    return t + '…';
+  };
+  function _gcRound(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  // Background, heading and footer — the parts every card shares. Returns the
+  // y to start content at, so a card that grows a longer subtitle pushes its
+  // rows down instead of drawing over them.
+  function _gcFrame(ctx, title, sub) {
+    const GC_H = ctx.canvas.height;
+    const g = ctx.createLinearGradient(0, 0, 0, GC_H);
+    g.addColorStop(0, '#15070c'); g.addColorStop(1, '#0c0509');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, GC_W, GC_H);
+    const glow = ctx.createRadialGradient(GC_W / 2, -120, 0, GC_W / 2, -120, GC_H * 0.72);
+    glow.addColorStop(0, 'rgba(58,12,34,0.95)'); glow.addColorStop(1, 'rgba(58,12,34,0)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, GC_W, GC_H);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ff8fb4';
+    ctx.font = `600 26px ${GC_FONT}`;
+    ctx.fillText('B L I N K S   U N I T E D', GC_W / 2, 96);
+
+    // The title takes the page's own pink gradient rather than a flat fill, so
+    // the card reads as the same thing the heading on the page is.
+    const tg = ctx.createLinearGradient(GC_W * 0.2, 0, GC_W * 0.8, 0);
+    tg.addColorStop(0, '#ff8fb4'); tg.addColorStop(0.55, '#ff2e77'); tg.addColorStop(1, '#ff8fb4');
+    ctx.fillStyle = tg;
+    ctx.font = `800 62px ${GC_FONT}`;
+    ctx.fillText(_gcFit(ctx, title, GC_W - 120), GC_W / 2, 182);
+
+    let y = 230;
+    ctx.fillStyle = '#8a5c6c';
+    ctx.font = `400 24px ${GC_FONT}`;
+    for (const line of (Array.isArray(sub) ? sub : [sub]).filter(Boolean)) {
+      ctx.fillText(_gcFit(ctx, line, GC_W - 120), GC_W / 2, y);
+      y += 34;
+    }
+
+    ctx.fillStyle = '#8a5c6c';
+    ctx.font = `400 24px ${GC_FONT}`;
+    ctx.fillText('blinksunited.com/girlgroups.html', GC_W / 2, GC_H - 54);
+    ctx.textAlign = 'left';
+    return y + 26;
+  }
+
+  // One ranked row with a bar. `bar` is 0..1 of the leader, so the picture is
+  // the race and not the axis — the same choice the page's own bars make.
+  function _gcRow(ctx, y, h, { rank, name, meta, value, note, bar, lead }) {
+    _gcRound(ctx, 60, y, GC_W - 120, h, 16);
+    ctx.fillStyle = lead ? 'rgba(255,46,119,0.10)' : 'rgba(255,255,255,0.025)';
+    ctx.fill();
+    ctx.strokeStyle = lead ? 'rgba(255,46,119,0.55)' : '#3a1526';
+    ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.fillStyle = lead ? '#ff2e77' : '#8a5c6c';
+    ctx.font = `700 34px ${GC_FONT}`;
+    ctx.textAlign = 'center';
+    ctx.fillText(String(rank), 108, y + 52);
+    ctx.textAlign = 'left';
+
+    // The value is drawn first and its real width reserved, so a long name is
+    // shortened instead of running under the number.
+    ctx.font = `700 38px ${GC_FONT}`;
+    const vw = value ? ctx.measureText(value).width : 0;
+    const nameMax = GC_W - 120 - 100 - vw - 60;
+
+    ctx.fillStyle = '#fff2f6';
+    ctx.font = `700 34px ${GC_FONT}`;
+    ctx.fillText(_gcFit(ctx, name, nameMax), 152, y + 44);
+
+    if (meta) {
+      ctx.fillStyle = '#c48aa0';
+      ctx.font = `400 22px ${GC_FONT}`;
+      ctx.fillText(_gcFit(ctx, meta, nameMax), 152, y + 76);
+    }
+    if (value) {
+      ctx.textAlign = 'right';
+      ctx.fillStyle = lead ? '#ff2e77' : '#fff2f6';
+      ctx.font = `700 38px ${GC_FONT}`;
+      ctx.fillText(value, GC_W - 84, y + 48);
+      if (note) {
+        ctx.fillStyle = '#8a5c6c';
+        ctx.font = `400 21px ${GC_FONT}`;
+        ctx.fillText(_gcFit(ctx, note, 320), GC_W - 84, y + 80);
+      }
+      ctx.textAlign = 'left';
+    }
+    if (bar != null) {
+      // Pinned to the row's bottom edge with real clearance under the meta
+      // line. At y+h-22 with seven rows the bar landed a few pixels under the
+      // text and read as an underline of it rather than as a bar — the one
+      // thing on this card that is supposed to show the race at a glance.
+      const bx = 152, bw = GC_W - 120 - 92 - 60, by = y + h - 14;
+      ctx.fillStyle = 'rgba(255,255,255,0.06)';
+      _gcRound(ctx, bx, by, bw, 8, 4); ctx.fill();
+      const fg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+      fg.addColorStop(0, '#ff2e77'); fg.addColorStop(1, '#ff8fb4');
+      ctx.fillStyle = fg;
+      _gcRound(ctx, bx, by, Math.max(6, bw * Math.max(0, Math.min(1, bar))), 8, 4); ctx.fill();
+    }
+  }
+
+  // Height in, context out. Setting canvas.height resets the drawing state, so
+  // it has to happen before anything is painted, not after.
+  function _gcCtx(height) {
+    const c = document.getElementById('gc-canvas');
+    c.width = GC_W; c.height = Math.round(height);
+    return c.getContext('2d');
+  }
+  // What _gcFrame will consume: kicker, title, and one line per subtitle.
+  const _gcHead = subs => 256 + (subs.filter(Boolean).length * 34) + 26;
+  const _gcRowsH = n => n * (GC_ROW + GC_GAP);
+  function _gcShow(name) {
+    _gcName = name;
+    document.getElementById('gc-msg').textContent = '';
+    document.getElementById('gc-ov').classList.add('on');
+  }
+  function gcClose() { document.getElementById('gc-ov').classList.remove('on'); }
+
+  // ── The three cards ───────────────────────────────────────────────────────
+
+  function shareRaceCard() {
+    const gs = (_race && _race.groups) || [];
+    if (!gs.length) return;
+    const asOf = _race.asOf ? `streaming day ${_race.asOf}` : '';
+    const subs = ['Spotify streams gained this year', asOf];
+    const ctx = _gcCtx(_gcHead(subs) + _gcRowsH(gs.length) + GC_FOOT);
+    let y = _gcFrame(ctx, 'GIRL GROUP RACE', subs);
+    const top = Math.max(...gs.map(g => g.ytd || 0), 1);
+    const h = GC_ROW;
+    gs.forEach((g, i) => {
+      // An approximate baseline is marked on the card too — dropping the mark
+      // when the number is the thing being posted is how an estimate gets
+      // quoted as a measurement.
+      const meta = `${big(g.total)} all-time${g.exact === false ? '  ≈ approx' : ''}`;
+      let note = '';
+      if (g.gain != null && g.spanDays) note = g.spanDays === 1 ? `+${big(g.gain)} that day` : `+${big(g.gain)} / ${g.spanDays}d`;
+      else if (g.daily != null) note = `+${big(g.daily)} daily`;
+      _gcRow(ctx, y, h, { rank: i + 1, name: g.name, meta, value: big(g.ytd), note,
+                          bar: (g.ytd || 0) / top, lead: i === 0 });
+      y += h + GC_GAP;
+    });
+    _gcShow('girl-group-race');
+  }
+
+  function share1BCard() {
+    if (!_b) return;
+    const keep = t => _bGroup === 'ALL' || t.group === _bGroup;
+    const racing = (_b.tracks || []).filter(keep).sort(SORTS[_bSort] || SORTS.soon).slice(0, 8);
+    if (!racing.length) return;
+    const label = { soon: 'soonest first', total: 'fewest days from release first',
+                    daily: 'fastest per day first' }[_bSort] || '';
+    const subs = [_bGroup === 'ALL' ? `Tracks over ${big(_b.floor)} · ${label}` : `${_bGroup} · ${label}`,
+                  _race && _race.asOf ? `as of ${_race.asOf}` : ''];
+    const ctx = _gcCtx(_gcHead(subs) + _gcRowsH(racing.length) + GC_FOOT);
+    let y = _gcFrame(ctx, 'ROAD TO 1B', subs);
+    const h = GC_ROW;
+    racing.forEach((t, i) => {
+      // merged and not-observed ride along: a merged figure is not this track's
+      // alone and a stale one was never read, so neither is posted as a plain
+      // number. The page makes that distinction and the card has to keep it.
+      const flags = [];
+      if (t.mergedWith > 0) flags.push(`merged x${t.mergedWith + 1}`);
+      if (t.stale) flags.push('not observed');
+      const meta = `${t.group} · ${big(t.streams)}${flags.length ? '  ⚠ ' + flags.join(' · ') : ''}`;
+      const value = t.daysLeft != null ? `${t.daysLeft.toLocaleString()}d` : '—';
+      const note = t.rate != null ? `+${big(t.rate)}/day` : '';
+      _gcRow(ctx, y, h, { rank: i + 1, name: t.name, meta, value, note,
+                          bar: (t.streams || 0) / 1e9, lead: i === 0 });
+      y += h + GC_GAP;
+    });
+    _gcShow('road-to-1b');
+  }
+
+  function shareCatchupCard() {
+    const c = _cuGroups[+document.getElementById('cu-chaser').value];
+    const t = _cuGroups[+document.getElementById('cu-target').value];
+    if (!c || !t || c === t) return;
+    const cr = _rateOf(c), tr = _rateOf(t);
+    if (cr == null || tr == null) return;
+    const yearMode = _cuMode !== 'overall';
+    const cVal = yearMode ? (c.ytd || 0) : (c.total || 0);
+    const tVal = yearMode ? (t.ytd || 0) : (t.total || 0);
+    const scope = yearMode ? 'this year' : 'all-time';
+    const gap = tVal - cVal, close = cr - tr;
+
+    const subs = [yearMode ? `${new Date().getUTCFullYear()} streams gained` : 'All-time totals',
+                  _race && _race.asOf ? `as of ${_race.asOf}` : ''];
+    // 220 pairing text + 300 verdict box + 60 for the rates line under it.
+    // Leaving that 60 out put the rates line below the footer and the two
+    // printed on top of each other — the kind of overlap that only shows up
+    // once the card is actually rendered and looked at.
+    const ctx = _gcCtx(_gcHead(subs) + 220 + 300 + 60 + GC_FOOT);
+    let y = _gcFrame(ctx, 'CATCH-UP', subs);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff2f6';
+    ctx.font = `700 46px ${GC_FONT}`;
+    ctx.fillText(_gcFit(ctx, c.name, GC_W - 140), GC_W / 2, y + 60);
+    ctx.fillStyle = '#c48aa0';
+    ctx.font = `400 28px ${GC_FONT}`;
+    ctx.fillText('chasing', GC_W / 2, y + 108);
+    ctx.fillStyle = '#fff2f6';
+    ctx.font = `700 46px ${GC_FONT}`;
+    ctx.fillText(_gcFit(ctx, t.name, GC_W - 140), GC_W / 2, y + 162);
+
+    // THE VERDICT IS THE CARD. Same three branches the page has, because a
+    // card that only knows how to say "overtakes on DATE" would have to invent
+    // one for the two cases where there is no date to give.
+    let head, lines;
+    if (gap < 0) {
+      head = 'Already ahead';
+      lines = [`${c.name} leads by ${big(-gap)} ${scope}`];
+    } else if (close <= 0) {
+      head = 'Not catching up';
+      lines = [`${t.name} is gaining just as fast or faster`,
+               `Gap now ${big(gap)} ${scope}`];
+    } else {
+      const days = gap / close;
+      const eta = new Date((_race && _race.asOf ? Date.parse(_race.asOf + 'T00:00:00Z') : Date.now()) + days * 86400000);
+      head = eta.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const months = days / 30.44;
+      lines = [`Gap ${big(gap)} · closing ${big(close)}/day`,
+               `${Math.round(days).toLocaleString()} days (${months < 12 ? `~${months.toFixed(1)} months` : `~${(days / 365.25).toFixed(1)} years`})`];
+    }
+
+    const boxY = y + 220;
+    _gcRound(ctx, 80, boxY, GC_W - 160, 300, 20);
+    ctx.fillStyle = 'rgba(255,46,119,0.10)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,46,119,0.55)'; ctx.lineWidth = 2; ctx.stroke();
+
+    ctx.fillStyle = '#ff2e77';
+    ctx.font = `800 54px ${GC_FONT}`;
+    ctx.fillText(_gcFit(ctx, head, GC_W - 200), GC_W / 2, boxY + 96);
+    ctx.fillStyle = '#fff2f6';
+    ctx.font = `400 26px ${GC_FONT}`;
+    lines.forEach((l, i) => ctx.fillText(_gcFit(ctx, l, GC_W - 200), GC_W / 2, boxY + 168 + i * 44));
+
+    ctx.fillStyle = '#8a5c6c';
+    ctx.font = `400 24px ${GC_FONT}`;
+    ctx.fillText(_gcFit(ctx, `${c.name} +${big(cr)}/day   vs   ${t.name} +${big(tr)}/day`, GC_W - 120),
+                 GC_W / 2, boxY + 340);
+    ctx.textAlign = 'left';
+    _gcShow('catch-up');
+  }
+
+  // ── Share / save ──────────────────────────────────────────────────────────
+  // Clipboard-free: this is a picture, so the share sheet takes the file and
+  // the fallback is a download. A browser with neither still gets the Save
+  // button, which is why the overlay offers both rather than guessing.
+  const _gcBlob = () => new Promise(res =>
+    document.getElementById('gc-canvas').toBlob(b => res(b), 'image/png'));
+
+  async function gcShare() {
+    const msg = document.getElementById('gc-msg');
+    try {
+      const blob = await _gcBlob();
+      if (!blob) { msg.textContent = 'Could not render the card.'; return; }
+      const file = new File([blob], `${_gcName}.png`, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: 'Blinks United' });
+        return;
+      }
+      gcDownload();
+      msg.textContent = 'Sharing images is not supported here — saved instead.';
+    } catch (e) {
+      // AbortError is the user closing the sheet, which is not a failure.
+      if (e && e.name === 'AbortError') return;
+      msg.textContent = 'Share failed — try Save.';
+    }
+  }
+
+  async function gcDownload() {
+    const blob = await _gcBlob();
+    if (!blob) { document.getElementById('gc-msg').textContent = 'Could not render the card.'; return; }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${_gcName}.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    document.getElementById('gc-msg').textContent = 'Saved.';
+  }
+
   function drawBoard() {
     const d = _b;
     if (!d) return;
@@ -1138,6 +1487,7 @@
       return;
     }
     body.className = '';
+    document.getElementById('gc-1b').hidden = !racing.length;
     const label = { soon: 'soonest first', total: 'fewest days from release first',
                     daily: 'fastest per day first' }[_bSort];
     body.innerHTML =
@@ -1295,5 +1645,17 @@
       });
   }
 </script>
+
+<div class="gc-ov" id="gc-ov" onclick="if(event.target===this)gcClose()">
+  <div class="gc-box">
+    <canvas id="gc-canvas" width="1080" height="1350"></canvas>
+    <div class="gc-acts">
+      <button class="primary" onclick="gcShare()">Share</button>
+      <button onclick="gcDownload()">Save</button>
+      <button onclick="gcClose()">Close</button>
+    </div>
+    <div class="gc-msg" id="gc-msg"></div>
+  </div>
+</div>
 </body>
 </html>

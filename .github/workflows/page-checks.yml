@@ -415,6 +415,14 @@ jobs:
         if: always()
         run: node .github/scripts/test_admin_unlock.mjs
 
+      # The three Girl Group Race share cards. The page is admin-gated, so a
+      # test that forgets the key loads nothing, every card returns early and
+      # it all looks like a pass — the harness sets bu_admin_key and checks
+      # the canvas was actually painted, not just that the overlay opened.
+      - name: The Girl Group Race cards draw
+        if: always()
+        run: node .github/scripts/test_girlgroup_cards.mjs
+
       # The step above proves every path knows every track ID. One path does
       # not match on an ID or a normalised key though — track.getInfo takes
       # the RAW title string, with no normalisation, from TRACKS. Both
