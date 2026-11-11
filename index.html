@@ -1849,19 +1849,28 @@
   .cd-btn:hover { filter: brightness(1.07); }
 
   /* ── LISA "Leave With Me" ──────────────────────────────────────────────────
-     NO ARTWORK IS SHIPPED, on the same rule as the Steps card below: no
-     official single cover has been published, and the ALWAYS LALISA key art
-     belongs to the film, not to this song. Putting one on a card for the other
-     is a caption error that then gets reposted as fact. Drawn in CSS instead —
-     our own blue, not her cover. Swap in the real sleeve here the day it
-     lands. */
+     THE ART IS THE FILM'S POSTER, and that is right here because the song is
+     the one she did for ALWAYS LALISA — it is the documentary's own key art
+     standing in for a single that has no sleeve yet, not a picture borrowed
+     off an unrelated release. Two things follow from it being the FILM's
+     poster rather than the song's cover, and both are handled rather than
+     hoped about: it is labelled as the film's, and the OCTOBER 12 printed
+     across the top of it is the cinema date, which the card says in words so
+     nobody reads it as the song's. Swap in the real sleeve when one lands.
+     Shown whole, never cropped: it is a poster, and a poster cropped to a
+     banner loses the thing it was composed as. */
   .cd-card-lwm { position: relative; overflow: hidden; background: #06060f; }
   .cd-card-lwm::before { content: ""; position: absolute; inset: 0; pointer-events: none;
     background: radial-gradient(118% 68% at 24% 0%, rgba(92,122,255,0.30), transparent 62%),
                 radial-gradient(92% 58% at 86% 16%, rgba(184,118,255,0.20), transparent 66%); }
   .cd-card-lwm > * { position: relative; }
-  .lwm-hero { text-align: center; padding: 1.6rem 0.6rem 1.35rem; margin-bottom: 1.05rem;
+  .lwm-hero { text-align: center; padding: 1.2rem 0.6rem 1.35rem; margin-bottom: 1.05rem;
     border-bottom: 1px solid rgba(255,255,255,0.09); }
+  .lwm-poster { display: block; width: auto; max-width: 66%; max-height: 360px;
+    margin: 0 auto 1.15rem; border-radius: 7px; border: 1px solid rgba(255,255,255,0.12);
+    box-shadow: 0 14px 40px rgba(0,0,0,0.55); }
+  .lwm-poster-cap { font-family: var(--mono); font-size: 0.48rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: rgba(214,222,255,0.5); margin: -0.75rem 0 1.15rem; }
   .lwm-title { font-family: var(--display); font-size: clamp(1.7rem, 13cqw, 2.9rem);
     line-height: 0.95; letter-spacing: 0.01em; color: #fff; text-wrap: balance; }
   .lwm-by { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.3em;
@@ -4157,20 +4166,28 @@
                because it is the only release still ahead of us, and a drop
                nobody has carded yet should be the first thing you see.
 
-               TWO THINGS THIS CARD DELIBERATELY HAS NOT GOT, both because
-               they do not exist rather than because they were forgotten:
+               Her song for the ALWAYS LALISA documentary, which is why the
+               film's poster is the art: it stands in for a sleeve that does
+               not exist yet. The OCTOBER 12 printed across the top of it is
+               the film's cinema date, and the caption under the poster says
+               so — otherwise it sits two inches above "Out Nov 18" with
+               nothing telling a reader which date belongs to what.
 
-                 · NO PRE-SAVE LINK. Nothing official has been published. A
-                   link guessed from the pattern of the others (lalisaofficial
-                   .lnk.to/…) would 404 or, worse, land somewhere real and
-                   wrong, and this card is the thing people screenshot.
+               TWO THINGS THIS CARD HAS NOT GOT. Neither is a rule, and both
+               go in the moment they exist:
 
-                 · NO RELEASE HOUR. None has been announced, so the card
+                 · NO PRE-SAVE LINK. Nothing official has been published yet.
+                   A link guessed from the pattern of the others
+                   (lalisaofficial.lnk.to/…) would 404 or, worse, land
+                   somewhere real and wrong, and this card is the thing people
+                   screenshot.
+
+                 · NO RELEASE HOUR. None has been announced yet, so the card
                    counts to MIDNIGHT ON THE READER'S OWN CLOCK through
                    data-target-local — the rule the PRESS PLAY EP needed — and
                    says so underneath in words, so the clock is not quietly
-                   asserting a time nobody gave. Naming an hour would be
-                   inventing one, and a countdown that reaches zero before the
+                   asserting a time nobody gave. Writing one in would be
+                   inventing it, and a countdown that reaches zero before the
                    song exists is the one failure a countdown cannot survive.
 
                data-target stays as the floor for anything that reads this
@@ -4183,6 +4200,11 @@
                data-target-local="2026-11-18" data-target="2026-11-18T00:00:00Z"
                data-live="OUT NOW ✨" data-prerelease-name="leave with me">
             <div class="lwm-hero">
+              <img class="lwm-poster" src="/leavewithme/always-lalisa-poster.webp"
+                   width="900" height="1329" loading="lazy"
+                   alt="ALWAYS LALISA — the documentary's poster. LISA in a crystal-studded stage outfit, lit blue, her hair streaming behind her; an official selection laurel for the Toronto International Film Festival 2026 sits above the title."
+                   onerror="this.remove()">
+              <div class="lwm-poster-cap">The film's poster · in cinemas Oct 12</div>
               <div class="lwm-title">Leave With Me</div>
               <div class="lwm-by">LISA · New Single</div>
             </div>
@@ -4192,10 +4214,14 @@
               <button class="cd-btn lwm-btn" onclick="openLeaveWithMeCard()">📸 Share</button>
             </div>
             <div class="lwm-note">
+              LISA's song for <b>ALWAYS LALISA</b>, the documentary. The
+              <b>October 12</b> on the poster is the film's cinema date — the
+              song is its own release, out <b>Nov 18</b>.
+              <br><br>
               No release time has been announced, so this counts to
               <b>midnight where you are</b> — it reaches zero when the date
               turns over on your clock, not on Seoul's or New York's. The
-              moment a time is confirmed, this card gets it.
+              moment a time or a pre-save exists, this card gets them.
             </div>
           </div>
           <!-- JISOO — "ADDICTED", counted down at jisoo.io. ONE worldwide
@@ -22723,7 +22749,7 @@ async function shareCard() {
       // caption that said only "Nov 18" would let someone quote a precision
       // nobody has published.
       statsText = d.campaign === 'leavewithme'
-        ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n⏰ No release time announced yet — this counts to midnight where you are\n👉 Count it down on blinksunited.com — share it!\n`
+        ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n🎬 Her song for the documentary ALWAYS LALISA\n⏰ No release time announced yet — this counts to midnight where you are\n👉 Count it down on blinksunited.com — share it!\n`
         : d.campaign === 'sunshowers'
         ? (d.earned
             ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n🐤 From The Angry Birds Movie 3 · release date not announced yet\n👉 Pre-save it too on blinksunited.com — don't forget to share!\n`
@@ -26916,55 +26942,38 @@ async function openSunShowersCard() {
   _markCardReady(canvas);
 }
 
-// LISA — "Leave With Me". The leanest card on the site, and every absence in
-// it is deliberate rather than unfinished:
+// LISA — "Leave With Me", her song for the ALWAYS LALISA documentary. What
+// this card has and has not got, and why:
 //
-//   NO PHOTO. There is no official sleeve, and the ALWAYS LALISA key art is
-//   the film's. drawPresaveCard tolerates a null photo (FIT goes false and the
-//   type sits on `base`), so the card is typography on our own blue instead of
-//   someone else's picture with the wrong caption under it.
+//   THE FILM'S POSTER, shown WHOLE (fitWhole) rather than cropped to fill.
+//   It is portrait and the card is landscape, so a cover-crop would show a
+//   horizontal slice of her waist and nothing else. fitWhole puts the poster
+//   beside the type column instead, which is the layout Sun Showers uses for
+//   its sleeve.
 //
-//   NO titleImg, so titleText carries the name — the same path Sun Showers
-//   uses for a release with no wordmark file.
+//   NO titleImg, so titleText carries the song name — the same path Sun
+//   Showers uses for a release with no wordmark file. It matters more here
+//   than there: the art says ALWAYS LALISA, which is the FILM, so without the
+//   title the card would be captioned with the wrong name.
 //
-//   NO CTA AND NO "I pre-saved" CLAIM. Nothing official has been published to
-//   link to. A card is a picture that outlives the moment it was made, so a
-//   guessed link on it is wrong for longer than anything on the page.
+//   NO CTA LINK and no "I pre-saved" claim — not a rule, just that nothing
+//   official has been published to link to yet. A card is a picture that
+//   outlives the moment it was made, so a guessed link on one is wrong for
+//   longer than anything on the page. Put the real one here when it exists.
 //
-//   NO dateLine HOUR. No release time has been announced. releaseAt is the
-//   reader's OWN midnight, built from parts exactly as cardTargetAt does it —
-//   Date.parse('2026-11-18') would be UTC midnight and hand a Los Angeles
-//   reader a card that is sixteen hours early.
+//   NO dateLine HOUR, for the same reason: none has been announced. releaseAt
+//   is the reader's OWN midnight, built from parts exactly as cardTargetAt
+//   does it — Date.parse('2026-11-18') would be UTC midnight and hand a Los
+//   Angeles reader a card that is sixteen hours early.
 const LWM_DAY = [2026, 11, 18];
 const lwmReleaseAt = () => new Date(LWM_DAY[0], LWM_DAY[1] - 1, LWM_DAY[2], 0, 0, 0, 0).toISOString();
 const lwmLive = () => Date.now() >= Date.parse(lwmReleaseAt());
 
-// The card's backdrop, PAINTED HERE rather than fetched. With photo:null the
-// type sits in the bottom-left corner of a flat black rectangle and the top
-// half reads as a picture that failed to load — the card looks broken rather
-// than spare. This draws the same two blue washes the card on the page has in
-// CSS and hands them over as an Image, because drawPresaveCard tests
-// naturalWidth and a <canvas> has none. Our own gradient, not anyone's
-// artwork, so it carries none of the problems a borrowed sleeve would.
-let _lwmBackdrop;
-function lwmBackdrop() {
-  if (_lwmBackdrop) return _lwmBackdrop;
-  const c = document.createElement('canvas');
-  c.width = 1200; c.height = 675;
-  const g = c.getContext('2d');
-  g.fillStyle = '#06060f';
-  g.fillRect(0, 0, c.width, c.height);
-  const wash = (x, y, r, rgba) => {
-    const grd = g.createRadialGradient(x, y, 0, x, y, r);
-    grd.addColorStop(0, rgba); grd.addColorStop(1, 'rgba(6,6,15,0)');
-    g.fillStyle = grd; g.fillRect(0, 0, c.width, c.height);
-  };
-  wash(300, 40, 760, 'rgba(92,122,255,0.34)');
-  wash(1030, 120, 620, 'rgba(184,118,255,0.24)');
-  wash(120, 660, 520, 'rgba(70,96,220,0.18)');
-  _lwmBackdrop = loadImg(c.toDataURL('image/png')).catch(() => null);
-  return _lwmBackdrop;
-}
+const LWM_POSTER_IMG = '/leavewithme/always-lalisa-poster.webp';
+// Cached on the module like every other card's art: the format toggle redraws
+// synchronously, so anything fetched at that moment arrives a frame late and
+// the card draws without it.
+let _lwmPosterImg;
 
 async function openLeaveWithMeCard() {
   const overlay = document.getElementById('card-overlay');
@@ -26983,15 +26992,21 @@ async function openLeaveWithMeCard() {
   document.getElementById('fmt-square')?.classList.remove('active');
   const canvas = document.getElementById('card-canvas');
   canvas.width = 1200; canvas.height = 675;
-  const backdrop = await lwmBackdrop();
+  const poster = _lwmPosterImg
+    ? _lwmPosterImg
+    : await loadImg(LWM_POSTER_IMG).then(i => (_lwmPosterImg = i)).catch(() => null);
   await document.fonts.ready;
 
   const out = lwmLive();
   _presaveCardData = {
     campaign: 'leavewithme', earned: false,
     act: 'LISA', release: 'Leave With Me',
-    photo: backdrop, photoWide: null, titleImg: null, logoImg: null, emblemImg: null,
+    photo: poster, photoWide: null, titleImg: null, logoImg: null, emblemImg: null,
     titleText: 'Leave With Me',
+    // Whole, not cropped — see the note above. Everything else follows from
+    // it: the poster no longer bleeds to the edges, so it sits on a ground,
+    // and that ground is the card's own blue rather than the poster's.
+    fitWhole: true,
     base: '#06060f',
     accent: '#a9bcff',
     releaseAt: lwmReleaseAt(),

@@ -78,14 +78,16 @@ const COUNTDOWNS = {
     title: 'JENNIE — Someone to Hold, Nov 20, 2026 | Countdown · BLINKS UNITED',
     description: "Counting down to JENNIE's “Someone to Hold” — her original song for Netflix's animated film Steps, out Nov 20, 2026 with the film.",
   },
-  // No image and no hour, for the same two reasons the card itself has
-  // neither: there is no official "Leave With Me" artwork yet (the ALWAYS
-  // LALISA key art is the film's), and no release time has been announced.
-  // Without `image` the page keeps the site's default og:image rather than
-  // shipping someone else's. Add one here when a cover exists.
+  // No hour in the description because none has been announced — a preview is
+  // the half of a shared link people read without clicking, so a time guessed
+  // here travels further than one on the page.
+  // The image is composed rather than screenshotted: the share card's middle
+  // is a live countdown, and a frozen "6D 18H" baked into a static preview is
+  // wrong by the next day. Rebuilt by hand if the art or the date changes.
   'leavewithme': {
     title: 'LISA — Leave With Me, Nov 18, 2026 | Countdown · BLINKS UNITED',
-    description: "Counting down to LISA's new single “Leave With Me”, out Nov 18, 2026. No release time announced yet — the countdown runs to midnight where you are.",
+    description: "Counting down to LISA's “Leave With Me”, her song for the documentary ALWAYS LALISA, out Nov 18, 2026. No release time announced yet — the countdown runs to midnight where you are.",
+    image: '/og-countdown-leavewithme.jpg',
   },
   'vmas': {
     title: '2026 VMAs — voting closes Sep 25 | Countdown · BLINKS UNITED',

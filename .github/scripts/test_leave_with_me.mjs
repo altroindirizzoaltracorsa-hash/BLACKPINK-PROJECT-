@@ -2,19 +2,28 @@
 //
 // Run: node .github/scripts/test_leave_with_me.mjs
 //
-// Both absences were asked for, and both are the kind of thing a later edit
-// fills in helpfully. Neither is a style preference:
+// NEITHER ABSENCE IS A RULE. Both are just facts about Nov 2026 — nothing
+// official has been published for either — and the day one is announced, put
+// it on the card and delete the check for it here. That edit is expected.
+// What this guards against is the OTHER way those gaps get filled: a plausible
+// value written in because every neighbouring card has one.
 //
-//   · NO LINK. Nothing official has been published. Every other card on this
-//     page carries one, so the pattern pulls hard toward inventing
-//     lalisaofficial.lnk.to/leavewithme — which either 404s or lands somewhere
-//     real and wrong. This card is the thing people screenshot.
+//   · NO LINK. Every other card on this page carries one, so the pattern
+//     pulls hard toward lalisaofficial.lnk.to/leavewithme — which either 404s
+//     or, worse, lands somewhere real and wrong. This card is the thing
+//     people screenshot.
 //
-//   · NO HOUR. No release time has been announced. The card counts to
-//     MIDNIGHT ON THE READER'S OWN CLOCK (data-target-local), and says so.
-//     Writing "1PM KST / 12AM EST" in the sub, the way the dated cards do,
-//     would be making a time up — and a countdown that reaches zero before
-//     the song exists is the one failure a countdown cannot survive.
+//   · NO HOUR. The card counts to MIDNIGHT ON THE READER'S OWN CLOCK
+//     (data-target-local), and says so. Writing "1PM KST / 12AM EST" in the
+//     sub, the way the dated cards do, would be making a time up — and a
+//     countdown that reaches zero before the song exists is the one failure a
+//     countdown cannot survive.
+//
+// THE ART IS THE FILM'S POSTER, because the song is her song for ALWAYS
+// LALISA. It is checked too, for a different reason: the poster prints
+// "IN CINEMAS … OCTOBER 12" across its top, which lands inches above "Out Nov
+// 18". Without the line saying which date is the film's, the card shows a
+// reader two dates and no way to tell them apart.
 //
 // The timezone sweep is the half that static text cannot prove. "Midnight
 // where you are" is a claim PRINTED ON THE CARD, so it is read from five
@@ -94,6 +103,23 @@ if (card) {
   /onclick="openLeaveWithMeCard\(\)"/.test(card)
     ? ok('  and can be posted')
     : bad('  and can be posted', 'every release card offers a share card');
+
+  // The poster, and the one line that stops it being read as the song's own
+  // date. Both or neither: the poster without the caption is two dates and no
+  // way to tell them apart.
+  const poster = /src="(\/leavewithme\/[^"]+)"/.exec(card);
+  poster ? ok('  shows the ALWAYS LALISA poster', poster[1])
+         : bad('  shows the ALWAYS LALISA poster', 'the song is her song for the film');
+  if (poster) {
+    /film's poster/i.test(text) && /in cinemas oct 12/i.test(text.replace(/\s+/g, ' '))
+      ? ok('    labelled as the FILM\'s, with its cinema date')
+      : bad('    labelled as the FILM\'s, with its cinema date',
+            'the poster prints OCTOBER 12 — unlabelled it reads as the song\'s date');
+    /ALWAYS LALISA/.test(text)
+      ? ok('    and the card names the documentary')
+      : bad('    and the card names the documentary',
+            'the art says ALWAYS LALISA and nothing on the card says what that is');
+  }
 }
 
 console.log('\n--- the share card');
@@ -113,6 +139,13 @@ if (fn) {
     ? ok('  and builds its release instant from parts, not Date.parse')
     : bad('  and builds its release instant from parts, not Date.parse',
           "Date.parse('2026-11-18') is UTC midnight — sixteen hours early in Los Angeles");
+
+  // The poster is portrait and the card is landscape, so without fitWhole a
+  // cover-crop shows a horizontal slice of her waist and nothing else.
+  /fitWhole: true/.test(body)
+    ? ok('  and shows the poster whole rather than cropping it to fill')
+    : bad('  and shows the poster whole rather than cropping it to fill',
+          'a portrait poster cover-cropped into a 16:9 card is a band across its middle');
 
   /campaign: 'leavewithme'/.test(body) && /d\.campaign === 'leavewithme'/.test(ix)
     ? ok('  and has its own caption, not the pre-save one')
