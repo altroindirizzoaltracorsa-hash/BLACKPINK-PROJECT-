@@ -1852,13 +1852,19 @@
      THE ART IS THE FILM'S POSTER, and that is right here because the song is
      the one she did for ALWAYS LALISA — it is the documentary's own key art
      standing in for a single that has no sleeve yet, not a picture borrowed
-     off an unrelated release. Two things follow from it being the FILM's
-     poster rather than the song's cover, and both are handled rather than
-     hoped about: it is labelled as the film's, and the OCTOBER 12 printed
-     across the top of it is the cinema date, which the card says in words so
-     nobody reads it as the song's. Swap in the real sleeve when one lands.
-     Shown whole, never cropped: it is a poster, and a poster cropped to a
-     banner loses the thing it was composed as. */
+     off an unrelated release. Swap in the real sleeve when one lands.
+
+     THE FILE IS CROPPED, 180px off the top of the 1400x2068 original. The
+     poster prints "IN CINEMAS & IMAX WORLDWIDE / OCTOBER 12" up there, which
+     landed a couple of inches above "Out Nov 18" on the card — two dates,
+     nothing saying which belonged to what. A caption explaining the
+     difference was the first attempt and it is weaker than not raising the
+     question. Cut above her hair, so the composition keeps its headroom and
+     nothing of her is lost; painting the line out instead was tried and
+     smudged where it crossed her hair.
+
+     Below the crop it is shown WHOLE, never cropped again: it is a poster,
+     and a poster cropped to a banner loses the thing it was composed as. */
   .cd-card-lwm { position: relative; overflow: hidden; background: #06060f; }
   .cd-card-lwm::before { content: ""; position: absolute; inset: 0; pointer-events: none;
     background: radial-gradient(118% 68% at 24% 0%, rgba(92,122,255,0.30), transparent 62%),
@@ -1869,8 +1875,6 @@
   .lwm-poster { display: block; width: auto; max-width: 66%; max-height: 360px;
     margin: 0 auto 1.15rem; border-radius: 7px; border: 1px solid rgba(255,255,255,0.12);
     box-shadow: 0 14px 40px rgba(0,0,0,0.55); }
-  .lwm-poster-cap { font-family: var(--mono); font-size: 0.48rem; letter-spacing: 0.14em;
-    text-transform: uppercase; color: rgba(214,222,255,0.5); margin: -0.75rem 0 1.15rem; }
   .lwm-title { font-family: var(--display); font-size: clamp(1.7rem, 13cqw, 2.9rem);
     line-height: 0.95; letter-spacing: 0.01em; color: #fff; text-wrap: balance; }
   .lwm-by { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.3em;
@@ -4168,10 +4172,10 @@
 
                Her song for the ALWAYS LALISA documentary, which is why the
                film's poster is the art: it stands in for a sleeve that does
-               not exist yet. The OCTOBER 12 printed across the top of it is
-               the film's cinema date, and the caption under the poster says
-               so — otherwise it sits two inches above "Out Nov 18" with
-               nothing telling a reader which date belongs to what.
+               not exist yet. The file is cropped above her hair to drop the
+               poster's own "IN CINEMAS … OCTOBER 12" line — see the note by
+               .lwm-poster in the stylesheet. Nothing on this card should
+               carry a date but the song's.
 
                TWO THINGS THIS CARD HAS NOT GOT. Neither is a rule, and both
                go in the moment they exist:
@@ -4201,10 +4205,9 @@
                data-live="OUT NOW ✨" data-prerelease-name="leave with me">
             <div class="lwm-hero">
               <img class="lwm-poster" src="/leavewithme/always-lalisa-poster.webp"
-                   width="900" height="1329" loading="lazy"
+                   width="900" height="1214" loading="lazy"
                    alt="ALWAYS LALISA — the documentary's poster. LISA in a crystal-studded stage outfit, lit blue, her hair streaming behind her; an official selection laurel for the Toronto International Film Festival 2026 sits above the title."
                    onerror="this.remove()">
-              <div class="lwm-poster-cap">The film's poster · in cinemas Oct 12</div>
               <div class="lwm-title">Leave With Me</div>
               <div class="lwm-by">LISA · New Single</div>
             </div>
@@ -4214,9 +4217,8 @@
               <button class="cd-btn lwm-btn" onclick="openLeaveWithMeCard()">📸 Share</button>
             </div>
             <div class="lwm-note">
-              LISA's song for <b>ALWAYS LALISA</b>, the documentary. The
-              <b>October 12</b> on the poster is the film's cinema date — the
-              song is its own release, out <b>Nov 18</b>.
+              LISA's song for <b>ALWAYS LALISA</b>, the documentary — the art
+              is the film's poster, standing in until a sleeve exists.
               <br><br>
               No release time has been announced, so this counts to
               <b>midnight where you are</b> — it reaches zero when the date

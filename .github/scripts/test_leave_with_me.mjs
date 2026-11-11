@@ -20,10 +20,13 @@
 //     countdown cannot survive.
 //
 // THE ART IS THE FILM'S POSTER, because the song is her song for ALWAYS
-// LALISA. It is checked too, for a different reason: the poster prints
-// "IN CINEMAS … OCTOBER 12" across its top, which lands inches above "Out Nov
-// 18". Without the line saying which date is the film's, the card shows a
-// reader two dates and no way to tell them apart.
+// LALISA. Checked here for one reason: the poster prints "IN CINEMAS … /
+// OCTOBER 12" across its top, and the shipped file is CROPPED above her hair
+// to remove it. Restore the full-height original and the card carries two
+// dates — the film's cinema date inches above the song's — with nothing
+// saying which is which. The check is on the file's proportions, because
+// that is the only thing here that can tell a cropped poster from an uncropped
+// one.
 //
 // The timezone sweep is the half that static text cannot prove. "Midnight
 // where you are" is a claim PRINTED ON THE CARD, so it is read from five
@@ -61,6 +64,27 @@ function cardMarkup() {
     else if (src.startsWith('</div>', i)) { if (--depth === 0) return src.slice(0, i + 6); }
   }
   return '';
+}
+
+// WebP dimensions straight out of the header — no image library, because the
+// only thing needed is two numbers and this test should not acquire a
+// dependency to read them. Handles the three container shapes: VP8 (lossy),
+// VP8L (lossless), VP8X (extended).
+async function posterSize(path) {
+  let b;
+  try { b = await readFile(path); } catch { return null; }
+  if (b.length < 30 || b.toString('ascii', 0, 4) !== 'RIFF' || b.toString('ascii', 8, 12) !== 'WEBP') return null;
+  const tag = b.toString('ascii', 12, 16);
+  if (tag === 'VP8 ')  return { w: b.readUInt16LE(26) & 0x3fff, h: b.readUInt16LE(28) & 0x3fff };
+  if (tag === 'VP8L') {
+    const n = b.readUInt32LE(21);
+    return { w: (n & 0x3fff) + 1, h: ((n >> 14) & 0x3fff) + 1 };
+  }
+  if (tag === 'VP8X') {
+    const u24 = (o) => b[o] | (b[o + 1] << 8) | (b[o + 2] << 16);
+    return { w: u24(24) + 1, h: u24(27) + 1 };
+  }
+  return null;
 }
 
 console.log('--- the card on the page');
@@ -104,21 +128,42 @@ if (card) {
     ? ok('  and can be posted')
     : bad('  and can be posted', 'every release card offers a share card');
 
-  // The poster, and the one line that stops it being read as the song's own
-  // date. Both or neither: the poster without the caption is two dates and no
-  // way to tell them apart.
   const poster = /src="(\/leavewithme\/[^"]+)"/.exec(card);
   poster ? ok('  shows the ALWAYS LALISA poster', poster[1])
          : bad('  shows the ALWAYS LALISA poster', 'the song is her song for the film');
   if (poster) {
-    /film's poster/i.test(text) && /in cinemas oct 12/i.test(text.replace(/\s+/g, ' '))
-      ? ok('    labelled as the FILM\'s, with its cinema date')
-      : bad('    labelled as the FILM\'s, with its cinema date',
-            'the poster prints OCTOBER 12 — unlabelled it reads as the song\'s date');
+    // The width/height attributes have to match the file, or the card
+    // reserves the wrong box and everything under it jumps when the image
+    // arrives. They are also how the crop is pinned, below.
+    const wh = /class="lwm-poster"[^>]*?width="(\d+)"[^>]*?height="(\d+)"/.exec(card);
+    const dim = await posterSize(ROOT + poster[1]);
+    wh && dim && Number(wh[1]) === dim.w && Number(wh[2]) === dim.h
+      ? ok('    with width/height matching the file', `${dim.w}x${dim.h}`)
+      : bad('    with width/height matching the file',
+            `markup says ${wh ? wh[1] + 'x' + wh[2] : 'nothing'}, file is ${dim ? dim.w + 'x' + dim.h : 'unreadable'}`);
+
+    // THE CROP. The original is 1400x2068 — 1.477 tall per wide. The shipped
+    // file has 180px taken off the top, which is 1.349. Anything at or above
+    // the original's ratio means the "IN CINEMAS … OCTOBER 12" band is back.
+    // Bounded below as well: a crop that kept going would start eating her.
+    const ratio = dim ? dim.h / dim.w : 0;
+    ratio > 1.24 && ratio < 1.41
+      ? ok('    cropped above the film\'s "OCTOBER 12" line', `${ratio.toFixed(3)} tall per wide`)
+      : bad('    cropped above the film\'s "OCTOBER 12" line',
+            `${ratio.toFixed(3)} — the uncropped poster is 1.477 and carries the film's cinema date`);
+
     /ALWAYS LALISA/.test(text)
       ? ok('    and the card names the documentary')
       : bad('    and the card names the documentary',
             'the art says ALWAYS LALISA and nothing on the card says what that is');
+
+    // Nothing but the song's own date on the card, now that the poster
+    // carries none: "Oct 12" written back into the copy is the same confusion
+    // arriving by the other door.
+    !/\boct(ober)?\s*12\b/i.test(text)
+      ? ok('    and no date on the card but the song\'s')
+      : bad('    and no date on the card but the song\'s',
+            'the film\'s cinema date is back in the copy, inches from "Out Nov 18"');
   }
 }
 
