@@ -1848,6 +1848,32 @@
   .cd-btn { display: inline-block; font-family: var(--mono); font-size: 0.6rem; line-height: 1.1; letter-spacing: 0.08em; text-transform: uppercase; color: #12000a; background: var(--pink); padding: 0.65rem 1.1rem; text-decoration: none; border: none; cursor: pointer; transition: filter .15s; }
   .cd-btn:hover { filter: brightness(1.07); }
 
+  /* ── LISA "Leave With Me" ──────────────────────────────────────────────────
+     NO ARTWORK IS SHIPPED, on the same rule as the Steps card below: no
+     official single cover has been published, and the ALWAYS LALISA key art
+     belongs to the film, not to this song. Putting one on a card for the other
+     is a caption error that then gets reposted as fact. Drawn in CSS instead —
+     our own blue, not her cover. Swap in the real sleeve here the day it
+     lands. */
+  .cd-card-lwm { position: relative; overflow: hidden; background: #06060f; }
+  .cd-card-lwm::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(118% 68% at 24% 0%, rgba(92,122,255,0.30), transparent 62%),
+                radial-gradient(92% 58% at 86% 16%, rgba(184,118,255,0.20), transparent 66%); }
+  .cd-card-lwm > * { position: relative; }
+  .lwm-hero { text-align: center; padding: 1.6rem 0.6rem 1.35rem; margin-bottom: 1.05rem;
+    border-bottom: 1px solid rgba(255,255,255,0.09); }
+  .lwm-title { font-family: var(--display); font-size: clamp(1.7rem, 13cqw, 2.9rem);
+    line-height: 0.95; letter-spacing: 0.01em; color: #fff; text-wrap: balance; }
+  .lwm-by { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.3em;
+    text-transform: uppercase; color: #9db0ff; margin-top: 0.8rem; }
+  .cd-card-lwm .cd-unit { background: rgba(120,150,255,0.07); border-color: rgba(150,175,255,0.22); }
+  .cd-card-lwm .cd-num, .cd-card-lwm .cd-out { color: #a9bcff; }
+  .cd-card-lwm .cd-links { justify-content: center; margin-bottom: 1rem; }
+  .lwm-btn { border-radius: 99px; background: #8fa5ff; color: #0a0c1c; }
+  .lwm-note { font-family: var(--mono); font-size: 0.58rem; line-height: 1.75;
+    color: rgba(236,240,255,0.62); }
+  .lwm-note b { color: #cdd8ff; font-weight: 500; }
+
   /* ── JENNIE "Someone to Hold" (Steps, Netflix) ─────────────────────────────
      No official single artwork exists yet and the film's key art is Netflix's,
      so this card is drawn in CSS rather than shipping someone else's image:
@@ -4127,6 +4153,51 @@
              not one photograph. It only advances while it is actually on
              screen, so reading further down the page does not move it. -->
         <div class="cd-wrap" data-carousel data-carousel-fit data-carousel-loop data-carousel-autoplay="12000" aria-label="Countdowns">
+          <!-- LISA — "Leave With Me", out Nov 18, 2026. First in the track
+               because it is the only release still ahead of us, and a drop
+               nobody has carded yet should be the first thing you see.
+
+               TWO THINGS THIS CARD DELIBERATELY HAS NOT GOT, both because
+               they do not exist rather than because they were forgotten:
+
+                 · NO PRE-SAVE LINK. Nothing official has been published. A
+                   link guessed from the pattern of the others (lalisaofficial
+                   .lnk.to/…) would 404 or, worse, land somewhere real and
+                   wrong, and this card is the thing people screenshot.
+
+                 · NO RELEASE HOUR. None has been announced, so the card
+                   counts to MIDNIGHT ON THE READER'S OWN CLOCK through
+                   data-target-local — the rule the PRESS PLAY EP needed — and
+                   says so underneath in words, so the clock is not quietly
+                   asserting a time nobody gave. Naming an hour would be
+                   inventing one, and a countdown that reaches zero before the
+                   song exists is the one failure a countdown cannot survive.
+
+               data-target stays as the floor for anything that reads this
+               card without the local rule (liveCountdownFor ranks on it); set
+               to 00:00 UTC because that is the day boundary the rest of the
+               site already uses, not because any hour is claimed.
+               data-prerelease-name keeps the auto-discovered Spotify card
+               from turning up a second time beside this one. -->
+          <div class="cd-card cd-card-lwm" data-slug="leavewithme" data-member="lisa"
+               data-target-local="2026-11-18" data-target="2026-11-18T00:00:00Z"
+               data-live="OUT NOW ✨" data-prerelease-name="leave with me">
+            <div class="lwm-hero">
+              <div class="lwm-title">Leave With Me</div>
+              <div class="lwm-by">LISA · New Single</div>
+            </div>
+            <div class="cd-sub">Out Wed, Nov 18, 2026</div>
+            <div class="cd-timer" data-timer></div>
+            <div class="cd-links">
+              <button class="cd-btn lwm-btn" onclick="openLeaveWithMeCard()">📸 Share</button>
+            </div>
+            <div class="lwm-note">
+              No release time has been announced, so this counts to
+              <b>midnight where you are</b> — it reaches zero when the date
+              turns over on your clock, not on Seoul's or New York's. The
+              moment a time is confirmed, this card gets it.
+            </div>
+          </div>
           <!-- JISOO — "ADDICTED", counted down at jisoo.io. ONE worldwide
                instant (13:00 KST = 04:00 UTC), confirmed rather than assumed:
                the same clock JISOO's CLICK used and the same one the jisoo.io
@@ -22645,7 +22716,15 @@ async function shareCard() {
       // A release with no date cannot use the shared wording: "is coming
       // release date not announced yet" is not a sentence, and the earned line
       // would read "⏰ release date not announced yet" under a clock.
-      statsText = d.campaign === 'sunshowers'
+      // "Leave With Me" has no pre-save to send anyone to and no announced
+      // hour, so neither the shared "every one counts" (which is about
+      // pre-saves) nor a bare date fits. The time line is stated rather than
+      // left out: the card's clock counts to the reader's own midnight, and a
+      // caption that said only "Nov 18" would let someone quote a precision
+      // nobody has published.
+      statsText = d.campaign === 'leavewithme'
+        ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n⏰ No release time announced yet — this counts to midnight where you are\n👉 Count it down on blinksunited.com — share it!\n`
+        : d.campaign === 'sunshowers'
         ? (d.earned
             ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n🐤 From The Angry Birds Movie 3 · release date not announced yet\n👉 Pre-save it too on blinksunited.com — don't forget to share!\n`
             : `\n🐤 ${d.act} — "${d.release}", from The Angry Birds Movie 3\n📅 No release date announced yet — the pre-save is open\n👉 ${d.verbCta} on blinksunited.com — every one counts. Share it!\n`)
@@ -26833,6 +26912,104 @@ async function openSunShowersCard() {
     verb: 'is coming', verbCta: 'Pre-save it',
   };
   label.textContent = earned ? "I'M AN EARLY SUPPORTER" : 'SUN SHOWERS';
+  drawPresaveCard(canvas, _presaveCardData);
+  _markCardReady(canvas);
+}
+
+// LISA — "Leave With Me". The leanest card on the site, and every absence in
+// it is deliberate rather than unfinished:
+//
+//   NO PHOTO. There is no official sleeve, and the ALWAYS LALISA key art is
+//   the film's. drawPresaveCard tolerates a null photo (FIT goes false and the
+//   type sits on `base`), so the card is typography on our own blue instead of
+//   someone else's picture with the wrong caption under it.
+//
+//   NO titleImg, so titleText carries the name — the same path Sun Showers
+//   uses for a release with no wordmark file.
+//
+//   NO CTA AND NO "I pre-saved" CLAIM. Nothing official has been published to
+//   link to. A card is a picture that outlives the moment it was made, so a
+//   guessed link on it is wrong for longer than anything on the page.
+//
+//   NO dateLine HOUR. No release time has been announced. releaseAt is the
+//   reader's OWN midnight, built from parts exactly as cardTargetAt does it —
+//   Date.parse('2026-11-18') would be UTC midnight and hand a Los Angeles
+//   reader a card that is sixteen hours early.
+const LWM_DAY = [2026, 11, 18];
+const lwmReleaseAt = () => new Date(LWM_DAY[0], LWM_DAY[1] - 1, LWM_DAY[2], 0, 0, 0, 0).toISOString();
+const lwmLive = () => Date.now() >= Date.parse(lwmReleaseAt());
+
+// The card's backdrop, PAINTED HERE rather than fetched. With photo:null the
+// type sits in the bottom-left corner of a flat black rectangle and the top
+// half reads as a picture that failed to load — the card looks broken rather
+// than spare. This draws the same two blue washes the card on the page has in
+// CSS and hands them over as an Image, because drawPresaveCard tests
+// naturalWidth and a <canvas> has none. Our own gradient, not anyone's
+// artwork, so it carries none of the problems a borrowed sleeve would.
+let _lwmBackdrop;
+function lwmBackdrop() {
+  if (_lwmBackdrop) return _lwmBackdrop;
+  const c = document.createElement('canvas');
+  c.width = 1200; c.height = 675;
+  const g = c.getContext('2d');
+  g.fillStyle = '#06060f';
+  g.fillRect(0, 0, c.width, c.height);
+  const wash = (x, y, r, rgba) => {
+    const grd = g.createRadialGradient(x, y, 0, x, y, r);
+    grd.addColorStop(0, rgba); grd.addColorStop(1, 'rgba(6,6,15,0)');
+    g.fillStyle = grd; g.fillRect(0, 0, c.width, c.height);
+  };
+  wash(300, 40, 760, 'rgba(92,122,255,0.34)');
+  wash(1030, 120, 620, 'rgba(184,118,255,0.24)');
+  wash(120, 660, 520, 'rgba(70,96,220,0.18)');
+  _lwmBackdrop = loadImg(c.toDataURL('image/png')).catch(() => null);
+  return _lwmBackdrop;
+}
+
+async function openLeaveWithMeCard() {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  // No pictures at all, so no picker — and the null is what stops the format
+  // toggle rebuilding this card around the previous card's pick.
+  document.getElementById('release-pic-picker').style.display = 'none';
+  _presaveCardArtUrl = null;
+  _cardType = 'presave';
+  _cardTrackId = null;
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+  const backdrop = await lwmBackdrop();
+  await document.fonts.ready;
+
+  const out = lwmLive();
+  _presaveCardData = {
+    campaign: 'leavewithme', earned: false,
+    act: 'LISA', release: 'Leave With Me',
+    photo: backdrop, photoWide: null, titleImg: null, logoImg: null, emblemImg: null,
+    titleText: 'Leave With Me',
+    base: '#06060f',
+    accent: '#a9bcff',
+    releaseAt: lwmReleaseAt(),
+    // The DATE, never an hour — and "midnight where you are" rather than a
+    // timezone, because that is the honest description of what the clock on
+    // the card is counting to.
+    dateLine: out ? 'Out now · Nov 18, 2026'
+                  : 'Out Wed, Nov 18, 2026 · midnight where you are',
+    dateShort: 'Nov 18, 2026',
+    // The CTA slot carries the ARTIST, not a link. It is always drawn, in the
+    // accent, and with no photo and no wordmark on this card it was the one
+    // place "LISA" could go — without it the card named the song and not who
+    // it was by. A link here would be a guessed one; see the card's note.
+    cta: 'LISA',
+    verb: out ? 'is out' : 'drops',
+    verbCta: 'Count it down',
+  };
+  label.textContent = 'LEAVE WITH ME · COUNTDOWN';
   drawPresaveCard(canvas, _presaveCardData);
   _markCardReady(canvas);
 }

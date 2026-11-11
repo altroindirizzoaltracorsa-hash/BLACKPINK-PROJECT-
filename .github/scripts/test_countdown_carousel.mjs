@@ -111,7 +111,13 @@ console.log('--- the countdown cards, on the home page');
   // ahead of us, but it has NO announced date, so it cannot be placed by
   // soonest-first and must not lead the row — the carousel opens on card
   // one, and opening on a release nobody can date is not useful.
-  const ORDER = ['addicted','steps','sunshowers','lalisaofficial.com','newtrick','hellosawadika.com'];
+  // Leave With Me (Nov 18) leads from 2026-11-11: it is the only one still
+  // ahead with a date on it, and soonest-dated-first is the rule above.
+  // ADDICTED led until then. Note what this list is and is not — it is the
+  // AUTHORED order, read off _cdLogical, so it changes when someone edits the
+  // markup and never on its own. A release passing its date does not reorder
+  // it; moving the card does.
+  const ORDER = ['leavewithme','addicted','steps','sunshowers','lalisaofficial.com','newtrick','hellosawadika.com'];
   // Read the AUTHORED order, not the DOM order: with looping on, the track
   // rotates cards between its ends, so the DOM order is the running order
   // turned by however many times it has wrapped.

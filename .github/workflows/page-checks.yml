@@ -246,6 +246,14 @@ jobs:
         if: always()
         run: node .github/scripts/test_countdown_slugs.mjs
 
+      # "Leave With Me" has no announced pre-save and no announced hour, and
+      # both gaps look like oversights to the next person editing this page —
+      # every other card has a link, and the dated ones all print a KST/EST
+      # line. Filling either in would publish something nobody announced.
+      - name: Leave With Me has no invented link and no invented hour
+        if: always()
+        run: node .github/scripts/test_leave_with_me.mjs
+
       # The ADDICTED card carries jisoo.io's art and moves the way that site
       # does. Every way it breaks still looks finished in a screenshot: the
       # bolt stuck at opacity 0, the logo rendering one transform wherever

@@ -78,6 +78,15 @@ const COUNTDOWNS = {
     title: 'JENNIE — Someone to Hold, Nov 20, 2026 | Countdown · BLINKS UNITED',
     description: "Counting down to JENNIE's “Someone to Hold” — her original song for Netflix's animated film Steps, out Nov 20, 2026 with the film.",
   },
+  // No image and no hour, for the same two reasons the card itself has
+  // neither: there is no official "Leave With Me" artwork yet (the ALWAYS
+  // LALISA key art is the film's), and no release time has been announced.
+  // Without `image` the page keeps the site's default og:image rather than
+  // shipping someone else's. Add one here when a cover exists.
+  'leavewithme': {
+    title: 'LISA — Leave With Me, Nov 18, 2026 | Countdown · BLINKS UNITED',
+    description: "Counting down to LISA's new single “Leave With Me”, out Nov 18, 2026. No release time announced yet — the countdown runs to midnight where you are.",
+  },
   'vmas': {
     title: '2026 VMAs — voting closes Sep 25 | Countdown · BLINKS UNITED',
     description: 'BLACKPINK, LISA and JISOO x ZAYN are nominated at the 2026 VMAs. Fan voting closes Sep 25, 6PM ET.',
@@ -99,6 +108,7 @@ export const config = {
     '/countdowns/jisoo.io', '/countdowns/jenn.ie', '/countdowns/hellosawadika.com',
     '/countdowns/lalisaofficial.com', '/countdowns/steps', '/countdowns/vmas',
     '/countdowns/addicted', '/countdowns/newtrick', '/countdowns/sunshowers',
+    '/countdowns/leavewithme',
     // The member-name aliases. The page resolves each to that member's live
     // release and rewrites the address bar to the card's own slug, so these
     // are an entry point rather than a second address for a release — which

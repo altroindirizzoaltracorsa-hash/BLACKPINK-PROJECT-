@@ -85,11 +85,14 @@ console.log('--- a member name lands on her live release');
     : bad('/countdowns/jisoo shows Sun Showers', `showed ${r.shown.join(', ') || 'nothing'}`);
 }
 {
-  // LISA has only released ones, so the alias takes the most recent.
+  // LISA had only released ones until "Leave With Me" was carded on
+  // 2026-11-11, and the alias took the most recent (PRESS PLAY). Now she has
+  // one AHEAD, and rank 0 beats rank 2 — which is the whole rule this file
+  // states in its first line, so the change of answer is the rule working.
   const r = await open('/countdowns/lisa');
-  r.shown.length === 1 && r.shown[0] === 'lalisaofficial.com'
-    ? ok('/countdowns/lisa shows PRESS PLAY', 'her most recent, with nothing ahead')
-    : bad('/countdowns/lisa shows PRESS PLAY', `showed ${r.shown.join(', ') || 'nothing'}`);
+  r.shown.length === 1 && r.shown[0] === 'leavewithme'
+    ? ok('/countdowns/lisa shows Leave With Me', 'still ahead, over a release already out')
+    : bad('/countdowns/lisa shows Leave With Me', `showed ${r.shown.join(', ') || 'nothing'}`);
 }
 {
   const r = await open('/countdowns/rose');
@@ -159,19 +162,22 @@ console.log('\n--- a release slugged with a member\'s name is not shadowed by th
   await page.locator('#home-countdowns .cd-card').first().waitFor({ state: 'attached', timeout: 20000 });
   await page.waitForFunction(() => typeof resolveCountdownSlug === 'function', { timeout: 20000 });
   const r = await page.evaluate(() => {
+    const before = resolveCountdownSlug('lisa');
     const card = document.querySelector('[data-slug="newtrick"]');
     const kept = card.dataset.slug;
     card.dataset.slug = 'lisa';                 // a release that is called "lisa"
     const got = resolveCountdownSlug('lisa');
     card.dataset.slug = kept;
-    return { got, restored: resolveCountdownSlug('lisa') };
+    return { before, got, restored: resolveCountdownSlug('lisa') };
   });
   r.got === 'lisa'
     ? ok('the card with that slug wins', 'the alias stands aside for a real release')
     : bad('the card with that slug wins', `resolved to ${r.got} — the name shadowed the release`);
-  r.restored === 'lalisaofficial.com'
-    ? ok('and the alias comes back when it is gone')
-    : bad('and the alias comes back when it is gone', r.restored);
+  // Whatever the alias resolved to before the slug was borrowed — it has to
+  // come back to the SAME release, so this is read rather than named twice.
+  r.restored === r.before
+    ? ok('and the alias comes back when it is gone', r.restored)
+    : bad('and the alias comes back when it is gone', `${r.before} → ${r.restored}`);
 }
 
 console.log('\n--- the alias follows the dates, not a list');
