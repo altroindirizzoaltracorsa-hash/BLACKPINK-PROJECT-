@@ -1,0 +1,778 @@
+{
+  "generatedAt": "2026-11-11T13:41:31.419Z",
+  "chartType": "daily",
+  "date": "2026-11-11",
+  "regions": {
+    "global": {
+      "region": "Global",
+      "gl": "US",
+      "period": {
+        "entityId": "daily:20261111:global",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "global"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "kr": {
+      "region": "South Korea",
+      "gl": "KR",
+      "period": {
+        "entityId": "daily:20261111:kr",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "kr"
+      },
+      "totalEntries": 99,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 19,
+          "name": "ADDICTED",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "Pksr9T8m_aA",
+          "viewCount": 92915,
+          "releaseDate": "2026-10-29"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 23,
+          "name": "ADDICTED (Dance Performance Video)",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "dND8ysuZqlA",
+          "viewCount": 82999,
+          "releaseDate": "2026-11-05"
+        }
+      ]
+    },
+    "jp": {
+      "region": "Japan",
+      "gl": "JP",
+      "period": {
+        "entityId": "daily:20261111:jp",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "jp"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "tw": {
+      "region": "Taiwan",
+      "gl": "TW",
+      "period": {
+        "entityId": "daily:20261111:tw",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "tw"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 26,
+          "name": "ADDICTED (Dance Performance Video)",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "dND8ysuZqlA",
+          "viewCount": 31593,
+          "releaseDate": "2026-11-05"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 30,
+          "name": "ADDICTED",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "Pksr9T8m_aA",
+          "viewCount": 30110,
+          "releaseDate": "2026-10-29"
+        }
+      ]
+    },
+    "hk": {
+      "region": "Hong Kong",
+      "gl": "HK",
+      "period": {
+        "entityId": "daily:20261111:hk",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "hk"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 11,
+          "name": "ADDICTED (Dance Performance Video)",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "dND8ysuZqlA",
+          "viewCount": 10643,
+          "releaseDate": "2026-11-05"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 21,
+          "name": "ADDICTED",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "Pksr9T8m_aA",
+          "viewCount": 7766,
+          "releaseDate": "2026-10-29"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 99,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 2642,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "id": {
+      "region": "Indonesia",
+      "gl": "ID",
+      "period": {
+        "entityId": "daily:20261111:id",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "id"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "th": {
+      "region": "Thailand",
+      "gl": "TH",
+      "period": {
+        "entityId": "daily:20261111:th",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "th"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 62,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 153286,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "ph": {
+      "region": "Philippines",
+      "gl": "PH",
+      "period": {
+        "entityId": "daily:20261111:ph",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "ph"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "my": {
+      "region": "Malaysia",
+      "gl": "MY",
+      "period": {
+        "entityId": "daily:20261111:my",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "my"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 54,
+          "name": "One Of The Girls",
+          "artists": [
+            "The Weeknd",
+            "JENNIE",
+            "Lily-Rose Depp"
+          ],
+          "videoId": "Mx92lTYxrJQ",
+          "viewCount": 33073,
+          "releaseDate": "2023-07-06"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 74,
+          "name": "ADDICTED",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "Pksr9T8m_aA",
+          "viewCount": 26912,
+          "releaseDate": "2026-10-29"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 79,
+          "name": "ADDICTED (Dance Performance Video)",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "dND8ysuZqlA",
+          "viewCount": 25785,
+          "releaseDate": "2026-11-05"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 95,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 23976,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "vn": {
+      "region": "Vietnam",
+      "gl": "VN",
+      "period": {
+        "entityId": "daily:20261111:vn",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "vn"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "sg": {
+      "region": "Singapore",
+      "gl": "SG",
+      "period": {
+        "entityId": "daily:20261111:sg",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "sg"
+      },
+      "totalEntries": 101,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 8,
+          "name": "ADDICTED (Dance Performance Video)",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "dND8ysuZqlA",
+          "viewCount": 7940,
+          "releaseDate": "2026-11-05"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 21,
+          "name": "ADDICTED",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "Pksr9T8m_aA",
+          "viewCount": 5495,
+          "releaseDate": "2026-10-29"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 43,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 3816,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 54,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 3277,
+          "releaseDate": "2026-10-22"
+        }
+      ]
+    },
+    "in": {
+      "region": "India",
+      "gl": "IN",
+      "period": {
+        "entityId": "daily:20261111:in",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "in"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "au": {
+      "region": "Australia",
+      "gl": "AU",
+      "period": {
+        "entityId": "daily:20261111:au",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "au"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 75,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 7323,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 83,
+          "name": "ADDICTED (Dance Performance Video)",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "dND8ysuZqlA",
+          "viewCount": 7027,
+          "releaseDate": "2026-11-05"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 89,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 6590,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 90,
+          "name": "ADDICTED",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "Pksr9T8m_aA",
+          "viewCount": 6506,
+          "releaseDate": "2026-10-29"
+        }
+      ]
+    },
+    "nz": {
+      "region": "New Zealand",
+      "gl": "NZ",
+      "period": {
+        "entityId": "daily:20261111:nz",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "nz"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "us": {
+      "region": "United States",
+      "gl": "US",
+      "period": {
+        "entityId": "daily:20261111:us",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "us"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "ca": {
+      "region": "Canada",
+      "gl": "CA",
+      "period": {
+        "entityId": "daily:20261111:ca",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "ca"
+      },
+      "totalEntries": 101,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 90,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 6834,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "mx": {
+      "region": "Mexico",
+      "gl": "MX",
+      "period": {
+        "entityId": "daily:20261111:mx",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "mx"
+      },
+      "totalEntries": 99,
+      "hits": []
+    },
+    "br": {
+      "region": "Brazil",
+      "gl": "BR",
+      "period": {
+        "entityId": "daily:20261111:br",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "br"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "ar": {
+      "region": "Argentina",
+      "gl": "AR",
+      "period": {
+        "entityId": "daily:20261111:ar",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "ar"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "cl": {
+      "region": "Chile",
+      "gl": "CL",
+      "period": {
+        "entityId": "daily:20261111:cl",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "cl"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "co": {
+      "region": "Colombia",
+      "gl": "CO",
+      "period": {
+        "entityId": "daily:20261111:co",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "co"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "pe": {
+      "region": "Peru",
+      "gl": "PE",
+      "period": {
+        "entityId": "daily:20261111:pe",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "pe"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "gb": {
+      "region": "United Kingdom",
+      "gl": "GB",
+      "period": {
+        "entityId": "daily:20261111:gb",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "gb"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "fr": {
+      "region": "France",
+      "gl": "FR",
+      "period": {
+        "entityId": "daily:20261111:fr",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "fr"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "de": {
+      "region": "Germany",
+      "gl": "DE",
+      "period": {
+        "entityId": "daily:20261111:de",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "de"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "es": {
+      "region": "Spain",
+      "gl": "ES",
+      "period": {
+        "entityId": "daily:20261111:es",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "es"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "it": {
+      "region": "Italy",
+      "gl": "IT",
+      "period": {
+        "entityId": "daily:20261111:it",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "it"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "nl": {
+      "region": "Netherlands",
+      "gl": "NL",
+      "period": {
+        "entityId": "daily:20261111:nl",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "nl"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 99,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 2840,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "se": {
+      "region": "Sweden",
+      "gl": "SE",
+      "period": {
+        "entityId": "daily:20261111:se",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "se"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 84,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 1343,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "no": {
+      "region": "Norway",
+      "gl": "NO",
+      "period": {
+        "entityId": "daily:20261111:no",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "no"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 70,
+          "name": "Tarantino (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "-5ZXrO_lYSA",
+          "viewCount": 657,
+          "releaseDate": "2026-10-22"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 79,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 631,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 85,
+          "name": "ADDICTED",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "Pksr9T8m_aA",
+          "viewCount": 611,
+          "releaseDate": "2026-10-29"
+        }
+      ]
+    },
+    "pl": {
+      "region": "Poland",
+      "gl": "PL",
+      "period": {
+        "entityId": "daily:20261111:pl",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "pl"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "tr": {
+      "region": "Turkey",
+      "gl": "TR",
+      "period": {
+        "entityId": "daily:20261111:tr",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "tr"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "sa": {
+      "region": "Saudi Arabia",
+      "gl": "SA",
+      "period": {
+        "entityId": "daily:20261111:sa",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "sa"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "za": {
+      "region": "South Africa",
+      "gl": "ZA",
+      "period": {
+        "entityId": "daily:20261111:za",
+        "periodType": "daily",
+        "startDate": "20261111",
+        "endDate": "20261111",
+        "region": "za"
+      },
+      "totalEntries": 100,
+      "hits": []
+    }
+  },
+  "summary": {
+    "totalHits": 26,
+    "regionsChecked": 34
+  }
+}
