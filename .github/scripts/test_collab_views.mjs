@@ -482,6 +482,61 @@ console.log('\n--- the fandom picker on /collabs');
     await pg.close();
   }
 
+  // THE ONE THAT SHIPPED BROKEN. A Supabase access token lasts an hour and the
+  // client swaps the refresh token for a new one on load; what sits in storage
+  // between visits is therefore usually EXPIRED. With no client on this page
+  // the expiry check above reported every such reader as signed out, so the
+  // picker worked only within an hour of a visit to the home page — which is
+  // nobody arriving from a link, and is how it reached someone as "this does
+  // nothing".
+  //
+  // The client is stubbed rather than fetched: the real one comes from a CDN
+  // this runner cannot reach, so without a stub every check in this section
+  // silently measures the FALLBACK path instead of the one being fixed. That
+  // is precisely why the bug got through.
+  {
+    const stale = live({ access_token: 'stale', expires_at: Math.floor(Date.now() / 1000) - 60 });
+    const pg = await browser.newPage({ viewport: { width: 412, height: 1200 } });
+    pg.on('pageerror', (e) => errs.push(e.message));
+    const posts = [];
+    await pg.addInitScript((sess) => {
+      try { localStorage.setItem('sb-esbzlrmrdvvsrsobrzfz-auth-token', JSON.stringify(sess)); } catch (e) {}
+      // What the real client does with an expired token: hands back a fresh one.
+      window.supabase = { createClient: () => ({ auth: {
+        getSession: async () => ({ data: { session: {
+          access_token: 'refreshed', expires_at: Math.floor(Date.now() / 1000) + 3600,
+          user: { id: 'u1', user_metadata: {} },
+        } } }),
+      } }) };
+    }, stale);
+    await pg.route('**/api/collabs**', (r) => {
+      if (r.request().method() === 'POST') {
+        posts.push(JSON.parse(r.request().postData() || '{}'));
+        return r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+      }
+      return r.continue();
+    });
+    await pg.goto(base + '/collabs?demo=b', { waitUntil: 'domcontentloaded' });
+    await pg.waitForTimeout(700);
+    await pg.evaluate(() => setPairView('voter'));
+    await pg.waitForTimeout(300);
+    const chips = await pg.evaluate(() => document.querySelectorAll('.fp-chip').length);
+    check(chips > 0, 'a STALE stored token still gets the picker, because the client refreshes it',
+          `${chips} chips`);
+    if (chips) {
+      await pg.evaluate(() => {
+        [...document.querySelectorAll('.fp-chip')].find((b) => /pauljjak/i.test(b.textContent)).click();
+      });
+      await pg.waitForTimeout(700);
+      // The refreshed token, not the stale one sitting in storage. Sending the
+      // stale one is a 401 and a picker that reports a save it did not make.
+      check(!!posts[0] && posts[0].accessToken === 'refreshed',
+            '  and the save carries the refreshed token, not the stale one',
+            posts[0] ? posts[0].accessToken : 'no post');
+    }
+    await pg.close();
+  }
+
   // Signed in: one chip per side the COLLAB declares. Built from its own list,
   // so a side is offered here because it is on the board — the keys are not
   // copied into this page to drift from it.
@@ -498,6 +553,20 @@ console.log('\n--- the fandom picker on /collabs');
     check(got.sides.every((k) => got.chips.some((o) => o && o.includes("'" + k + "'"))),
           '  and they are that collab\'s own keys', got.sides.join(', '));
     check(got.lit === 0, '  with nothing preselected', `${got.lit} lit`);
+    // ABOVE the view tabs, not under the table. Under it, it sat below the
+    // table, three paragraphs of notes and a fold — and the person who needs
+    // it most is the one who has not scrolled that far. Above the tabs it also
+    // shows in BOTH views, not only the one that raises the question.
+    const place = await pg.evaluate(() => {
+      const fp = document.querySelector('.fp'), tabs = document.querySelector('.pr-tabs');
+      const note = document.querySelector('.pr-note');
+      if (!fp || !tabs) return null;
+      return { aboveTabs: fp.getBoundingClientRect().top < tabs.getBoundingClientRect().top,
+               aboveNote: !note || fp.getBoundingClientRect().top < note.getBoundingClientRect().top };
+    });
+    check(!!place && place.aboveTabs && place.aboveNote,
+          '  sitting above the view tabs, not buried under the table',
+          JSON.stringify(place));
 
     const before = getCount();
     await pg.evaluate(() => {
