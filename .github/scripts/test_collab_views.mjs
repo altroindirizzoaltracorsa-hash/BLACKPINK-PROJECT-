@@ -417,6 +417,116 @@ console.log('\n--- a collab with no sides keeps the trade rows and loses the con
   await plain.close();
 }
 
+// ── The fandom picker, on the board itself ─────────────────────────────────
+// It exists on the home page too, under Settings → Account. It is HERE because
+// this is where the question occurs to somebody: they have just read a row
+// saying nobody has said they are their fandom. Two navigations and a settings
+// panel away is far enough that the answer does not get given.
+//
+// This page has no Supabase client and must not grow one — it is a public
+// read-only board, and pulling the SDK in would make it a sign-in surface. It
+// READS the session the home page already put in localStorage, same origin.
+console.log('\n--- the fandom picker on /collabs');
+{
+  const mk = async (session) => {
+    const pg = await browser.newPage({ viewport: { width: 412, height: 1200 } });
+    pg.on('pageerror', (e) => errs.push(e.message));
+    if (session) {
+      await pg.addInitScript((sess) => {
+        try { localStorage.setItem('sb-esbzlrmrdvvsrsobrzfz-auth-token', JSON.stringify(sess)); } catch (e) {}
+      }, session);
+    }
+    const posts = [];
+    let gets = 0;
+    await pg.route('**/api/collabs**', (r) => {
+      if (r.request().method() === 'POST') {
+        posts.push(JSON.parse(r.request().postData() || '{}'));
+        return r.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' });
+      }
+      gets++;
+      return r.continue();
+    });
+    await pg.goto(base + '/collabs?demo=b', { waitUntil: 'domcontentloaded' });
+    await pg.waitForTimeout(600);
+    await pg.evaluate(() => setPairView('voter'));
+    await pg.waitForTimeout(200);
+    return { pg, posts, getCount: () => gets };
+  };
+  const live = (over) => Object.assign({
+    access_token: 'tok', expires_at: Math.floor(Date.now() / 1000) + 3600,
+    user: { id: 'u1', user_metadata: {} },
+  }, over || {});
+
+  // Signed out: no chips. The message is not a sign-up pitch — everybody on
+  // this board already has an account, because a vote cannot be logged
+  // without one — it says where their own picker is.
+  {
+    const { pg } = await mk(null);
+    const got = await pg.evaluate(() => ({
+      chips: document.querySelectorAll('.fp-chip').length,
+      msg: (document.querySelector('.fp-msg') || {}).textContent || '',
+      link: !!document.querySelector('.fp-msg a'),
+    }));
+    check(got.chips === 0, 'signed out: no chips to press', `${got.chips} chips`);
+    check(/signed up|cannot log a vote/i.test(got.msg) && got.link,
+          'and it points at where to sign in rather than asking them to sign up');
+    await pg.close();
+  }
+
+  // AN EXPIRED TOKEN IS SIGNED OUT. It would POST, 401, and the picker would
+  // report a save that did not happen — the one outcome worse than no picker.
+  {
+    const { pg } = await mk(live({ expires_at: Math.floor(Date.now() / 1000) - 60 }));
+    const chips = await pg.evaluate(() => document.querySelectorAll('.fp-chip').length);
+    check(chips === 0, 'an expired session is treated as signed out', `${chips} chips`);
+    await pg.close();
+  }
+
+  // Signed in: one chip per side the COLLAB declares. Built from its own list,
+  // so a side is offered here because it is on the board — the keys are not
+  // copied into this page to drift from it.
+  {
+    const { pg, posts, getCount } = await mk(live());
+    const got = await pg.evaluate(() => ({
+      chips: [...document.querySelectorAll('.fp-chip')].map((b) => b.getAttribute('onclick')),
+      sides: (COLLABS.find((c) => c.id === 'bvp-kca-2026').fandoms || []).map((f) => f.key),
+      lit: document.querySelectorAll('.fp-chip.on').length,
+    }));
+    check(got.chips.length === got.sides.length,
+          'signed in: a chip for every side the collab declares',
+          `${got.chips.length} chips, ${got.sides.length} sides`);
+    check(got.sides.every((k) => got.chips.some((o) => o && o.includes("'" + k + "'"))),
+          '  and they are that collab\'s own keys', got.sides.join(', '));
+    check(got.lit === 0, '  with nothing preselected', `${got.lit} lit`);
+
+    const before = getCount();
+    await pg.evaluate(() => {
+      [...document.querySelectorAll('.fp-chip')].find((b) => /pauljjak/i.test(b.textContent)).click();
+    });
+    await pg.waitForTimeout(900);
+    check(posts.length === 1 && posts[0].action === 'set-fandom' && posts[0].fandom === 'pauljjak',
+          'pressing one declares that side', JSON.stringify(posts[0] || {}));
+    // The server takes the identity from the token and never from the body.
+    // A picker that sent a user id would be a picker that could relabel
+    // somebody else's votes.
+    check(!!posts[0] && posts[0].accessToken === 'tok'
+          && !posts[0].uid && !posts[0].app_user_id,
+          '  carrying the session token and no identity of its own');
+    // Seeing their own row appear is the confirmation. A message saying it
+    // worked is not the same thing, and this is the half that would silently
+    // stop working.
+    check(getCount() > before, '  and the board is re-read so their row appears',
+          `${getCount() - before} refetch(es)`);
+    const after = await pg.evaluate(() => ({
+      lit: (document.querySelector('.fp-chip.on') || {}).textContent || '',
+      msg: (document.querySelector('.fp-msg') || {}).textContent || '',
+    }));
+    check(/pauljjak/i.test(after.lit), '  the chip stays lit afterwards', after.lit);
+    check(/done/i.test(after.msg), '  and it says so', after.msg.slice(0, 60));
+    await pg.close();
+  }
+}
+
 console.log('\n--- nothing threw');
 check(errs.length === 0, 'no page errors', errs.join(' | '));
 

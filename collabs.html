@@ -292,6 +292,24 @@
   .vt-bar { position: absolute; right: 0; bottom: 0; height: 2px; border-radius: 1px;
     opacity: 0.75; }
   .pr-note { font-size: 0.66rem; color: var(--muted); margin: 0.55rem 0 0; line-height: 1.6; }
+  /* "Which side are you?" — put HERE, under the table, because this is where
+     the question occurs to somebody: they have just read a row saying nobody
+     has said they are their fandom. The same picker on the home page is two
+     navigations and a Settings panel away from this moment. */
+  .fp { margin: 0.75rem 0 0; padding: 0.6rem 0.7rem; border: 1px solid var(--border);
+    border-radius: var(--r-ctl); background: rgba(255,255,255,0.02); }
+  .fp-q { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); }
+  .fp-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.5rem; }
+  .fp-chip { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--muted); background: transparent;
+    border: 1px solid var(--border); border-radius: 99px; padding: 0.4rem 0.75rem;
+    cursor: pointer; }
+  .fp-chip:hover { color: var(--pink); }
+  .fp-chip.on { color: var(--pink); border-color: var(--pink); background: var(--pink-muted); }
+  .fp-chip[disabled] { opacity: 0.5; cursor: default; }
+  .fp-msg { font-size: 0.62rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.55; }
+  .fp-msg a { color: var(--pink); }
   /* The view selector. Same control as the period tabs, smaller: those switch
      what the whole card counts, these switch how one block is read. */
   .pr-tabs { display: flex; gap: 0.35rem; margin-bottom: 0.6rem; }
@@ -1372,6 +1390,52 @@ function voterTable(c, p) {
   return rows.some(function (r) { return r.total > 0; }) ? { cols: cols, rows: rows } : null;
 }
 
+// ── Who the reader is, without a Supabase client ────────────────────────────
+// This page has no auth and should not grow any: it is a public read-only
+// board and pulling the SDK in would make it a sign-in surface. The session is
+// already in localStorage, same origin, so both of these are READS of what the
+// home page put there. Ported from getLocalAccessToken / getLocalAuthMetadata
+// in index.html, trimmed — the shape handling is theirs, including the couple
+// of layouts supabase-js has used and the base64 wrapper the newer one adds.
+//
+// Nothing here signs anybody in. If there is no session the picker says so and
+// links to the page that can.
+function buAuthObj() {
+  try {
+    for (var i = 0; i < localStorage.length; i++) {
+      var k = localStorage.key(i);
+      if (!k || !/^sb-.*-auth-token$/.test(k)) continue;
+      var raw = localStorage.getItem(k);
+      if (!raw) continue;
+      if (raw.indexOf('base64-') === 0) { try { raw = atob(raw.slice(7)); } catch (e) { continue; } }
+      var obj; try { obj = JSON.parse(raw); } catch (e) { continue; }
+      return obj;
+    }
+  } catch (e) {}
+  return null;
+}
+function buToken() {
+  var obj = buAuthObj();
+  if (!obj) return null;
+  var s = obj.currentSession || obj.session
+    || (Array.isArray(obj) && obj[0] && typeof obj[0] === 'object' ? obj[0] : null) || obj;
+  var tok = s && s.access_token;
+  if (!tok) return null;
+  // An expired token posts and 401s, and the picker would report a success
+  // that did not happen. Treated as signed out instead — opening the site
+  // refreshes it.
+  if (s.expires_at && (s.expires_at * 1000) < Date.now()) return null;
+  return tok;
+}
+function buFandomNow() {
+  var obj = buAuthObj();
+  if (!obj) return null;
+  var u = obj.user || (obj.currentSession && obj.currentSession.user)
+    || (obj.session && obj.session.user)
+    || (Array.isArray(obj) ? (obj.filter(function (x) { return x && x.user; })[0] || {}).user : null);
+  return (u && u.user_metadata && u.user_metadata.fandom) || null;
+}
+
 // Which cut of the block is showing. 'trade' is what was asked for first and
 // stays the default: it is the thing the collab is.
 var PAIR_VIEW = 'trade';
@@ -1399,6 +1463,77 @@ function pairingsHtml(c, p) {
   return '<div class="pairings">' + tabs
     + (view === 'voter' ? voterViewHtml(c, voters) : tradeViewHtml(trade))
     + '</div>';
+}
+
+// The picker. Rendered from the collab's OWN fandom list, so a side exists
+// here because it exists on the board — no second copy of the keys to drift.
+var FP_MSG = '';
+function fandomPickerHtml(c) {
+  if (!c.fandoms || !c.fandoms.length) return '';
+  var signed = !!buToken();
+  var cur = buFandomNow();
+  if (!signed) {
+    // Not a sign-in form. Everybody on this board already has an account —
+    // a vote cannot be logged without one — so this is a reminder of where
+    // theirs is, not an invitation to make one.
+    return '<div class="fp"><div class="fp-q">Counted under the wrong name?</div>'
+      + '<div class="fp-msg">Everyone here is signed up — you cannot log a vote without an '
+      + 'account. Saying which fandom you are is the optional part. '
+      + '<a href="/">Open blinksunited.com</a> in this browser and the picker appears here.</div></div>';
+  }
+  return '<div class="fp"><div class="fp-q">'
+    + (cur ? 'You are logging as' : 'Which side are you?') + '</div>'
+    + '<div class="fp-chips">'
+    + c.fandoms.map(function (f) {
+        return '<button type="button" class="fp-chip' + (f.key === cur ? ' on' : '') + '"'
+          + ' aria-pressed="' + (f.key === cur ? 'true' : 'false') + '"'
+          + ' onclick="pickFandom(\'' + esc(f.key) + '\')">' + esc(f.label) + '</button>';
+      }).join('')
+    + '</div>'
+    + '<div class="fp-msg">' + (FP_MSG || 'This moves the votes you have ALREADY logged out of '
+      + '“Didn’t say” and under your own fandom. It changes nothing about what your votes count '
+      + 'for.') + '</div></div>';
+}
+
+// Best-effort by design: the answer is worth having and nothing else on the
+// page depends on it, so a failure says so and leaves the board alone.
+async function pickFandom(key) {
+  var tok = buToken();
+  if (!tok) { FP_MSG = 'Signed out — open blinksunited.com and come back.'; render(); return; }
+  FP_MSG = 'Saving…';
+  render();
+  try {
+    var r = await fetch('/api/collabs', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'set-fandom', fandom: key, accessToken: tok }),
+    });
+    if (!r.ok) throw new Error('http ' + r.status);
+    // Keep the locally stored answer in step, so the chip stays lit on the
+    // next render rather than snapping back until the home page is opened.
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k || !/^sb-.*-auth-token$/.test(k)) continue;
+        var raw = localStorage.getItem(k), b64 = raw && raw.indexOf('base64-') === 0;
+        var obj = JSON.parse(b64 ? atob(raw.slice(7)) : raw);
+        var u = obj.user || (obj.currentSession && obj.currentSession.user)
+          || (obj.session && obj.session.user);
+        if (!u) continue;
+        u.user_metadata = u.user_metadata || {};
+        u.user_metadata.fandom = key;
+        var out = JSON.stringify(obj);
+        localStorage.setItem(k, b64 ? 'base64-' + btoa(out) : out);
+        break;
+      }
+    } catch (e) {}
+    FP_MSG = 'Done — your votes are counted under your fandom now.';
+    // Re-read the board so they watch their own row appear. That is the whole
+    // confirmation: a message saying it worked is not the same as seeing it.
+    await Promise.all(COLLABS.filter(function (x) { return x.status === 'live'; }).map(loadCollab));
+  } catch (e) {
+    FP_MSG = 'Could not save that just now — try again in a moment.';
+  }
+  render();
 }
 
 function voterViewHtml(c, t) {
@@ -1457,7 +1592,8 @@ function voterViewHtml(c, t) {
     + 'same slots.'
     + '<br><b>The shading runs across a row</b>, against that side\'s own best column — where a '
     + 'side was short, not how big it is. The <b>all</b> column is the size.'
-    + '</p>';
+    + '</p>'
+    + fandomPickerHtml(c);
 }
 
 function tradeViewHtml(rows) {
@@ -2620,8 +2756,11 @@ render();
 // with no numbers at all, so nothing about it waits on a request, and a failed
 // one leaves the honest "not counting yet" rather than a spinner or an empty
 // board. One request per collab that is actually running.
-COLLABS.filter(function (c) { return c.status === 'live'; }).forEach(function (c) {
-  fetch('/api/collabs?id=' + encodeURIComponent(c.id), { cache: 'no-store' })
+// Named, because the fandom picker re-runs it: after somebody says which side
+// they are, the board is re-read so they watch their own row appear rather
+// than being told it worked.
+function loadCollab(c) {
+  return fetch('/api/collabs?id=' + encodeURIComponent(c.id), { cache: 'no-store' })
     .then(function (r) { return r.ok ? r.json() : null; })
     .then(function (j) {
       // Only adopt a tally that has something in it. An endpoint answering 200
@@ -2632,7 +2771,8 @@ COLLABS.filter(function (c) { return c.status === 'live'; }).forEach(function (c
       render();
     })
     .catch(function () { /* the card stands on its own */ });
-});
+}
+COLLABS.filter(function (c) { return c.status === 'live'; }).forEach(loadCollab);
 
 function sumOf(o) {
   var n = 0;
