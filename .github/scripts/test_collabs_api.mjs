@@ -383,6 +383,82 @@ console.log('\n--- logging a vote never requires a scrobbler');
   delete globalThis.__sbStub;
 }
 
+// ── Declaring a fandom with no vote attached ────────────────────────────────
+// Every person on this board has an account: you cannot log a vote without
+// one. So "Didn't say" is not strangers, it is signed-up people who skipped an
+// optional question — and until this action existed they had no way to answer
+// it that the board would notice. The key only reached collab_user_votes
+// riding along with a batch of votes from the extension; the website's own
+// picker (Settings -> Account) set a display name and stopped there.
+//
+// That made the obvious advice ("pick your fandom on the site") wrong for the
+// one fandom with nobody declared: they would pick it, watch the board not
+// change, and conclude it was broken.
+console.log('\n--- declaring a fandom, with no vote attached');
+{
+  const updates = [];
+  const voter = { id: 'pj-1', user_metadata: {} };
+  const mkStub = (user) => ({
+    auth: {
+      admin: { getUserById: async () => ({ data: { user } }),
+               updateUserById: async () => ({ error: null }) },
+      getUser: async (tok) => (tok === 'good'
+        ? { data: { user }, error: null }
+        : { data: {}, error: { message: 'bad token' } }),
+    },
+    rpc: async (fn, args) => ({ data: args.p_prefix + '1', error: null }),
+    from: () => ({
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }),
+      update: (patch) => ({ eq: async (col, val) => { updates.push({ patch, col, val }); return {}; } }),
+    }),
+  });
+  const run = async (body) => {
+    globalThis.__sbStub = mkStub(voter);
+    let status = 0, out = null;
+    const res = { setHeader() {}, status(c) { status = c; return this; }, json(b) { out = b; return this; } };
+    await api.handler({ method: 'POST', query: {}, headers: {}, body }, res);
+    delete globalThis.__sbStub;
+    return { status, out };
+  };
+
+  let r = await run({ action: 'set-fandom', fandom: 'pauljjak', accessToken: 'good' });
+  check(r.status === 200, `it is accepted (HTTP ${r.status})`, r.out && r.out.error);
+  check(updates.length === 1 && updates[0].patch.fandom === 'pauljjak',
+        'and writes the fandom onto their rows', JSON.stringify(updates[0] || {}));
+  // Filtered by PERSON and nothing else: a fandom is a property of the person,
+  // so every row they have moves, in every period the board slices.
+  check(updates[0] && updates[0].col === 'app_user_id' && updates[0].val === voter.id,
+        '  for that person, across every row they have');
+  // No collab id in the body. The vote path requires one; this must not, or
+  // the site would need to know the live collab's id to let someone answer a
+  // question about themselves.
+  check(r.status === 200, '  with no collab id needed');
+
+  // The things it must refuse.
+  updates.length = 0;
+  r = await run({ action: 'set-fandom', fandom: 'pauljjak' });
+  check(r.status === 401 && !updates.length, 'a caller with no token is refused',
+        `HTTP ${r.status}`);
+  r = await run({ action: 'set-fandom', fandom: 'pauljjak', accessToken: 'nope' });
+  check(r.status === 401 && !updates.length, 'and so is a bad one', `HTTP ${r.status}`);
+  // The body is the one thing a caller controls. A fandom key becomes a row
+  // label on a public board and the prefix of an auto display name.
+  r = await run({ action: 'set-fandom', fandom: 'bl!nk; drop', accessToken: 'good' });
+  check(r.status === 400 && !updates.length, 'a fandom that is not one is refused',
+        `HTTP ${r.status}`);
+  // But a well-shaped key this collab has no side for is STORED, not refused —
+  // the same as the vote path, which is the point: this action carries no
+  // collab id, so it has no list of sides to check against, and inventing one
+  // here would make the two paths disagree about the same answer. The board is
+  // where it is resolved: a key no collab declares is a stray and is counted in
+  // "Didn't say", which is exactly where an answer nobody recognises belongs.
+  updates.length = 0;
+  r = await run({ action: 'set-fandom', fandom: 'sone', accessToken: 'good' });
+  check(r.status === 200 && updates.length === 1,
+        'a well-shaped key for no side is stored, and the board files it under Didn\u2019t say',
+        `HTTP ${r.status}`);
+}
+
 console.log(`\nFAILURES: ${fails.length}`);
 for (const f of fails) console.log('  - ' + f);
 process.exit(fails.length ? 1 : 0);

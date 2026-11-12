@@ -218,6 +218,32 @@ function periodFrom(rows, fandomOf) {
   return { byCat, board, fandoms, fandomCats, total: sumOf(byCat) };
 }
 
+// WHO IS CALLING. The extension carries its own token; the site sends the
+// Supabase session. Either way the identity comes from the token and never
+// from the body, which is the whole reason this is better than self-reporting.
+// Pulled out of the vote path so that declaring a fandom authenticates exactly
+// the same way — two copies of this would be two chances to get it wrong, and
+// the weaker one would be the one nobody was looking at.
+async function whoIs(sb, body, req) {
+  const extToken = String(body.extToken || req.headers['x-ext-token'] || '').trim();
+  const accessToken = String(body.accessToken || '').trim();
+  if (extToken) {
+    const { data: tok } = await sb.from('scrobble_tokens')
+      .select('app_user_id').eq('token', extToken).maybeSingle();
+    if (!tok) return { err: 'Link your blinksunited account in the extension first.' };
+    let name = null;
+    try {
+      const { data: got } = await sb.auth.admin.getUserById(tok.app_user_id);
+      name = (got && got.user && got.user.user_metadata && got.user.user_metadata.display_name) || null;
+    } catch (_) { name = null; }
+    return { uid: tok.app_user_id, name };
+  }
+  if (!accessToken) return { err: 'Sign in to log your votes' };
+  const { data: { user } = {}, error: authErr } = await sb.auth.getUser(accessToken);
+  if (authErr || !user) return { err: 'Sign in to log your votes' };
+  return { uid: user.id, name: (user.user_metadata && user.user_metadata.display_name) || null };
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -229,9 +255,47 @@ export default async function handler(req, res) {
   if (!sb) return res.status(503).json({ error: 'Collabs not configured' });
 
   const id = String((req.query && req.query.id) || (req.body && req.body.id) || '').trim();
-  if (!ID_RE.test(id)) return res.status(400).json({ error: 'Unknown collab' });
+  const action = String((req.body && req.body.action) || '').trim();
+  // set-fandom carries no collab: a person is one fandom everywhere, which is
+  // what the GET already assumes when it resolves one fandom per person across
+  // every row.
+  if (action !== 'set-fandom' && !ID_RE.test(id)) {
+    return res.status(400).json({ error: 'Unknown collab' });
+  }
 
   try {
+    // ── Declaring a fandom, with no vote attached ────────────────────────────
+    // The answer belongs to the ACCOUNT, not to a round of voting, and until
+    // now it could only arrive attached to one: the extension sent it with a
+    // batch of votes, and the site's own picker (Settings → Account) set a
+    // display name and nothing else. So somebody who had already signed up —
+    // which is everybody on this board, you cannot log a vote without an
+    // account — could not be counted under their own fandom without casting
+    // more votes through the extension. The fandom with nobody declared was
+    // precisely the one being asked to declare, and the website picker that
+    // looked like the way to do it did not do it.
+    //
+    // EVERY row of theirs is set, not only the blank ones. The GET takes the
+    // last non-null fandom it meets across a person's rows, so leaving an old
+    // answer behind would leave the board picking between two in an order
+    // nothing defines — and correcting a mis-pick would silently not correct.
+    //
+    // No display name is minted here, unlike the vote path: the site's picker
+    // does its own naming, and doing it in both places burns two numbers off
+    // the counter for one person.
+    if (req.method === 'POST' && action === 'set-fandom') {
+      const body = req.body || {};
+      const fandom = FANDOM_RE.test(String(body.fandom || '').trim().toLowerCase())
+        ? String(body.fandom).trim().toLowerCase() : null;
+      if (!fandom) return res.status(400).json({ error: 'Unknown fandom' });
+      const who = await whoIs(sb, body, req);
+      if (who.err) return res.status(401).json({ error: who.err });
+      const { error: upErr } = await sb.from('collab_user_votes')
+        .update({ fandom }).eq('app_user_id', who.uid);
+      if (upErr) return res.status(500).json({ error: upErr.message });
+      return res.status(200).json({ ok: true, fandom });
+    }
+
     if (req.method === 'GET') {
       const { data, error } = await sb
         .from('collab_user_votes')
@@ -293,28 +357,13 @@ export default async function handler(req, res) {
       const add = sumOf(addCats);
       if (!add) return res.status(400).json({ error: 'nothing to record' });
 
-      // Who. The extension carries its own token; the site sends the Supabase
-      // session. Either way the identity comes from the token and never from
-      // the body, which is the whole reason this is better than self-reporting.
-      let uid = null, name = null;
+      // Who — see whoIs() above. The identity comes from the token and never
+      // from the body.
+      const who = await whoIs(sb, body, req);
+      if (who.err) return res.status(401).json({ error: who.err });
+      let uid = who.uid, name = who.name;
+      // Only to stamp ext_at on the row below — the identity itself is settled.
       const extToken = String(body.extToken || req.headers['x-ext-token'] || '').trim();
-      const accessToken = String(body.accessToken || '').trim();
-      if (extToken) {
-        const { data: tok } = await sb.from('scrobble_tokens')
-          .select('app_user_id').eq('token', extToken).maybeSingle();
-        if (!tok) return res.status(401).json({ error: 'Link your blinksunited account in the extension first.' });
-        uid = tok.app_user_id;
-        try {
-          const { data: got } = await sb.auth.admin.getUserById(uid);
-          name = (got && got.user && got.user.user_metadata && got.user.user_metadata.display_name) || null;
-        } catch (_) { name = null; }
-      } else {
-        if (!accessToken) return res.status(401).json({ error: 'Sign in to log your votes' });
-        const { data: { user } = {}, error: authErr } = await sb.auth.getUser(accessToken);
-        if (authErr || !user) return res.status(401).json({ error: 'Sign in to log your votes' });
-        uid = user.id;
-        name = (user.user_metadata && user.user_metadata.display_name) || null;
-      }
 
       const day = kstDay();
       const { data: existing } = await sb.from('collab_user_votes')

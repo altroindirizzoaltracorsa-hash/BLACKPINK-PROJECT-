@@ -9985,6 +9985,24 @@ async function chooseFandom(key) {
       if (error) return;
     }
     await reissueAutoDisplayName(key);
+    // AND TELL THE COLLAB BOARD. This picker used to set a display name and
+    // nothing else, so someone who declared here stayed in "Didn't say" on
+    // /collabs until they cast more votes through the extension — the fandom
+    // key only ever reached that table riding along with a batch of votes.
+    // Which made this the wrong advice to give the one fandom with nobody
+    // declared: they would pick their side here, watch the board not change,
+    // and conclude it was broken. The action sets it on every row they already
+    // have, so their whole history moves across at once.
+    // Best-effort: their answer is recorded on the account either way, and a
+    // failure here costs a label on one board, not the answer.
+    try {
+      await fetch('/api/collabs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'set-fandom', fandom: key,
+                               accessToken: session.access_token }),
+      });
+    } catch {}
   } catch {}
 }
 
