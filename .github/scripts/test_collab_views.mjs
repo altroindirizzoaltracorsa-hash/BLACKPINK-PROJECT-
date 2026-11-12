@@ -249,24 +249,68 @@ console.log('\n--- "didn\'t say" is its own row, never spread across the others'
   // The never-answered and a side the collab no longer has are the same
   // situation — nothing recognises them — and both belong in that one row.
   check(other.n === 10, 'and one row carries the undeclared AND the dropped side', String(other.n));
-  check(!got.rows.some((r) => /Pauljjak/i.test(r.label)),
-        'a side with nothing logged is not given an empty row');
+  check(got.rows.some((r) => /Pauljjak/i.test(r.label)),
+        'a declared side keeps its row with nothing logged');
 }
 
-console.log('\n--- a side that logged nothing is accounted for in words');
+// This was the other way round until someone reading the live page asked why
+// Ahn Hyo-seop's fandom was missing from the table. It was not missing: it had
+// no row, and a sentence at the end of the note said so — four sentences down,
+// below the fold on a phone, which is not where the question gets asked. The
+// answer belongs in the row.
+//
+// WHAT THE ROW MUST NOT SAY is that they did not vote. The page knows who
+// DECLARES a side; a Pauljjak voter who never answered is in Didn't say,
+// counted. Zeroes across five columns would be a claim about another fandom's
+// turnout that this data cannot support, which is also why the row is prose
+// and not figures.
+console.log('\n--- a declared side with nothing logged says so in its own row');
 {
   const got = await page.evaluate(() => {
     const c = COLLABS.find((x) => x.id === 'bvp-kca-2026');
     const quiet = JSON.parse(JSON.stringify(c.tally.periods.all.fandomCats));
-    delete quiet.pauljjak;
-    const silent = voterSilent(c, { fandomCats: quiet });
+    delete quiet.pauljjak;                       // exactly what the live API returns
     const box = document.createElement('div');
-    box.innerHTML = voterViewHtml(c, voterTable(c, { fandomCats: quiet }), silent);
-    return { silent, note: box.querySelector('.pr-note').textContent };
+    box.innerHTML = voterViewHtml(c, voterTable(c, { fandomCats: quiet }));
+    // IN the document, because getComputedStyle on a detached node returns an
+    // empty declaration — every style check against one passes or fails on
+    // nothing. That is what the wrapping check did on its first run: it went
+    // red against a stylesheet that was already correct.
+    box.className = 'pairings';
+    document.body.appendChild(box);
+    const tr = [...box.querySelectorAll('tbody tr')]
+      .filter((x) => /Pauljjak/.test(x.querySelector('.vt-side').textContent))[0];
+    const none = tr && tr.querySelector('.vt-none');
+    return {
+      present: !!tr,
+      text: none ? none.textContent.replace(/\s+/g, ' ').trim() : '',
+      // Spans the whole table, so it cannot line up under a column and be read
+      // as that column's figure.
+      span: none ? Number(none.getAttribute('colspan')) : 0,
+      cols: box.querySelectorAll('thead th').length - 1,
+      // No digits anywhere in the row: a 0 or a — in a numeric column is read
+      // as a count, which is the claim this must not make.
+      digits: tr ? /\d/.test(tr.textContent) : true,
+      // It has to WRAP. `.vt th, .vt td` sets white-space:nowrap for the
+      // figures, and a bare `.vt-none` loses to it on specificity — which it
+      // did, and the sentence ran off the side of a table that scrolls
+      // sideways, so the half that says where those people actually are was
+      // off-screen. Read computed rather than from the stylesheet text,
+      // because specificity is the thing being tested.
+      wraps: none ? getComputedStyle(none).whiteSpace : '',
+    };
   });
-  check(got.silent.length === 1 && /Pauljjak/.test(got.silent[0]),
-        'the quiet side is identified', got.silent.join(', '));
-  check(/Nothing logged yet under Pauljjak/.test(got.note), 'and the note says so', got.note.slice(-90));
+  await page.evaluate(() => { const b = document.querySelectorAll('.pairings'); b[b.length - 1].remove(); });
+  check(got.present, 'the row is there');
+  check(/nobody has said they are Pauljjak/i.test(got.text),
+        '  and says nobody has SAID, not that nobody voted', got.text);
+  check(/Didn’t say|Didn't say/.test(got.text),
+        '  and points at where those people are counted instead');
+  check(got.span === got.cols, '  spanning the data columns, not posing as one',
+        `colspan ${got.span} of ${got.cols}`);
+  check(!got.digits, '  with no figure in it to misread as a turnout of zero');
+  check(/^(normal|pre-wrap|pre-line)$/.test(got.wraps),
+        '  and wrapping, not running off a table that scrolls sideways', got.wraps);
 }
 
 console.log('\n--- the split comes from the API, not rebuilt from the capped board');
@@ -317,18 +361,45 @@ console.log('\n--- it fits a phone, and the page still does not scroll sideways'
 // it without anything looking wrong on a desktop.
 {
   const small = await open('/collabs?demo=b', 390);
-  await small.evaluate(() => { setPairView('voter'); });
+  // Take a declared side's figures away so the empty-side row is on screen to
+  // be measured. The demo fixture has every side logging, which is the one
+  // case that cannot show this row — and the live API, today, is the case
+  // that does.
+  await small.evaluate(() => {
+    COLLABS.forEach((c) => {
+      var ps = (c.tally && c.tally.periods) || {};
+      Object.keys(ps).forEach((k) => { if (ps[k].fandomCats) delete ps[k].fandomCats.pauljjak; });
+    });
+    setPairView('voter');
+  });
   await small.waitForTimeout(300);
   const got = await small.evaluate(() => ({
     page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     wrapScrolls: (() => { const w = document.querySelector('.vt-wrap');
       return w ? w.scrollWidth > w.clientWidth : null; })(),
     rows: document.querySelectorAll('.vt tbody tr').length,
+    // The "nobody has said" sentence has to be READABLE at this width. It
+    // spans a table that is deliberately wider than the screen, so by default
+    // it wrapped at the table's width and its first line finished off to the
+    // right, where the reader has to scroll to find it. Measured against the
+    // scroll container's VISIBLE width — against the table it would be a
+    // check that can never fail, and at 1200px so would this one, which is
+    // why it lives down here and not beside the other row checks.
+    noneOut: (() => {
+      const sp = document.querySelector('.vt td.vt-none > span');
+      const w = document.querySelector('.vt-wrap');
+      if (!sp || !w) return null;
+      return Math.round(sp.getBoundingClientRect().right
+                        - w.getBoundingClientRect().left - w.clientWidth);
+    })(),
   }));
   check(got.page <= 1, 'no sideways scroll on the page at 390px', `${got.page}px`);
   check(got.rows > 0, 'the table is there', `${got.rows} rows`);
   check(got.wrapScrolls !== null, 'inside a wrapper that may scroll on its own',
         String(got.wrapScrolls));
+  check(got.noneOut !== null && got.noneOut <= 0,
+        'and the empty-side sentence reads without scrolling it',
+        got.noneOut === null ? 'no such row on this demo' : `${got.noneOut}px past the edge`);
   await small.close();
 }
 

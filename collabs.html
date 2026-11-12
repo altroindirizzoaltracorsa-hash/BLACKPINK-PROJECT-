@@ -265,6 +265,23 @@
     font-variant-numeric: tabular-nums; color: var(--white); }
   .vt .vt-side { text-align: left; padding-left: 0; font-family: inherit; }
   .vt-all { color: var(--muted); }
+  /* The "nobody has said this yet" row. Left-aligned prose across the data
+     columns, in the body font, so it cannot be scanned as a row of figures —
+     an empty side is a fact about who has answered, not a count of zero.
+     Written `.vt td.vt-none`, not `.vt-none`: `.vt th, .vt td` above sets
+     white-space:nowrap and a bare class loses to it on specificity, so the
+     sentence ran off the side of the table instead of wrapping. */
+  .vt td.vt-none { text-align: left; color: var(--muted); font-family: inherit;
+    font-size: 0.6rem; white-space: normal; line-height: 1.45; opacity: 0.85; }
+  /* Wrapped against the SCREEN, not against the table. The table is wider than
+     a phone and scrolls sideways, so a cell spanning it breaks its lines at a
+     width most of which is off to the right — the sentence's first line ran
+     past the edge and finished somewhere the reader has to scroll to.
+     The cap is against the VIEWPORT because the table's own width is the thing
+     that is too big: 12rem is the label column plus the page's gutters, so
+     what is left is what a phone can actually show. 17rem caps it on a desktop,
+     where the viewport term stops being the binding one. */
+  .vt td.vt-none > span { display: inline-block; max-width: min(17rem, calc(100vw - 12rem)); }
   /* Where the trade falls: our slots to the left of it, the partners' to the
      right. Ten names in a row otherwise say nothing about which half is which. */
   .vt-split { border-left: 1px solid rgba(255,255,255,0.14); }
@@ -1330,27 +1347,29 @@ function voterTable(c, p) {
       return s.keys.reduce(function (a, k) { return a + n(k, col.slug); }, 0);
     });
     return { key: s.key, label: s.label, colour: s.colour, cells: cells,
+             declared: s.key !== 'unsaid',
              total: cells.reduce(function (a, b) { return a + b; }, 0),
              // Shaded ACROSS the row: how even that side's own ballot was, which
              // is the thing a trade is checked on. Down a column it would only
              // redraw the headcounts, which the turnout block already carries.
              most: cells.reduce(function (a, b) { return Math.max(a, b); }, 0) };
-  }).filter(function (r) { return r.total > 0; });
+  // EVERY DECLARED SIDE KEEPS ITS ROW, logged or not. This used to drop an
+  // empty one and account for it in a sentence at the end of the note, on the
+  // reasoning that a row of dashes is a worse account than a sentence. It is
+  // not, because of where each one is: the question "where is Ahn Hyo-seop's
+  // side?" is asked AT THE TABLE, and the sentence answers it four sentences
+  // later, below the fold on a phone. Reported as a missing fandom by someone
+  // reading the live page, which is the whole argument. The row says it in
+  // place, in words rather than as zeroes — see .vt-none.
+  //
+  // 'unsaid' is not a declared side and still goes when it is empty: it is the
+  // leftovers bucket, and an empty one has nothing to account for.
+  }).filter(function (r) { return r.total > 0 || r.declared; });
 
-  return rows.length ? { cols: cols, rows: rows } : null;
-}
-
-// The declared sides with nothing logged anywhere in this period. Said once in
-// words rather than as a row of dashes: a side missing from the table still has
-// to be accounted for, or it reads as "they are not in this" — but an empty row
-// across five columns is a worse account than a sentence.
-function voterSilent(c, p) {
-  var fc = (p && p.fandomCats) || {};
-  return (c.fandoms || []).filter(function (x) {
-    var got = fc[x.key] || {};
-    for (var k in got) if (Number(got[k]) > 0) return false;
-    return true;
-  }).map(function (x) { return x.label; });
+  // A table of nothing but empty rows is not a view, it is a shrug. The block
+  // falls back to the trade view, which is what happens before any of this has
+  // data anyway.
+  return rows.some(function (r) { return r.total > 0; }) ? { cols: cols, rows: rows } : null;
 }
 
 // Which cut of the block is showing. 'trade' is what was asked for first and
@@ -1378,11 +1397,11 @@ function pairingsHtml(c, p) {
       }).join('') + '</div>'
     : '';
   return '<div class="pairings">' + tabs
-    + (view === 'voter' ? voterViewHtml(c, voters, voterSilent(c, p)) : tradeViewHtml(trade))
+    + (view === 'voter' ? voterViewHtml(c, voters) : tradeViewHtml(trade))
     + '</div>';
 }
 
-function voterViewHtml(c, t, silent) {
+function voterViewHtml(c, t) {
   var ours = t.cols.filter(function (x) { return x.ours; }).length;
   return '<div class="pairings-head">Who voted what</div>'
     + '<div class="vt-wrap"><table class="vt"><thead><tr><th></th>'
@@ -1395,8 +1414,21 @@ function voterViewHtml(c, t, silent) {
       }).join('')
     + '<th class="vt-split">all</th></tr></thead><tbody>'
     + t.rows.map(function (r) {
-        return '<tr><td class="vt-side"><span style="color:' + esc(r.colour) + '">'
-          + esc(r.label) + '</span></td>'
+        var side = '<tr><td class="vt-side"><span style="color:' + esc(r.colour) + '">'
+          + esc(r.label) + '</span></td>';
+        // NOBODY HAS SAID, WHICH IS NOT THE SAME AS NOBODY VOTED, and the
+        // difference matters enough to spend a row on. This page knows what
+        // people DECLARE; somebody from that fandom who never answered is
+        // sitting in Didn't say, counted, just not under their own name. A row
+        // of zeroes would read as "they did not turn up" — a claim about
+        // another fandom's turnout that the data cannot support and that we
+        // have no business making.
+        if (!r.total) {
+          return side + '<td class="vt-none" colspan="' + (t.cols.length + 1) + '"><span>'
+            + 'Nobody has said they are ' + esc(r.label) + ' yet — anyone who has not '
+            + 'answered is in <b>Didn’t say</b>.</span></td></tr>';
+        }
+        return side
           + r.cells.map(function (v, i) {
               // The shading is ACROSS the row — where this side's own ballot
               // was short. Down a column it would only redraw the headcounts,
@@ -1425,9 +1457,6 @@ function voterViewHtml(c, t, silent) {
     + 'same slots.'
     + '<br><b>The shading runs across a row</b>, against that side\'s own best column — where a '
     + 'side was short, not how big it is. The <b>all</b> column is the size.'
-    + (silent && silent.length
-        ? '<br>Nothing logged yet under ' + esc(silent.join(' or ')) + '.'
-        : '')
     + '</p>';
 }
 
