@@ -459,6 +459,58 @@ console.log('\n--- declaring a fandom, with no vote attached');
         `HTTP ${r.status}`);
 }
 
+// ── A vote from somebody who declared on the website and nowhere else ──────
+// The gap that opened the moment /collabs grew a picker. Declaring there sets
+// the fandom on the rows they already have; somebody with NO rows yet — they
+// answered before their first vote, which is what the message to other
+// fandoms invites — updates nothing. Their first vote then arrives from an
+// extension that has never been told, carrying no fandom, and they land in
+// "Didn't say" having answered the question. The account's answer is the
+// fallback so that cannot happen.
+console.log('\n--- a vote carries the account\'s fandom when the caller sends none');
+{
+  const stored = [];
+  const voter = { id: 'pj-2', user_metadata: { fandom: 'pauljjak', display_name: 'pauljjak1' } };
+  globalThis.__sbStub = {
+    auth: {
+      admin: { getUserById: async () => ({ data: { user: voter } }),
+               updateUserById: async () => ({ error: null }) },
+      getUser: async () => ({ data: { user: voter } }),
+    },
+    rpc: async (fn, args) => ({ data: args.p_prefix + '1', error: null }),
+    from: (table) => {
+      if (table === 'scrobble_tokens') {
+        const q = { select: () => q, eq: () => q, maybeSingle: async () => ({ data: { app_user_id: voter.id } }) };
+        return q;
+      }
+      if (table === 'linked_accounts') {
+        const q = { select: () => q, eq: () => q, limit: async () => ({ data: [], error: null }) };
+        return q;
+      }
+      const q = {
+        select: () => q, eq: () => q, is: () => q,
+        maybeSingle: async () => ({ data: null }),
+        upsert: async (row) => { stored.push(row); return { error: null }; },
+        update: () => ({ eq: () => ({ is: async () => ({}) }), is: async () => ({}) }),
+      };
+      return q;
+    },
+  };
+  let status = 0, body = null;
+  const res = { setHeader() {}, status(c) { status = c; return this; }, json(b) { body = b; return this; } };
+  // No `fandom` in the body at all — an extension that was never told.
+  await api.handler({
+    method: 'POST', query: {}, headers: {},
+    body: { id: 'bvp-kca-2026', extToken: 'tok',
+            cats: { 'favorite-animated-male-voice-from-a-movie': 1 } },
+  }, res);
+  check(status === 200, `the vote is taken (HTTP ${status})`, body && body.error);
+  check(stored.length === 1 && stored[0].fandom === 'pauljjak',
+        'and lands under the fandom they declared on the website',
+        stored[0] ? String(stored[0].fandom) : 'no row');
+  delete globalThis.__sbStub;
+}
+
 console.log(`\nFAILURES: ${fails.length}`);
 for (const f of fails) console.log('  - ' + f);
 process.exit(fails.length ? 1 : 0);

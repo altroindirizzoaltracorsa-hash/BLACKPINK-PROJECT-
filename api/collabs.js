@@ -231,17 +231,20 @@ async function whoIs(sb, body, req) {
     const { data: tok } = await sb.from('scrobble_tokens')
       .select('app_user_id').eq('token', extToken).maybeSingle();
     if (!tok) return { err: 'Link your blinksunited account in the extension first.' };
-    let name = null;
+    let name = null, fandom = null;
     try {
       const { data: got } = await sb.auth.admin.getUserById(tok.app_user_id);
-      name = (got && got.user && got.user.user_metadata && got.user.user_metadata.display_name) || null;
+      const md = (got && got.user && got.user.user_metadata) || {};
+      name = md.display_name || null;
+      fandom = md.fandom || null;
     } catch (_) { name = null; }
-    return { uid: tok.app_user_id, name };
+    return { uid: tok.app_user_id, name, fandom };
   }
   if (!accessToken) return { err: 'Sign in to log your votes' };
   const { data: { user } = {}, error: authErr } = await sb.auth.getUser(accessToken);
   if (authErr || !user) return { err: 'Sign in to log your votes' };
-  return { uid: user.id, name: (user.user_metadata && user.user_metadata.display_name) || null };
+  const md = user.user_metadata || {};
+  return { uid: user.id, name: md.display_name || null, fandom: md.fandom || null };
 }
 
 export default async function handler(req, res) {
@@ -377,8 +380,18 @@ export default async function handler(req, res) {
       // saying exactly that, and this is the side that has to honour it.
       // What they say they are. Validated, never trusted for anything but a
       // count of people: it splits no votes and gates nothing.
-      const fandom = FANDOM_RE.test(String(body.fandom || '').trim().toLowerCase())
-        ? String(body.fandom).trim().toLowerCase() : null;
+      // What they say they are. The caller's answer wins; the ACCOUNT's is the
+      // fallback, which is what makes declaring on the website work for
+      // somebody who has not voted yet. Without it: they pick their side on
+      // /collabs (which updates the rows they have — none), then vote through
+      // an extension that has never been told, and the new row carries no
+      // fandom. Having answered the question, they would appear under
+      // "Didn't say" anyway, which is exactly the advice we are giving other
+      // fandoms failing for the people who take it earliest.
+      const asked = String(body.fandom || '').trim().toLowerCase();
+      const said = FANDOM_RE.test(asked) ? asked
+        : (FANDOM_RE.test(String(who.fandom || '')) ? String(who.fandom) : null);
+      const fandom = said;
 
       // The answer given in the extension belongs to the ACCOUNT, not just to
       // this collab's rows: it decides the anonymous display name the site
