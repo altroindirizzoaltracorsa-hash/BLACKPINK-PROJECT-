@@ -18,6 +18,12 @@ const LFM_CACHE_KEY = 'bu_lfm_cache_v1';
 // handler: the point is that a run which cannot finish must not fail the same
 // people every time.
 const SCROBBLE_CURSOR_KEY = 'bu_scrobble_cursor_v1';
+// One refresh at a time — see the lock in the handler. 10 minutes: comfortably
+// over the ~4 minutes a full run takes, comfortably under the hourly cadence,
+// so a run killed before it can release its own lock costs one slot and not
+// the day.
+const CRON_LOCK_KEY  = 'bu_scrobble_cron_lock';
+const CRON_LOCK_TTL_S = 600;
 const GOAL_HISTORY_KEY = 'bu_goal_history_v1';
 const GOAL_PRIMARY   = 15000;
 const GOAL_SECONDARY = 20000;
@@ -896,8 +902,37 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
+  // ONE RUN AT A TIME. Two overlapping runs each read the whole board, refresh
+  // a different slice of it, and write the whole thing back — so the one that
+  // finishes second silently discards everything the first did, and its users
+  // keep yesterday's numbers while the log for both runs says "refreshed".
+  // There was no guard here at all, which was survivable only because a single
+  // scheduler fired it. It is now reachable from two (a Vercel cron and the
+  // GitHub backstop), and a collision is the exact failure this endpoint is
+  // least able to report.
+  //
+  // NX with a TTL rather than a flag it clears on the way out: a run killed
+  // mid-flight by a function timeout never reaches its own cleanup, and a lock
+  // without an expiry would then wedge the refresh permanently — which is a
+  // worse outage than the one it prevents. The TTL is well over the observed
+  // ~4 minute run and under the hourly cadence.
+  let haveLock = false;
+  try {
+    haveLock = !!(await redis.set(CRON_LOCK_KEY, new Date().toISOString(), { nx: true, ex: CRON_LOCK_TTL_S }));
+    if (!haveLock) {
+      return res.status(200).json({ ok: true, skipped: 'another refresh is already running' });
+    }
+  } catch (e) {
+    // Redis unreachable: the lock is a safety net, not the job. Carry on rather
+    // than let a flaky GET stop every refresh.
+    console.error('cron lock failed, running anyway:', e.message || e);
+  }
+
   const data = await redis.get(LB_KEY);
-  if (!data?.users) return res.status(200).json({ ok: true, skipped: 'no users' });
+  if (!data?.users) {
+    if (haveLock) { try { await redis.del(CRON_LOCK_KEY); } catch {} }
+    return res.status(200).json({ ok: true, skipped: 'no users' });
+  }
 
   const sb = supabase();
 
@@ -1518,6 +1553,10 @@ export default async function handler(req, res) {
   // is not a report, so the shape of the failure is named here, in the body,
   // where the workflow can act on it.
   const rateLimited = failed.filter(f => /error 29|Rate Limit/i.test(f.error || '')).length;
+  // Released on the way out so the next scheduler is not made to wait out the
+  // TTL for a run that finished minutes ago. The TTL is what covers the run
+  // that never gets here.
+  if (haveLock) { try { await redis.del(CRON_LOCK_KEY); } catch {} }
   res.setHeader('Cache-Control', 'no-store');
   res.status(200).json({
     ok: true, seeded, refreshed: ok, failed, unverified, merged: [...removedKeys],

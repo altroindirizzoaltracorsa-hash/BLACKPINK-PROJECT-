@@ -401,6 +401,15 @@ jobs:
         if: always()
         run: node .github/scripts/test_scrobble_rate.mjs
 
+      # The refresh reads the whole board and writes the whole board, so two
+      # overlapping runs mean the second silently discards the first — with
+      # both reporting success. Two schedulers can now reach it (the hourly
+      # Vercel cron and the GitHub backstop), so the lock is what makes that
+      # safe, and a lock with no expiry would wedge the refresh for good.
+      - name: Only one scrobble refresh runs at a time
+        if: always()
+        run: node .github/scripts/test_scrobble_lock.mjs
+
       # A play reaches the board down five paths and each carried its OWN
       # hand-written track list. ADDICTED went into cron-scrobbles and
       # index.html and into none of the other three, so extension plays fell

@@ -2,20 +2,41 @@ name: Refresh scrobbles
 
 on:
   schedule:
-    # :55 instead of :00 — Italy's UTC offset is always a whole number of hours,
-    # so this lands 5 minutes before every hour boundary, including whichever
-    # one is that day's 2am-Italy reset. Avoids losing up to ~59 minutes of
-    # streams right before reset that no later run would ever look back for.
-    - cron: '55 * * * *'   # every hour, 5 min before the top of the hour
-    # Final end-of-day sweep ~2 min before the 2am-Italy reset, so the day we
-    # freeze into the archive is as complete as possible (the plain :55 run lands
-    # a whole ~7 min earlier, at 1:55am summer). Cron can't do timezones and Italy
-    # shifts with DST, so we schedule both candidates: in summer (UTC+2) the reset
-    # is 00:00 UTC and 23:58 is 1:58am Italy; in winter (UTC+1) the reset is 01:00
-    # UTC and 00:58 is 1:58am Italy. The off-season one just lands as a harmless
-    # extra refresh well after reset — the hourly :55 already runs anyway.
-    - cron: '58 23 * * *'  # 1:58am Italy in summer (UTC+2)
-    - cron: '58 0 * * *'   # 1:58am Italy in winter (UTC+1)
+    # ── THIS IS NO LONGER THE HOURLY REFRESH. ────────────────────────────────
+    # It was, and it did not run hourly. GitHub delays and DROPS scheduled runs
+    # under load, and on this repo it dropped most of them: 24 scheduled runs a
+    # day actually fired five or six, at unpredictable times, with an 8-hour
+    # hole on 13 Nov (10:05 → 18:09 UTC) and nothing at all between 02:10 and
+    # 05:32. One run reaches ~90 of ~200 accounts before its time budget, so a
+    # full sweep needs two or three back to back — which at five runs a day
+    # means an account is refreshed perhaps twice, at no particular hour. That
+    # is why somebody who streamed saw 0 on the board: no run had reached them
+    # between the reset and when they looked, and their archived day froze that
+    # way.
+    #
+    # The hourly job is a VERCEL cron now (vercel.json, '50 * * * *'), which
+    # fires when it says it will. What is left here is a BACKSTOP, for the case
+    # the Vercel cron is removed or silently stops: four spread slots a day, so
+    # the board can never go a whole day unrefreshed without anybody noticing.
+    # Minutes are deliberately not :00 or :30 — see the note in
+    # fetch-catalog.yml about the top-of-the-hour queue.
+    #
+    # Overlap is safe now: the endpoint takes a Redis NX lock and a second
+    # caller is turned away rather than clobbering the first.
+    - cron: '23 4 * * *'
+    - cron: '41 10 * * *'
+    - cron: '17 16 * * *'
+    # Final end-of-day sweep, 2 minutes before the reset, so the day frozen
+    # into the archive is as complete as it can be.
+    #
+    # THE RESET IS 00:00 UTC. getDayBounds() anchors to UTC midnight and has
+    # since the DST fix; this block still described it as "1:58am Italy" and
+    # scheduled BOTH DST candidates to chase a local hour that the code does
+    # not use. That is the bug CLAUDE.md warns is always coming back by a new
+    # route — here it had survived in a comment, and the winter slot it
+    # justified fires 58 minutes AFTER the day it was meant to close.
+    # One slot, in UTC, because there is one boundary.
+    - cron: '58 23 * * *'
   workflow_dispatch:          # also runnable manually from GitHub Actions tab
 
 jobs:
