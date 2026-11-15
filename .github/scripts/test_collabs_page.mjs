@@ -474,7 +474,12 @@ const FIX = {
   ],
   todayKey: '2026-10-18', themSource: 'their page',
 };
-await prev.evaluate((fix) => { COLLABS[0].tally = fix; render(); }, FIX);
+// The STATE is part of the fixture, not an accident of whichever collab
+// happens to sit at index 0. These checks are about how a RUNNING trade draws,
+// and the real collab finished on 14 Nov — reading its status instead meant
+// this section started failing on the day the ballot closed, which is not a
+// regression in anything it was written to protect.
+await prev.evaluate((fix) => { COLLABS[0].__shipped = COLLABS[0].__shipped || COLLABS[0].status; COLLABS[0].tally = fix; COLLABS[0].status = 'live'; render(); }, FIX);
 await prev.waitForTimeout(300);
 
 // Scoped to `.tabs`, the PERIOD row. The trade block grew its own selector
@@ -1181,7 +1186,12 @@ console.log('--- who is logging: people by declared side, never a split of the v
     ? ok('and it says a smaller side is not behind for being smaller')
     : bad('and it says a smaller side is not behind for being smaller',
           empty.notes.join(' | ').slice(0, 160));
-  await prev.evaluate((fix) => { COLLABS[0].tally = fix; render(); }, FIX);
+  // The STATE is part of the fixture, not an accident of whichever collab
+// happens to sit at index 0. These checks are about how a RUNNING trade draws,
+// and the real collab finished on 14 Nov — reading its status instead meant
+// this section started failing on the day the ballot closed, which is not a
+// regression in anything it was written to protect.
+await prev.evaluate((fix) => { COLLABS[0].__shipped = COLLABS[0].__shipped || COLLABS[0].status; COLLABS[0].tally = fix; COLLABS[0].status = 'live'; render(); }, FIX);
   await prev.waitForTimeout(200);
 }
 
@@ -1311,6 +1321,12 @@ console.log('--- the board and the day grid are drawn before any votes exist');
   await bare.route('**/api/collabs*', (route) => route.abort());
   await bare.goto(base + '/collabs', { waitUntil: 'domcontentloaded' });
   await bare.waitForTimeout(1200);
+  // A RUNNING collab with nothing logged yet — which is what this block is
+  // about. It used to get that for free because the only collab in the file
+  // was live; the real one finished on 14 Nov, so the state being tested has
+  // to be stated rather than inherited.
+  await bare.evaluate(() => { COLLABS[0].status = 'live'; render(); });
+  await bare.waitForTimeout(200);
   const shape = await bare.evaluate(() => ({
     tabs: document.querySelectorAll('.tabs > .tab').length,
     headers: [...document.querySelectorAll('.board th')].map((t) => t.textContent.trim()),
@@ -1708,6 +1724,10 @@ for (const href of [...new Set(links)]) {
   r.ok() ? ok(`${href} resolves`) : bad(`${href} resolves`, `HTTP ${r.status()}`);
 }
 // A deadline that has already passed would show a live "open the ballot" button.
+// Put back whatever the file ships before asking: the blocks above force
+// 'live' to exercise the running rendering, and this check is about the data
+// as committed, not as a fixture left it.
+await prev.evaluate(() => { if (COLLABS[0].__shipped) COLLABS[0].status = COLLABS[0].__shipped; });
 const stale = await prev.evaluate(() => COLLABS.filter((c) =>
   c.status !== 'ended' && c.deadline && new Date(c.deadline).getTime() <= Date.now()).map((c) => c.id));
 stale.length === 0 ? ok('no collab is past its deadline but still marked open')
@@ -1719,6 +1739,48 @@ for (const w of [390, 1200]) {
   const over = await prev.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   over <= 0 ? ok(`no sideways scroll at ${w}px`) : bad(`no sideways scroll at ${w}px`, `${over}px`);
 }
+// ── a finished collab ───────────────────────────────────────────────────────
+// 'ended' is documented as kept "because it is a record of who helped", and
+// the close used to delete exactly that record: the board, the turnout and the
+// day grid were all gated on 'live'. What the close SHOULD take away is only
+// what invites action on a shut ballot.
+console.log('\n--- when the trade has finished');
+{
+  const got = await prev.evaluate(() => {
+    COLLABS[0].status = 'ended';
+    COLLABS[0].results = [
+      { who: 'JENNIE', cat: 'Favorite Music Collaboration', won: true },
+      { who: 'BLACKPINK', cat: 'Favorite Music Group or Duo', won: false },
+    ];
+    render();
+    const art = document.querySelector('.collab');
+    const txt = (art.textContent || '').replace(/\s+/g, ' ');
+    return {
+      result:  !!art.querySelector('.cr'),
+      rows:    art.querySelectorAll('.cr-row').length,
+      lost:    art.querySelectorAll('.cr-row.lost').length,
+      board:   !!art.querySelector('.vt, .board, .lb'),
+      tally:   !!art.querySelector('.bar'),
+      tabs:    art.querySelectorAll('.tabs > .tab').length,
+      closed:  /CLOSED/.test(txt),
+      finished: /Finished/.test(txt),
+      notRecorded: /not recorded here/i.test(txt),
+    };
+  });
+  const check = (c, m, d) => (c ? ok(m, d) : bad(m, d));
+  check(got.result, 'the result is shown');
+  check(got.rows === 2, '  one row per category we were in', `${got.rows}`);
+  // Both outcomes printed. A results block that only listed wins would be a
+  // scoreboard, not a record.
+  check(got.lost === 1, '  including the one that was lost', `${got.lost} lost`);
+  check(got.notRecorded,
+        '  and says a blank is a result we were not told, not a loss');
+  check(got.tally, 'the vote totals survive the close');
+  check(got.board, '  and so does the board of who helped');
+  check(got.tabs === 0, 'but the period tabs are gone', `${got.tabs} tabs`);
+  check(got.closed && got.finished, 'and it reads as finished');
+}
+
 if (errs.length) bad('no page errors', errs.join(' | ')); else ok('no page errors', 'none');
 
 await prev.close();

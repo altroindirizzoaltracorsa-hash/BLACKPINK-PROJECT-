@@ -101,6 +101,20 @@
     border-radius: var(--r-ctl); white-space: nowrap; }
   .collab-deadline.urgent { color: #ff5050; border-color: rgba(255,80,80,0.4); background: rgba(255,80,80,0.08); }
   .collab-deadline.ended { color: var(--muted); }
+  /* How it ended. Sits directly under the header, above the numbers: the
+     result is what a reader coming back wants first, and the vote totals are
+     now a record rather than news. */
+  .cr { margin: 0.9rem 0 0; padding: 0.75rem 0.85rem; border: 1px solid var(--line);
+    border-radius: var(--r-ctl); background: rgba(255,255,255,0.02); }
+  .cr-h { font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 0.55rem; }
+  .cr-row { display: flex; align-items: baseline; gap: 0.5rem; padding: 0.22rem 0;
+    font-size: 0.74rem; line-height: 1.5; }
+  .cr-mark { flex: 0 0 auto; font-size: 0.8rem; }
+  .cr-who { font-weight: 700; color: var(--text); }
+  .cr-cat { color: var(--muted); }
+  .cr-row.lost .cr-who { color: var(--muted); }
+  .cr-note { font-size: 0.62rem; color: var(--muted); line-height: 1.6; margin-top: 0.55rem; }
 
   /* The status marker. A collab nobody has agreed to is not an announcement,
      so it says so on its face wherever it is shown. */
@@ -782,7 +796,18 @@
 var COLLABS = [
   {
     id: 'bvp-kca-2026',
-    status: 'live',
+    status: 'ended',
+    // HOW IT ENDED, per CATEGORY, because that is how the ballot is won and how
+    // the trade was agreed. "BLACKPINK lost" and "the trade failed" are not the
+    // same statement and the second one is not ours to make: a vote trade buys
+    // votes, not results, and two of the three categories we were in were won.
+    // Only OUR categories are here. The partners' results are not recorded,
+    // and an absent result must never render as a loss — see resultsHtml.
+    results: [
+      { who: 'JENNIE',    cat: 'Favorite Music Collaboration', nominee: 'Dracula (with JENNIE)', won: true },
+      { who: 'ROSÉ',      cat: 'Favorite Female Artist',  won: true },
+      { who: 'BLACKPINK', cat: 'Favorite Music Group or Duo', won: false },
+    ],
     award: '2026 Kids’ Choice Awards',
     // Deadline is the KCA ballot's, copied from the campaign card on /voting:
     // Nov 13 2026 23:59 PT, the late reading of "October 8 to November 13".
@@ -1577,7 +1602,11 @@ async function pickFandom(key) {
     FP_MSG = 'Done — your votes are counted under your fandom now.';
     // Re-read the board so they watch their own row appear. That is the whole
     // confirmation: a message saying it worked is not the same as seeing it.
-    await Promise.all(COLLABS.filter(function (x) { return x.status === 'live'; }).map(loadCollab));
+    // counts(), not live: a finished collab still shows its board, so picking
+    // a side there still has to re-read it. Filtering on 'live' meant that the
+    // day the trade closed, the picker went on saying "Done" while the table
+    // behind it never moved.
+    await Promise.all(COLLABS.filter(counts).map(loadCollab));
   } catch (e) {
     FP_MSG = 'Could not save that just now — try again in a moment.';
   }
@@ -2299,6 +2328,18 @@ var PERIODS = [
 ];
 var PERIOD = 'all';
 
+// WHETHER THE NUMBERS ARE WORTH SHOWING, which is not the same as whether the
+// ballot is open. A finished collab keeps its board: the comment on 'ended'
+// above says it is kept "because it is a record of who helped", and that
+// record was the one thing the close used to delete. What the close DOES take
+// away is anything that invites action on a shut ballot — the share button and
+// the period tabs ("today" on a closed trade is a row of zeroes).
+// The fandom picker stays, deliberately: declaring a side still relabels the
+// votes somebody already logged, which is the whole of what the other fandoms
+// were asked to do, and it would be a poor welcome to delete the control the
+// day after asking them to use it.
+function counts(c) { return c.status === 'live' || c.status === 'ended'; }
+
 // A tally may carry {periods:{today,week,all}} or just the all-time figures at
 // the top level. The flat shape is read as all-time rather than rejected: a
 // feed that only knows a running total is still worth drawing, it just has
@@ -2497,7 +2538,7 @@ function tallyHtml(c) {
 // raw total alone would read as one fandom beating the other when it is
 // measuring reach. Per person is the number that survives that.
 function fandomsHtml(c) {
-  if (c.status !== 'live' || !c.fandoms || !c.fandoms.length) return '';
+  if (!counts(c) || !c.fandoms || !c.fandoms.length) return '';
   var p = periodOf(c, c.tally, PERIOD);
   var f = (p && p.fandoms) || null;
   var lbl = (PERIODS.filter(function (x) { return x.k === PERIOD; })[0] || {}).label || '';
@@ -2597,7 +2638,7 @@ function fandomsHtml(c) {
 // collaboration, and half the people on it have no reason to be streaming
 // BLACKPINK at all. A BLOOM who votes belongs on this board.
 function boardHtml(c) {
-  if (c.status !== 'live') return '';
+  if (!counts(c)) return '';
   var p = periodOf(c, c.tally, PERIOD);
   var rows = (p && p.board) || [];
   var lbl = (PERIODS.filter(function (x) { return x.k === PERIOD; })[0] || {}).label || '';
@@ -2632,7 +2673,7 @@ function boardHtml(c) {
 var DAY_OPEN = null;
 
 function dayGridHtml(c) {
-  if (c.status !== 'live' || !c.from) return '';
+  if (!counts(c) || !c.from) return '';
   var t = c.tally;
   var days = (t && t.days) || [];
   var by = {};
@@ -2697,6 +2738,30 @@ function setPairView(k) { PAIR_VIEW = k; render(); }
 function toggleSplit() { SPLIT_OPEN = !SPLIT_OPEN; render(); }
 function openDay(k) { DAY_OPEN = (DAY_OPEN === k) ? null : k; render(); }
 
+// WON AND LOST ARE BOTH PRINTED, and the ones we have no result for are not
+// printed at all. An absent result rendering as a loss is the failure to avoid
+// here: this page carries other fandoms' categories too, nobody has told us
+// how those went, and quietly showing them as losses would be inventing a
+// result about somebody else's artist on their own collab page.
+function resultsHtml(c) {
+  if (!Array.isArray(c.results) || !c.results.length) return '';
+  var won = c.results.filter(function (r) { return r.won; }).length;
+  return '<div class="cr"><div class="cr-h">How it ended · '
+    + won + ' of ' + c.results.length + ' won</div>'
+    + c.results.map(function (r) {
+        return '<div class="cr-row' + (r.won ? '' : ' lost') + '">'
+          + '<span class="cr-mark">' + (r.won ? '🏆' : '—') + '</span>'
+          + '<span><span class="cr-who">' + esc(r.who) + '</span> · '
+          + '<span class="cr-cat">' + esc(r.cat)
+          + (r.nominee && r.nominee !== r.who ? ' (' + esc(r.nominee) + ')' : '')
+          + '</span></span></div>';
+      }).join('')
+    + '<div class="cr-note">Only the categories BLACKPINK and the members were in. '
+    + 'How ' + esc(partnerActs(c)) + ' finished is not recorded here — a blank is a '
+    + 'result we were not told, never a loss.</div>'
+    + '</div>';
+}
+
 function card(c) {
   var now = Date.now();
   var ended = c.status === 'ended' || (c.deadline && new Date(c.deadline).getTime() <= now);
@@ -2730,7 +2795,8 @@ function card(c) {
         + 'You are looking at <b>option ' + esc(DEMO_OPTION.toUpperCase()) + '</b>: '
         + (DEMO_OPTION === 'b' ? 'with the turnout block.' : 'one shared count, no sides.')
         + '</div>' : '')
-    + (c.status === 'live' ? tallyHtml(c) : '')
+    + resultsHtml(c)
+    + (counts(c) ? tallyHtml(c) : '')
     + (c.status === 'upcoming' && c.opens
         ? '<div class="collab-soon">Voting opens <b>' + esc(longDay(c.opens)) + '</b>. '
           + 'Nothing to do yet — this is here so you know it is coming, and what to fill in '
@@ -2826,7 +2892,7 @@ function loadCollab(c) {
     })
     .catch(function () { /* the card stands on its own */ });
 }
-COLLABS.filter(function (c) { return c.status === 'live'; }).forEach(loadCollab);
+COLLABS.filter(counts).forEach(loadCollab);
 
 function sumOf(o) {
   var n = 0;
