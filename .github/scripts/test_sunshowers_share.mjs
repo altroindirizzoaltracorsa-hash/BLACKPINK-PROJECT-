@@ -138,7 +138,13 @@ canvasSize.w === 1200 && canvasSize.h === 675
   : bad('on a landscape canvas', `${canvasSize.w}x${canvasSize.h}`);
 
 // What the renderer actually set. Everything below reads this.
-const JUST_OUT = /just released|out now|out in \d|available now|streaming now/i;
+// "out in 4d" WAS in here, and had to be: with no release date the countdown
+// was built from NaN, so any "OUT IN …" string at all was the bug. Nov 20 is
+// announced, so that line is now the card working correctly, and leaving it
+// listed here would fail the card for doing its job. What it was really
+// guarding against — a broken date rendering as something confident — is kept
+// as its own check for NaN below, which is the shape the breakage takes.
+const JUST_OUT = /just released|out now|available now|streaming now/i;
 const DATEY = /\b(20\d\d|jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|jun(e)?|jul(y)?|aug(ust)?|sep(t|tember)?|oct(ober)?|nov(ember)?|dec(ember)?)\b/i;
 
 async function texts() { return page.evaluate(() => window.__cardText.slice()); }
@@ -182,43 +188,59 @@ async function checkWhole(what, expectSrc) {
               last.y + last.h > last.ch + 1 && 'bottom'].filter(Boolean).join('/')} is cut off`);
 }
 
-async function checkNoDate(what) {
+// INVERTED on 15 Nov, when 20 Nov was announced. This used to be checkNoDate
+// and required the card to print "RELEASE DATE NOT ANNOUNCED" and "DATE TBA"
+// with no countdown beside them. The date exists now, so the same slots must
+// carry it — and the thing most worth catching is unchanged in shape: a card
+// that prints a date AND a leftover TBA, or a countdown that has gone to NaN
+// and reads as "just released" on a song that is not out.
+async function checkDate(what) {
   const t = await texts();
   t.length ? ok(`${what}: the card printed something`, `${t.length} strings`)
            : bad(`${what}: the card printed something`, 'fillText was never called — nothing was drawn');
 
-  const says = t.find(s => /release date not announced/i.test(s));
-  says ? ok(`${what}: it says the date is not announced`, `"${says}"`)
-       : bad(`${what}: it says the date is not announced`, `printed: ${JSON.stringify(t.slice(0, 12))}`);
+  const says = t.find(s => /nov(ember)?\s*20/i.test(s));
+  says ? ok(`${what}: it prints the release date`, `"${says}"`)
+       : bad(`${what}: it prints the release date`, `printed: ${JSON.stringify(t.slice(0, 12))}`);
 
-  const tba = t.find(s => /date tba/i.test(s));
-  tba ? ok(`${what}: and the countdown slot reads TBA`, `"${tba}"`)
-      : bad(`${what}: and the countdown slot reads TBA`, `printed: ${JSON.stringify(t.slice(0, 12))}`);
+  // The old copy must be GONE, not merely outvoted. A card carrying both is
+  // the state this inversion is most likely to leave behind.
+  const stale = t.find(s => /release date not announced|date tba/i.test(s));
+  stale ? bad(`${what}: and no leftover "not announced"`, `"${stale}" is still drawn beside the date`)
+        : ok(`${what}: and no leftover "not announced"`);
 
-  // The bug, named: NaN arithmetic reading as "already out".
+  // The bug, named: NaN arithmetic reading as "already out" on a song that is
+  // days away. Still the thing that matters most here.
   const claimed = t.filter(s => JUST_OUT.test(s));
   claimed.length === 0
-    ? ok(`${what}: and never claims the song is out`)
-    : bad(`${what}: and never claims the song is out`, `printed ${JSON.stringify(claimed)} for a song with no announced date`);
+    ? ok(`${what}: and never claims the song is already out`)
+    : bad(`${what}: and never claims the song is already out`, `printed ${JSON.stringify(claimed)} before release`);
 
-  // A countdown would print digits-and-units; TBA must not be joined by one.
+  // And it really counts: digits-and-units, not an empty slot where the
+  // countdown should be.
   const counting = t.filter(s => /\b\d+\s*D\s+\d+H/i.test(s));
-  counting.length === 0
-    ? ok(`${what}: and counts down to nothing`)
-    : bad(`${what}: and counts down to nothing`, `printed ${JSON.stringify(counting)}`);
+  counting.length
+    ? ok(`${what}: and counts down to it`, counting[0])
+    : bad(`${what}: and counts down to it`, `printed ${JSON.stringify(t.slice(0, 12))}`);
 
-  // No month, no year — on a release card either reads as the release date,
-  // whatever sentence it sits in. "ANGRY BIRDS MOVIE 3" has no date token.
-  const dated = t.map(s => [s, s.replace(/sun ?showers/ig, ' ').match(DATEY)])
-                 .filter(([, m]) => m);
-  dated.length === 0
-    ? ok(`${what}: and names no month or year`)
-    : bad(`${what}: and names no month or year`, dated.map(([s, m]) => `"${m[0]}" in "${s}"`).join('; '));
+  // The breakage a bad releaseAt actually produces, now that "OUT IN …" is
+  // legitimate: arithmetic on an unparseable date prints NaN into a confident
+  // sentence.
+  const nan = t.filter(s => /nan|undefined|invalid date/i.test(s));
+  nan.length === 0
+    ? ok(`${what}: and no NaN reached the type`)
+    : bad(`${what}: and no NaN reached the type`, JSON.stringify(nan));
+
+  // An HOUR is still forbidden: a date was announced, a time was not.
+  const houred = t.filter(s => /\b\d{1,2}\s*(?:AM|PM)\b|\b(?:KST|EST|EDT|PST|PDT)\b/i.test(s));
+  houred.length === 0
+    ? ok(`${what}: and names no release hour`)
+    : bad(`${what}: and names no release hour`, JSON.stringify(houred));
 }
 
 console.log('\n--- the sleeve, which is the default');
 await checkWhole('sleeve', '/sunshowers/sun-showers-cover.webp');
-await checkNoDate('sleeve');
+await checkDate('sleeve');
 {
   const t = await texts();
   const cta = t.find(s => /pre-?save/i.test(s));
@@ -274,7 +296,7 @@ const castSrc = await page.evaluate(() => _presaveCardData?.photo?.src?.replace(
 castSrc === '/sunshowers/sunshowers-cast.webp'
   ? ok('and the card is holding the cast strip', castSrc)
   : bad('and the card is holding the cast strip', String(castSrc));
-await checkNoDate('cast');
+await checkDate('cast');
 {
   // Same expectation as the sleeve now, where it used to be the opposite one.
   // The cast picture never carried lettering of its own, so this was always
@@ -326,7 +348,7 @@ sq.photo === '/sunshowers/sunshowers-cast.webp'
   ? ok('and keeps the picture that was picked', sq.photo)
   : bad('and keeps the picture that was picked', `switched to ${sq.photo}`);
 await checkWhole('square', '/sunshowers/sunshowers-cast.webp');
-await checkNoDate('square');
+await checkDate('square');
 
 // THE EARLY SUPPORTER PILL, which is a different card. Everything above is the
 // card a passer-by shares; this is the one a fan who actually pre-saved gets,
@@ -379,15 +401,18 @@ if (earned) {
   t.some(s => /pre-?saved/i.test(s))
     ? ok('and the card claims the pre-save')
     : bad('and the card claims the pre-save', `printed: ${JSON.stringify(t.slice(0, 12))}`);
-  // The earned branch has its own countdown line, so the no-date rule has to
-  // hold on it separately — it is a different string built from the same NaN.
+  // The earned branch has its own countdown line, so the date rule has to hold
+  // on it separately — it is a different string built from the same instant.
   const claimedOut = t.filter(s => JUST_OUT.test(s));
   claimedOut.length === 0
     ? ok('and still never says the song is out')
     : bad('and still never says the song is out', JSON.stringify(claimedOut));
-  t.some(s => /date tba/i.test(s))
-    ? ok('and still says the date is unknown')
-    : bad('and still says the date is unknown', `printed: ${JSON.stringify(t.slice(0, 12))}`);
+  t.some(s => /nov(ember)?\s*20/i.test(s))
+    ? ok('and still prints the release date')
+    : bad('and still prints the release date', `printed: ${JSON.stringify(t.slice(0, 12))}`);
+  t.some(s => /date tba|release date not announced/i.test(s))
+    ? bad('and no leftover "not announced"', 'the earned card carries both')
+    : ok('and no leftover "not announced"');
   await checkWhole('earned', '/sunshowers/sun-showers-cover.webp');
 }
 

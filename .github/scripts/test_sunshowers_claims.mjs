@@ -7,12 +7,18 @@
 // is the RELEASE DATE — confirmed at the source, not assumed: the
 // distributor's own pre-save page carries releaseDateInfo.date = null.
 //
-// So the rule flipped for one half and held for the other. The performing
-// credit was unknown when this card shipped and this file FORBADE claiming
-// it; it is now confirmed, so the file REQUIRES it. The date was unknown and
-// still is, so that half is unchanged. Written down because a check whose
-// meaning silently inverts is worse than no check: the mutation list at the
-// bottom of the commit is what proves this one actually flipped.
+// So the rule has now flipped for BOTH halves, one at a time, and each flip
+// is written down here because a check whose meaning silently inverts is
+// worse than no check.
+//   · The performing credit was unknown when this card shipped and this file
+//     FORBADE claiming it; it was confirmed, so the file REQUIRES it.
+//   · The date was unknown and this file FORBADE naming one. It is announced
+//     for 20 Nov 2026, so the file now REQUIRES the card to carry it — and
+//     requires it to be the SAME date in all four places (card, share card,
+//     shared caption, link preview), because four copies of a date is four
+//     chances for one of them to be stale.
+// What has NOT flipped is the hour: a date was given, a time was not, so the
+// card counts to the reader's own midnight and must name no clock time.
 //
 // This site has already made the mirror-image mistake. The Steps card claimed
 // Jennie "wrote and performs" a song the HMMA nominee list credits to Justin
@@ -78,21 +84,42 @@ HEDGE.test(text)
   ? bad('the old "we do not know if she sings it" hedge is gone', 'it is back, and it is now untrue')
   : ok('the old "we do not know if she sings it" hedge is gone');
 
-// 2. THE DATE. No timer, because there is no date to count to.
-/data-target\s*=/.test(cardTag)
-  ? bad('the card carries no countdown target', 'a date was invented to make the timer work')
-  : ok('the card carries no countdown target');
-// And no date in the copy either — a month or a year reads as a release date
-// on a countdown card whatever sentence it sits in.
+// 2. THE DATE — 20 Nov 2026, announced, so this half is inverted. See header.
 const DATEY = /\b(20\d\d|jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|jun(e)?|jul(y)?|aug(ust)?|sep(t|tember)?|oct(ober)?|nov(ember)?|dec(ember)?)\b/i;
-// "middle school" is the one time span the card is allowed to mention.
-const dateHit = text.replace(/middle school/ig, ' ').match(DATEY);
-dateHit
-  ? bad('and names no date', `"${dateHit[0]}" is on the card`)
-  : ok('and names no date');
-/not announced|has not been said|nothing to count down/i.test(text)
-  ? ok('and says outright that the date is unknown')
-  : bad('and says outright that the date is unknown', 'a card with no timer and no explanation reads as broken');
+const DAY = '2026-11-20';
+// MIDNIGHT ON THE READER'S OWN CLOCK, because a date was given and an hour
+// was not. data-target alone would count every reader to one instant nobody
+// announced; Date.parse('2026-11-20') is UTC midnight, which is most of a day
+// early in the Americas.
+(cardTag.match(/data-target-local="([^"]+)"/) || [])[1] === DAY
+  ? ok('the card counts to the reader\'s own midnight on Nov 20', 'data-target-local')
+  : bad('the card counts to the reader\'s own midnight on Nov 20',
+        'without data-target-local the clock runs to one worldwide instant nobody gave');
+// The floor for anything reading this card without the local rule. It has to
+// be the SAME DAY — a fallback on the wrong date is worse than none, because
+// nothing reports it.
+new RegExp('data-target="' + DAY + 'T\\d\\d:\\d\\d:\\d\\dZ"').test(cardTag)
+  ? ok('  with a same-day floor for readers of data-target')
+  : bad('  with a same-day floor for readers of data-target', 'liveCountdownFor ranks on it');
+// The date is allowed on the card now; an HOUR is not, because none was
+// announced. This is the half that did not flip.
+{
+  const hour = text.match(/\b\d{1,2}\s*(?:AM|PM)\b|\b\d{1,2}:\d{2}\b|\b(?:KST|EST|EDT|PST|PDT|CET|UTC|GMT)\b/i);
+  hour ? bad('and names no release hour', `"${hour[0]}" — no time has been announced`)
+       : ok('and names no release hour');
+}
+/nov(ember)?\s*20/i.test(text)
+  ? ok('and the date it names is the one that was announced')
+  : bad('and the date it names is the one that was announced', 'Nov 20 is not in the copy');
+// An unexplained clock is a time claim with no source: the reader cannot see
+// what it counts to, so the card has to say.
+/midnight where you are/i.test(text)
+  ? ok('and says what the clock is counting to')
+  : bad('and says what the clock is counting to', 'the timer silently asserts an hour');
+// The old wording must be gone, not merely outnumbered.
+/not announced|nothing to count down/i.test(text.replace(/no release time has been announced/ig, ' '))
+  ? bad('and the "no date announced" copy is gone', 'the card contradicts its own timer')
+  : ok('and the "no date announced" copy is gone');
 
 // 3. THE PRE-SAVE, which now exists. Exact URL, no tracking tail: this repo
 //    strips ?si=/?is=/utm_* everywhere else and a pre-save link is the one
@@ -159,15 +186,26 @@ for (const u of picUrls) {
 const openFn = (site.match(/async function openSunShowersCard\(\) \{[\s\S]*?\n\}/) || [''])[0]
   .replace(/\/\/[^\n]*/g, ' ');
 openFn ? ok('found openSunShowersCard()') : bad('found openSunShowersCard()', 'it moved — fix this test');
-/releaseAt:\s*null/.test(openFn)
-  ? ok('it hands the renderer no release date', 'releaseAt: null')
-  : bad('it hands the renderer no release date', 'a date reached the share card');
-/dateLine:\s*null/.test(openFn)
-  ? ok('and no date line', 'dateLine: null')
-  : bad('and no date line', 'the card would print a date under the title');
+/releaseAt:\s*ssReleaseAt\(\)/.test(openFn)
+  ? ok('it hands the renderer a release date', 'releaseAt: ssReleaseAt()')
+  : bad('it hands the renderer a release date', 'the share card would print RELEASE DATE NOT ANNOUNCED');
+// THE READER'S OWN MIDNIGHT, same instant as the card on the page. Built from
+// parts: Date.parse('2026-11-20') is UTC midnight, and a share card that
+// disagreed with the card it was made from would be wrong by up to a day
+// depending only on who pressed the button.
+/new Date\(SS_DAY\[0\], SS_DAY\[1\] - 1, SS_DAY\[2\]/.test(site)
+  ? ok('  built from parts, not Date.parse of a date string')
+  : bad('  built from parts, not Date.parse of a date string',
+        "Date.parse('2026-11-20') is UTC midnight — hours early in the Americas");
+/SS_DAY = \[2026, 11, 20\]/.test(site)
+  ? ok('  and it is the announced day')
+  : bad('  and it is the announced day', 'the share card counts to a different date than the page');
+/dateLine:[^\n]*Nov 20, 2026/.test(openFn)
+  ? ok('and a date line naming it')
+  : bad('and a date line naming it', 'the card prints no date under the title');
 {
-  const oDate = openFn.replace(/sunshowers|sun[- ]showers/ig, ' ').match(DATEY);
-  oDate ? bad('and names no date anywhere in it', `"${oDate[0]}"`) : ok('and names no date anywhere in it');
+  const oHour = openFn.match(/\b\d{1,2}\s*(?:AM|PM)\b|\b(?:KST|EST|EDT|PST|PDT)\b/i);
+  oHour ? bad('and names no hour either', `"${oHour[0]}"`) : ok('and names no hour either');
 }
 // THE TITLE HEADS THE TYPE COLUMN ON EVERY PICTURE, including the sleeve that
 // letters its own name. That was forbidden while the artwork was the card's
@@ -256,19 +294,31 @@ console.log('\n--- and it is set in the film\'s own lettering');
 // broken sentence or quietly acquires a date from whatever dateShort holds.
 console.log('\n--- and the words posted with the card say the same thing');
 {
-  const branch = (site.match(/statsText = d\.campaign === 'sunshowers'[\s\S]*?\)\n        : d\.earned/) || [''])[0];
+  // Found WHEREVER it sits in the chain, not assumed to be the first arm:
+  // another campaign (leavewithme) was given its own branch above this one and
+  // the old "statsText = d.campaign === 'sunshowers'" anchor stopped matching,
+  // which reported a branch that was still there as missing.
+  const branch = (site.match(/d\.campaign === 'sunshowers'[\s\S]*?\)\n        : d\.earned/) || [''])[0];
   branch
-    ? ok('the share text has its own undated wording')
-    : bad('the share text has its own undated wording', 'sunshowers falls through to the shared "is coming ${dateShort}" line');
+    ? ok('the share text still has its own wording')
+    : bad('the share text still has its own wording',
+          'it falls through to the shared line, which never mentions the film');
   if (branch) {
-    /not announced/i.test(branch)
-      ? ok('and says the date is not announced')
-      : bad('and says the date is not announced');
+    /angry birds movie 3/i.test(branch)
+      ? ok('and still names the film, which is the point of having its own')
+      : bad('and still names the film, which is the point of having its own');
+    // THROUGH dateShort, never written out. A date typed into the caption is a
+    // fifth copy that no longer moves when the card's does.
+    /\$\{d\.dateShort\}/.test(branch)
+      ? ok('and takes the date from the card rather than repeating it')
+      : bad('and takes the date from the card rather than repeating it',
+            'a literal date here goes stale on its own');
     const sDate = branch.replace(/sunshowers|sun ?showers|angry birds movie 3/ig, ' ').match(DATEY);
-    sDate ? bad('and names no date', `"${sDate[0]}"`) : ok('and names no date');
-    /\$\{d\.dateShort\}|\$\{d\.verb\}/.test(branch)
-      ? bad('and does not reach for the dated fields', 'dateShort/verb would print the hedge as if it were a date')
-      : ok('and does not reach for the dated fields');
+    sDate ? bad('  so there is no literal date in it', `"${sDate[0]}"`)
+          : ok('  so there is no literal date in it');
+    /not announced/i.test(branch.replace(/no release time announced/ig, ' '))
+      ? bad('and the old "no date" wording is gone', 'the caption contradicts the card')
+      : ok('and the old "no date" wording is gone');
   }
 }
 
@@ -308,8 +358,15 @@ console.log('\n--- and the share preview makes the same two claims, no more');
   HEDGE.test(blk)
     ? bad('and does not carry the old hedge', 'it is back, and untrue')
     : ok('and does not carry the old hedge');
-  const pDate = blk.replace(/sunshowers|sun-showers|og-countdown-sunshowers/ig, ' ').match(DATEY);
-  pDate ? bad('the preview names no date', `"${pDate[0]}"`) : ok('the preview names no date');
+  // The preview is the half of a shared link people read without clicking, so
+  // a date missing here is a link that still says "not announced" days after
+  // the card stopped.
+  /nov(ember)?\s*20,?\s*2026/i.test(blk)
+    ? ok('the preview names the announced date')
+    : bad('the preview names the announced date', 'a shared link would still read as undated');
+  /not announced/i.test(blk.replace(/no release time announced/ig, ' '))
+    ? bad('and not the old "no date" line', 'it contradicts the card')
+    : ok('and not the old "no date" line');
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nAll correct.');

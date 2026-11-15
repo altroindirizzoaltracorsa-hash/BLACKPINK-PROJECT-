@@ -31,8 +31,8 @@ const COUNTDOWNS = {
   // quoted back at us from a screenshot. Still true — the distributor's own
   // pre-save page carries releaseDateInfo.date = null.
   sunshowers: {
-    title: 'JISOO — Sun Showers, from The Angry Birds Movie 3 | BLINKS UNITED',
-    description: "JISOO performs and co-wrote \u201cSun Showers\u201d, an original song for The Angry Birds Movie 3. Pre-save it now \u2014 no release date announced yet.",
+    title: 'JISOO — Sun Showers, Nov 20, 2026 | Countdown · BLINKS UNITED',
+    description: "JISOO performs and co-wrote \u201cSun Showers\u201d, an original song for The Angry Birds Movie 3, out Nov 20, 2026. No release time announced yet \u2014 the countdown runs to midnight where you are.",
     image: '/og-countdown-sunshowers.jpg',
   },
   addicted: {

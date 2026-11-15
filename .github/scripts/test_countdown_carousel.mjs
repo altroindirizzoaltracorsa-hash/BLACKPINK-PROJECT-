@@ -107,17 +107,22 @@ console.log('--- the countdown cards, on the home page');
   // 23rd; a countdown to a date that has passed is not the thing to open on.
   // CLICK (jisoo.io) is no longer in this row at all — it moved to the past
   // block on 2026-10-24, which is what the #cd-past check below now expects.
-  // Sun Showers sits after Steps and before the released ones: it is still
-  // ahead of us, but it has NO announced date, so it cannot be placed by
-  // soonest-first and must not lead the row — the carousel opens on card
-  // one, and opening on a release nobody can date is not useful.
+  // (Sun Showers used to sit after Steps for want of a date — see the note on
+  // the list below. The carousel opens on card one, so an undated release must
+  // never lead the row; a dated one may.)
   // Leave With Me (Nov 18) leads from 2026-11-11: it is the only one still
   // ahead with a date on it, and soonest-dated-first is the rule above.
   // ADDICTED led until then. Note what this list is and is not — it is the
   // AUTHORED order, read off _cdLogical, so it changes when someone edits the
   // markup and never on its own. A release passing its date does not reorder
   // it; moving the card does.
-  const ORDER = ['leavewithme','addicted','steps','sunshowers','lalisaofficial.com','newtrick','hellosawadika.com'];
+  // Sun Showers moved up on 15 Nov, when 20 Nov was announced for it. It had
+  // sat after the released ones precisely BECAUSE it had no date and so could
+  // not be placed by soonest-first; with one it belongs where its date puts
+  // it, second behind Leave With Me (18 Nov). Leaving it below two releases
+  // that are already out would have been the dated-card rule applied to a card
+  // that no longer matched the reason for the exception.
+  const ORDER = ['leavewithme','sunshowers','addicted','steps','lalisaofficial.com','newtrick','hellosawadika.com'];
   // Read the AUTHORED order, not the DOM order: with looping on, the track
   // rotates cards between its ends, so the DOM order is the running order
   // turned by however many times it has wrapped.

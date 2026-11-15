@@ -1913,13 +1913,19 @@
   /* Dark enough to read as text rather than as a watermark: #8a4b00 on this
      yellow looked washed out at 0.56rem with 0.2em tracking. */
   .cd-card-sunshowers .cd-eyebrow { color: #6b3800; }
-  /* Where a timer would be. A countdown with no date cannot show one, and a
-     blank gap reads as a card that failed to load — so the card says, in the
-     timer's own place, that the date is not known. */
-  .cd-card-sunshowers .ss-tba { display: inline-block; font-family: var(--mono); font-size: 0.6rem;
-     letter-spacing: 0.18em; text-transform: uppercase; color: #231703;
-     background: rgba(35,23,3,0.12); border: 1px solid rgba(35,23,3,0.28);
-     border-radius: 999px; padding: 0.4rem 0.7rem; margin-bottom: 0.9rem; }
+  /* THE TIMER, now that there is a date to count to. This slot used to hold
+     .ss-tba — a pill saying the date was not announced, because a countdown
+     with no date cannot show one and a blank gap reads as a card that failed
+     to load. Nov 20 is announced, so the pill is gone and the clock takes its
+     place.
+     It needs its own colours: this is the one card on a BRIGHT ground, and the
+     base .cd-unit is a pink wash with a light border meant for the dark cards.
+     On yellow that border is invisible and the pink numbers are illegible. */
+  .cd-card-sunshowers .cd-sub { color: rgba(35,23,3,0.78); }
+  .cd-card-sunshowers .cd-unit { background: rgba(35,23,3,0.10); border-color: rgba(35,23,3,0.26); }
+  .cd-card-sunshowers .cd-num { color: #231703; }
+  .cd-card-sunshowers .cd-lbl { color: rgba(35,23,3,0.62); }
+  .cd-card-sunshowers .cd-out { color: #231703; }
   .cd-card-sunshowers .ss-note { font-family: var(--mono); font-size: 0.62rem; line-height: 1.85;
      color: rgba(35,23,3,0.82); }
   .cd-card-sunshowers .ss-note b { color: #231703; font-weight: 600; }
@@ -4226,6 +4232,74 @@
               moment a time or a pre-save exists, this card gets them.
             </div>
           </div>
+          <!-- SUN SHOWERS — JISOO, from The Angry Birds Movie 3. Out Nov 20.
+               THE DATE ARRIVED, and that is the only half of this card's rule
+               that moved. It shipped with no data-target on purpose, because
+               no date had been announced and a timer counting to a guess is
+               worse than no timer; the comment here said to add data-target
+               the day a date existed, and that day is this one. The pill that
+               stood in the timer's place is gone with it.
+
+               WHAT HAS NOT MOVED: the credits. The Hollywood Reporter's
+               exclusive says JISOO CO-WROTE the song; the performing credit
+               was confirmed separately and the card says both, and nothing
+               beyond them. This site got the mirror image wrong once — the
+               Steps card claimed Jennie "wrote and performs" a song credited
+               to Tranter/Michaels/Gill, and it survived an edit to the very
+               sentence it sat in, because that edit was about a release date
+               and nobody re-read the clause before it. This edit IS about a
+               release date. The clause before it was re-read.
+               test_sunshowers_claims.mjs pins both halves.
+
+               NO HOUR: a date was given, a time was not, so the card counts to
+               MIDNIGHT ON THE READER'S OWN CLOCK through data-target-local and
+               says so in the note. data-target is the floor for anything that
+               reads this card without the local rule, at 00:00 UTC because
+               that is the site's day boundary — not a claimed release hour.
+
+               Still not stated anywhere here: the film's own release date.
+               That is the film's, not the song's. -->
+          <!-- data-prerelease-name so loadAutoPrereleases() does not add a SECOND
+               Sun Showers card beside this one the day Spotify lists the single:
+               it dedupes bespoke cards by this name, and a card without it is
+               invisible to that check. -->
+          <div class="cd-card cd-card-sunshowers" data-slug="sunshowers" data-member="jisoo"
+               data-target-local="2026-11-20" data-target="2026-11-20T00:00:00Z"
+               data-live="OUT NOW ✨" data-prerelease-name="sun showers">
+            <img class="ss-art" src="/sunshowers/sun-showers-cover.webp" width="1400" height="1400"
+                 alt="Sun Showers — JISOO, from The Angry Birds Movie 3. The Angry Birds cast on a yellow field, with Shumon, a small grey dustball, at the front right."
+                 loading="lazy">
+            <div class="ss-body">
+              <div class="cd-eyebrow">JISOO · Original Song<div class="cd-badge-chip ss-shumon" id="ss-badge" style="display:none;"><img src="/sunshowers/shumon.webp" alt="" aria-hidden="true">Early Supporter</div></div>
+              <div class="cd-sub">Out Fri, Nov 20, 2026</div>
+              <div class="cd-timer" data-timer></div>
+              <div class="cd-goal" id="ss-goal" style="display:none;">
+                <div class="cd-goal-top">
+                  <span class="cd-goal-label">🎯 Blinks pre-saved</span>
+                  <span class="cd-goal-nums" id="ss-goal-nums"></span>
+                </div>
+                <div class="cd-goal-bar"><div class="cd-goal-fill" id="ss-goal-fill" style="width:0%"></div></div>
+              </div>
+              <div class="cd-links">
+                <a class="cd-btn" href="https://JISOO.lnk.to/SunShowers" target="_blank" rel="noopener" onclick="saveSunShowers()">Pre-save ↗</a>
+                <button class="cd-btn ss-btn-ghost" onclick="openSunShowersCard()">📸 Share</button>
+              </div>
+              <div class="ss-note">
+                JISOO <b>performs</b> and <b>co-wrote</b> <b>“Sun Showers”</b>, an original
+                song for <b>The Angry Birds Movie 3</b>. It is expected in the film and in
+                its trailer, which has not landed yet.
+                <br><br>
+                The sleeve is hers too: the small grey dustball at the front is
+                <b>Shumon</b>, a character she first drew in middle school, years before
+                she debuted — and he is the badge you get for pre-saving.
+                <br><br>
+                It arrives <b>Nov 20</b>. No release time has been announced, so the clock
+                above counts to <b>midnight where you are</b> — it reaches zero when the
+                date turns over on your clock, not on Seoul's or New York's.
+                <span class="ss-src">Reported by The Hollywood Reporter</span>
+              </div>
+            </div>
+          </div>
           <!-- JISOO — "ADDICTED", counted down at jisoo.io. ONE worldwide
                instant (13:00 KST = 04:00 UTC), confirmed rather than assumed:
                the same clock JISOO's CLICK used and the same one the jisoo.io
@@ -4537,64 +4611,6 @@
               <summary>Release times worldwide</summary>
               <div class="cd-times-body" data-times-for="2026-11-06T05:00:00Z"></div>
             </details>
-          </div>
-          <!-- SUN SHOWERS — JISOO, from The Angry Birds Movie 3.
-               NO data-target, ON PURPOSE. No release date has been announced,
-               and renderHomeCountdowns only walks `.cd-card[data-target]`, so
-               this card carries no timer rather than counting to a date
-               somebody guessed. The moment a date is announced, add
-               data-target and the timer starts working with no other change.
-
-               TWO THINGS ARE NOT KNOWN AND THE CARD MUST NOT IMPLY EITHER.
-               The Hollywood Reporter's exclusive says JISOO CO-WROTE the song.
-               It does not say she performs it, and no release date is given.
-               So this card says "co-written", never "performs" or "sings", and
-               names no date. This site got the mirror image of this wrong six
-               days ago — the Steps card claimed Jennie "wrote and performs"
-               a song credited to Tranter/Michaels/Gill, and it survived an
-               edit to the very sentence it sat in. test_sunshowers_claims.mjs
-               pins both halves so neither can drift back in.
-
-               Also not stated: the film's own release date. It is probably
-               knowable, but it was not in what we were told, and a card is not
-               the place to find out. -->
-          <!-- data-prerelease-name so loadAutoPrereleases() does not add a SECOND
-               Sun Showers card beside this one the day Spotify lists the single:
-               it dedupes bespoke cards by this name, and a card without it is
-               invisible to that check. The auto card would also carry a date,
-               which is the one thing this card is careful not to. -->
-          <div class="cd-card cd-card-sunshowers" data-slug="sunshowers" data-member="jisoo" data-prerelease-name="sun showers">
-            <img class="ss-art" src="/sunshowers/sun-showers-cover.webp" width="1400" height="1400"
-                 alt="Sun Showers — JISOO, from The Angry Birds Movie 3. The Angry Birds cast on a yellow field, with Shumon, a small grey dustball, at the front right."
-                 loading="lazy">
-            <div class="ss-body">
-              <div class="cd-eyebrow">JISOO · Original Song<div class="cd-badge-chip ss-shumon" id="ss-badge" style="display:none;"><img src="/sunshowers/shumon.webp" alt="" aria-hidden="true">Early Supporter</div></div>
-              <div class="ss-tba">Release date not announced</div>
-              <div class="cd-goal" id="ss-goal" style="display:none;">
-                <div class="cd-goal-top">
-                  <span class="cd-goal-label">🎯 Blinks pre-saved</span>
-                  <span class="cd-goal-nums" id="ss-goal-nums"></span>
-                </div>
-                <div class="cd-goal-bar"><div class="cd-goal-fill" id="ss-goal-fill" style="width:0%"></div></div>
-              </div>
-              <div class="cd-links">
-                <a class="cd-btn" href="https://JISOO.lnk.to/SunShowers" target="_blank" rel="noopener" onclick="saveSunShowers()">Pre-save ↗</a>
-                <button class="cd-btn ss-btn-ghost" onclick="openSunShowersCard()">📸 Share</button>
-              </div>
-              <div class="ss-note">
-                JISOO <b>performs</b> and <b>co-wrote</b> <b>“Sun Showers”</b>, an original
-                song for <b>The Angry Birds Movie 3</b>. It is expected in the film and in
-                its trailer, which has not landed yet.
-                <br><br>
-                The sleeve is hers too: the small grey dustball at the front is
-                <b>Shumon</b>, a character she first drew in middle school, years before
-                she debuted — and he is the badge you get for pre-saving.
-                <br><br>
-                No release date has been announced, so there is nothing to count down to
-                yet. The pre-save is open; this card gets its clock the day a date exists.
-                <span class="ss-src">Reported by The Hollywood Reporter</span>
-              </div>
-            </div>
           </div>
           <!-- The EP lands at midnight wherever you are, so there is no one
                instant to count to and data-target-local names the DATE instead:
@@ -21834,11 +21850,18 @@ let _cardShareBlob = null; // pre-generated blob for shareCard (set when drawing
 // test_share_links.mjs now drives every countdown card's share button and
 // demands the link match the card it is on, which is what the comment that
 // used to live here only claimed was happening.
+// EVERY campaign that draws a 'presave' card needs a line here. The fallback
+// is Fallen Angel's link, so a missing one is not an error — it is a share
+// button that sends people to somebody else's release, with the right picture
+// above it. "leavewithme" was added as a campaign and not added here, and its
+// shares went to JENNIE's countdown for three days; the test that exists for
+// exactly this was not run on the commit that added the card.
 const PRESAVE_CARD_LINKS = {
-  fa:         'https://www.blinksunited.com/countdowns/jenn.ie',
-  addicted:   'https://www.blinksunited.com/countdowns/addicted',
-  sunshowers: 'https://www.blinksunited.com/countdowns/sunshowers',
-  sth:        'https://www.blinksunited.com/countdowns/steps',
+  fa:          'https://www.blinksunited.com/countdowns/jenn.ie',
+  addicted:    'https://www.blinksunited.com/countdowns/addicted',
+  sunshowers:  'https://www.blinksunited.com/countdowns/sunshowers',
+  sth:         'https://www.blinksunited.com/countdowns/steps',
+  leavewithme: 'https://www.blinksunited.com/countdowns/leavewithme',
 };
 let _msShareBlob   = null; // pre-generated blob for shareMilestoneCard
 let _goalCardPhoto = null; // pre-loaded BLACKPINK photo for goal hit card
@@ -22759,9 +22782,11 @@ async function shareCard() {
     // Early Supporter badge and moves the pre-save challenge bar.
     const d = _presaveCardData;
     if (d) {
-      // A release with no date cannot use the shared wording: "is coming
-      // release date not announced yet" is not a sentence, and the earned line
-      // would read "⏰ release date not announced yet" under a clock.
+      // Sun Showers keeps its own wording now that it HAS a date, for a
+      // different reason than before: the shared line would name the song and
+      // the day and never mention the film it was written for, which is the
+      // thing worth saying about this one. It used to be here because "is
+      // coming release date not announced yet" is not a sentence.
       // "Leave With Me" has no pre-save to send anyone to and no announced
       // hour, so neither the shared "every one counts" (which is about
       // pre-saves) nor a bare date fits. The time line is stated rather than
@@ -22772,8 +22797,8 @@ async function shareCard() {
         ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n🎬 Her song for the documentary ALWAYS LALISA\n⏰ No release time announced yet — this counts to midnight where you are\n👉 Count it down on blinksunited.com — share it!\n`
         : d.campaign === 'sunshowers'
         ? (d.earned
-            ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n🐤 From The Angry Birds Movie 3 · release date not announced yet\n👉 Pre-save it too on blinksunited.com — don't forget to share!\n`
-            : `\n🐤 ${d.act} — "${d.release}", from The Angry Birds Movie 3\n📅 No release date announced yet — the pre-save is open\n👉 ${d.verbCta} on blinksunited.com — every one counts. Share it!\n`)
+            ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n🐤 From The Angry Birds Movie 3 · out ${d.dateShort}\n👉 Pre-save it too on blinksunited.com — don't forget to share!\n`
+            : `\n🐤 ${d.act} — "${d.release}", from The Angry Birds Movie 3\n📅 Out ${d.dateShort} — no release time announced, so the clock runs to midnight where you are\n👉 ${d.verbCta} on blinksunited.com — every one counts. Share it!\n`)
         : d.earned
         ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n⏰ ${d.dateShort}\n👉 Pre-save it too on blinksunited.com — don't forget to share!\n`
         : `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n👉 ${d.verbCta} on blinksunited.com — every one counts. Share it!\n`;
@@ -26881,6 +26906,12 @@ async function selectSunShowersCardArt(url, thumbEl) {
   _markCardReady(canvas);
 }
 
+// Her own midnight, the same instant the card on the page counts to — see
+// cardTargetAt. A share card that disagreed with the card it was made from
+// would be wrong by up to a day depending on who made it.
+const SS_DAY = [2026, 11, 20];
+const ssReleaseAt = () => new Date(SS_DAY[0], SS_DAY[1] - 1, SS_DAY[2], 0, 0, 0, 0).toISOString();
+
 async function openSunShowersCard() {
   const overlay = document.getElementById('card-overlay');
   const label   = document.getElementById('card-box-label');
@@ -26947,13 +26978,14 @@ async function openSunShowersCard() {
     // own all-caps face, and "I pre-saved" under "SUN SHOWERS" reads as two
     // different cards stacked.
     accent: '#ffd978', claim: 'I PRE-SAVED',
-    // NO releaseAt, and that is the point. drawPresaveCard reads a null here
-    // and prints "RELEASE DATE NOT ANNOUNCED" instead of inventing a
-    // countdown — and dateLine is omitted entirely rather than carrying a
-    // guessed month, which is the same rule the card on the page follows.
-    releaseAt: null,
-    dateLine: null,
-    dateShort: 'release date not announced yet',
+    // There IS a date now (Nov 20), so drawPresaveCard gets one and prints a
+    // countdown instead of "RELEASE DATE NOT ANNOUNCED". Built from parts, not
+    // Date.parse('2026-11-20'): that would be UTC midnight, and the card on the
+    // page counts to the reader's OWN midnight — two different instants, up to
+    // most of a day apart, on the same release.
+    releaseAt: ssReleaseAt(),
+    dateLine: 'Out Fri, Nov 20, 2026 \u00b7 midnight where you are',
+    dateShort: 'Nov 20, 2026',
     cta: '\u25b6 PRE-SAVE \u00b7 JISOO.lnk.to/SunShowers',
     verb: 'is coming', verbCta: 'Pre-save it',
   };
