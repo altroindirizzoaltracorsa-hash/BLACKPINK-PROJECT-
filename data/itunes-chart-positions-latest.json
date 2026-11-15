@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-14T22:07:35.263Z",
-  "date": "2026-11-14",
+  "generatedAt": "2026-11-15T05:35:54.678Z",
+  "date": "2026-11-15",
   "regions": {
     "us": {
       "region": "United States",
@@ -8,7 +8,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 137,
+          "position": 114,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -27,7 +27,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 56,
+          "position": 59,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
@@ -38,20 +38,20 @@
       "region": "Canada",
       "cc": "ca",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 140,
-          "name": "Dracula (with JENNIE)",
-          "artists": "Tame Impala",
-          "member": "JENNIE"
-        }
-      ]
+      "hits": []
     },
     "de": {
       "region": "Germany",
       "cc": "de",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 158,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
     },
     "fr": {
       "region": "France",
@@ -69,20 +69,20 @@
       "region": "Spain",
       "cc": "es",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 197,
+          "name": "Priceless",
+          "artists": "Maroon 5 & LISA",
+          "member": "LISA"
+        }
+      ]
     },
     "br": {
       "region": "Brazil",
       "cc": "br",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 56,
-          "name": "APT.",
-          "artists": "ROSÉ & Bruno Mars",
-          "member": "ROSÉ"
-        }
-      ]
+      "hits": []
     },
     "mx": {
       "region": "Mexico",
@@ -90,8 +90,8 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 199,
-          "name": "MONEY",
+          "position": 81,
+          "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
         }
@@ -101,14 +101,7 @@
       "region": "Taiwan",
       "cc": "tw",
       "totalEntries": 99,
-      "hits": [
-        {
-          "position": 61,
-          "name": "ADDICTED",
-          "artists": "JISOO",
-          "member": "JISOO"
-        }
-      ]
+      "hits": []
     },
     "hk": {
       "region": "Hong Kong",
@@ -116,40 +109,34 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 17,
+          "position": 20,
           "name": "ADDICTED",
           "artists": "JISOO",
           "member": "JISOO"
         },
         {
-          "position": 83,
+          "position": 144,
           "name": "Sweat",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 91,
+          "position": 150,
           "name": "Someone to Hold",
           "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 105,
+          "position": 162,
           "name": "Tarantino",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 114,
+          "position": 171,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
-        },
-        {
-          "position": 181,
-          "name": "One Of The Girls",
-          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
-          "member": "JENNIE"
         }
       ]
     },
@@ -159,7 +146,7 @@
       "totalEntries": 99,
       "hits": [
         {
-          "position": 86,
+          "position": 44,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
@@ -172,38 +159,26 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 43,
+          "position": 65,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
         },
         {
-          "position": 89,
+          "position": 117,
           "name": "Someone to Hold",
           "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 102,
+          "position": 134,
           "name": "Someone to Hold (from the Netflix Film \"Steps\")",
           "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 162,
+          "position": 195,
           "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 189,
-          "name": "Dream",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 200,
-          "name": "Chill",
           "artists": "LISA",
           "member": "LISA"
         }
@@ -215,44 +190,56 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 5,
+          "position": 9,
           "name": "Tarantino",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 36,
-          "name": "Sweat",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 41,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 47,
-          "name": "One Of The Girls",
-          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
-          "member": "JENNIE"
-        },
-        {
-          "position": 49,
+          "position": 35,
           "name": "Dream",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 58,
+          "position": 42,
+          "name": "Sweat",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 47,
+          "name": "SaWaDiKa",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 55,
+          "name": "One Of The Girls",
+          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
+          "member": "JENNIE"
+        },
+        {
+          "position": 68,
           "name": "ADDICTED",
           "artists": "JISOO",
           "member": "JISOO"
         },
         {
-          "position": 94,
+          "position": 77,
+          "name": "Bad Angel",
+          "artists": "Anyma & LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 117,
           "name": "Cut U Off",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 133,
+          "name": "Moonlit Floor",
           "artists": "LISA",
           "member": "LISA"
         }
@@ -264,22 +251,16 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 103,
+          "position": 24,
           "name": "ADDICTED",
           "artists": "JISOO",
           "member": "JISOO"
         },
         {
-          "position": 125,
+          "position": 179,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
-        },
-        {
-          "position": 198,
-          "name": "JUMP",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
         }
       ]
     },
@@ -289,19 +270,37 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 66,
+          "position": 10,
+          "name": "JUMP",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        },
+        {
+          "position": 59,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 80,
           "name": "ADDICTED",
           "artists": "JISOO",
           "member": "JISOO"
         },
         {
-          "position": 70,
+          "position": 86,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 177,
+          "position": 152,
+          "name": "MONEY",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 191,
           "name": "Gone",
           "artists": "ROSÉ",
           "member": "ROSÉ"
@@ -314,19 +313,19 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 43,
+          "position": 67,
           "name": "Less than a Lover",
           "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 108,
+          "position": 134,
           "name": "One Of The Girls",
           "artists": "The Weeknd, JENNIE & Lily Rose Depp",
           "member": "JENNIE"
         },
         {
-          "position": 133,
+          "position": 161,
           "name": "Someone to Hold (from the Netflix Film \"Steps\")",
           "artists": "JENNIE",
           "member": "JENNIE"
@@ -339,7 +338,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 13,
+          "position": 11,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -350,7 +349,14 @@
       "region": "New Zealand",
       "cc": "nz",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 165,
+          "name": "Dracula (with JENNIE)",
+          "artists": "Tame Impala",
+          "member": "JENNIE"
+        }
+      ]
     },
     "nl": {
       "region": "Netherlands",
@@ -380,20 +386,7 @@
       "region": "Turkey",
       "cc": "tr",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 152,
-          "name": "Dracula (with JENNIE)",
-          "artists": "Tame Impala",
-          "member": "JENNIE"
-        },
-        {
-          "position": 171,
-          "name": "One Of The Girls",
-          "artists": "The Weeknd, JENNIE & Lily Rose Depp",
-          "member": "JENNIE"
-        }
-      ]
+      "hits": []
     },
     "ar": {
       "region": "Argentina",
@@ -405,14 +398,7 @@
       "region": "Chile",
       "cc": "cl",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 199,
-          "name": "ADDICTED",
-          "artists": "JISOO",
-          "member": "JISOO"
-        }
-      ]
+      "hits": []
     },
     "co": {
       "region": "Colombia",
@@ -482,7 +468,7 @@
     }
   },
   "summary": {
-    "totalHits": 39,
+    "totalHits": 37,
     "regionsChecked": 38
   }
 }
