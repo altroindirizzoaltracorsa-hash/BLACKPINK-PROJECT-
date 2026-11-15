@@ -26,9 +26,12 @@ const PAGES = { '/awards': '/awards.html', '/breaktudo': '/breaktudo.html', '/vm
                 '/projects': '/projects.html', '/achievements': '/achievements.html' };
 const SPA = /^\/(votecard-embed|vma-board-embed|ltal-embed|countdowns|voting|vote|streams|charts|badges|leaderboard|account|feedback)(\/|$)/;
 
+// `wins` names the global each card reads its called categories from, so the
+// results check below is driven off the same list the renderer uses rather
+// than a copy here. MAMA has none: its winners are announced at the ceremony.
 const BALLOTS = [
   { key: 'mama', expect: /MAMA/i, frame: 'frame-mama' },
-  { key: 'kca', expect: /Kids.{0,3} Choice/i, frame: 'frame-kca' },
+  { key: 'kca', expect: /Kids.{0,3} Choice/i, frame: 'frame-kca', wins: 'BU_KCA_WINS' },
 ];
 
 const server = createServer(async (req, res) => {
@@ -110,6 +113,10 @@ for (const b of BALLOTS) {
       out.push({
         name: (r.querySelector('.vote-category-name span')?.textContent || '').trim(),
         pro: r.classList.contains('pro'),
+        won: r.classList.contains('won'),
+        past: r.classList.contains('past'),
+        ribbon: (r.querySelector('.vote-cat-ribbon')?.textContent || '').trim(),
+        share: !!r.querySelector('.vote-cat-share'),
         lock: !!r.querySelector('.vote-cat-pro'),
         link: !!r.querySelector('.vote-cat-link'),
         src: img ? img.getAttribute('src') : null,
@@ -138,8 +145,51 @@ for (const b of BALLOTS) {
                       : bad(`${who} is shaded`, `opacity ${r.opacity}`);
       r.link ? bad(`${who} offers no Vote link`, 'a judged category is linked as votable')
              : ok(`${who} offers no Vote link`);
+    } else if (r.past) {
+      // A category the ballot did not call. Shaded for the same reason and by
+      // the same amount as a judged row: still worth reading, nothing left to
+      // do about it. Nowhere does it say we lost — an absent trophy says it.
+      r.opacity < 0.6 ? ok(`${who} is shaded — not called`, `opacity ${r.opacity}`)
+                      : bad(`${who} is shaded — not called`, `opacity ${r.opacity}`);
     } else {
       r.opacity >= 0.99 ? ok(`${who} is not shaded`) : bad(`${who} is not shaded`, `opacity ${r.opacity}`);
+    }
+  }
+
+  // ── The results, on the nominations ──
+  // Only once this ballot has a win declared. The check is driven off the win
+  // LIST, not off the classes it is checking, so it fails when the renderer
+  // stops marking a row as much as when it marks the wrong one. A ballot with
+  // nothing called skips the block rather than passing it vacuously, and says
+  // which it did.
+  const declared = await fr.evaluate((list) => (window[list] || []).map(
+    (w) => ({ cat: w.cat, who: w.who })), b.wins || '');
+  if (!b.wins) {
+    console.log(`  --   ${b.key}: no win list on this ballot — results not checked`);
+  } else if (!declared.length) {
+    console.log(`  --   ${b.key}: nothing called yet — results not checked`);
+  } else {
+    const names = new Set(declared.map((w) => w.cat));
+    for (const w of declared) {
+      const row = rows.find((r) => r.name === w.cat);
+      if (!row) { bad(`${b.key}: "${w.cat}" is a row on the card`,
+        `the win list names it, the card does not — rows: ${rows.map((r) => r.name).join(' · ')}`); continue; }
+      row.won ? ok(`${b.key}: ${w.cat} is marked won`) : bad(`${b.key}: ${w.cat} is marked won`, 'no .won');
+      row.past ? bad(`${b.key}: the winner is not shaded`, `opacity ${row.opacity}`)
+               : ok(`${b.key}: the winner is not shaded`, `opacity ${row.opacity}`);
+      row.ribbon.includes(w.who) ? ok(`${b.key}: the ribbon names ${w.who}`, row.ribbon)
+                                 : bad(`${b.key}: the ribbon names ${w.who}`, row.ribbon || 'no ribbon');
+      row.share ? ok(`${b.key}: the win can be shared`) : bad(`${b.key}: the win can be shared`, 'no share button');
+    }
+    // And every other category steps back — the half of the treatment that
+    // would otherwise pass simply by nothing being marked at all.
+    const others = rows.filter((r) => !names.has(r.name));
+    others.length ? null : bad(`${b.key}: there is a category to shade`,
+      'every row won, so the shading was never exercised');
+    for (const r of others) {
+      r.past || r.pro ? ok(`${b.key}: ${r.name} steps back`)
+                      : bad(`${b.key}: ${r.name} steps back`, 'not marked .past');
+      r.won ? bad(`${b.key}: ${r.name} is not marked won`, 'it is not in the win list') : null;
     }
   }
 }
@@ -437,6 +487,30 @@ const narrow = await page.evaluate(() => {
 for (const x of narrow.b) {
   x.card >= 260 ? ok(`${x.id}: card still readable at 390px`, `${x.card}px`)
                 : bad(`${x.id}: card still readable at 390px`, `${x.card}px — too narrow, it will clip`);
+}
+// And nothing INSIDE a frame is wider than the frame. The parent's own
+// overflow check cannot see this: the frames carry scrolling="no", so an
+// over-wide box in one of them is silently cut off rather than scrolled to.
+// The 280px column is where a nowrap headline — a vote total, a long ribbon —
+// runs out of room first, and it is also the width most readers are at.
+for (const b of BALLOTS) {
+  const fr = page.frames().find((f) => f.url().includes(`card=${b.key}`));
+  if (!fr) { bad(`${b.key}: frame found for the clipping check`); continue; }
+  const over = await fr.evaluate(() => {
+    const docW = document.documentElement.clientWidth;
+    const out = [];
+    for (const el of document.querySelectorAll('#vc-embed-root *')) {
+      const w = el.getBoundingClientRect().width;
+      if (w > docW + 1 || el.scrollWidth > Math.ceil(w) + 1) {
+        // An element with its own scroller is allowed to be wider inside.
+        if (/auto|scroll/.test(getComputedStyle(el).overflowX)) continue;
+        out.push(`${el.className || el.tagName} ${Math.round(w)}/${el.scrollWidth} in ${docW}`);
+      }
+    }
+    return { docW, out: out.slice(0, 6), total: out.length };
+  });
+  over.total === 0 ? ok(`${b.key}: nothing is clipped at ${over.docW}px`)
+                   : bad(`${b.key}: nothing is clipped at ${over.docW}px`, over.out.join(' · '));
 }
 narrow.scrollW > narrow.clientW + 20
   ? ok('the row itself scrolls', `${narrow.scrollW} in ${narrow.clientW}`)

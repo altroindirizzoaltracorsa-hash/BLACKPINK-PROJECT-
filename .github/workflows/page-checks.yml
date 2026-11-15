@@ -183,6 +183,14 @@ jobs:
         if: always()
         run: node .github/scripts/test_awards_page.mjs
 
+      # The panel under a closed ballot. One endpoint serves several awards and
+      # the VMA dimension is the one you get by forgetting the parameter, so a
+      # wrong total here would be real, large and plausible — and a failed
+      # fetch must read as "no panel", never as "nobody voted".
+      - name: What the community cast, once a ballot has closed
+        if: always()
+        run: node .github/scripts/test_vote_thanks.mjs
+
       - name: Fandom collabs
         if: always()
         run: node .github/scripts/test_collabs_page.mjs

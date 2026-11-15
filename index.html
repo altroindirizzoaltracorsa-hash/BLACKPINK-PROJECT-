@@ -2916,8 +2916,41 @@
      meaning, so the two cards cannot drift apart. It stays readable and lifts
      on hover, because the nomination is still worth knowing about; it is the
      call to action that is missing, not the information. */
-  .vote-cat-row.pro { opacity: 0.45; transition: opacity 0.2s; }
-  .vote-cat-row.pro:hover { opacity: 0.8; }
+  /* `past` is the same thing for a different reason: a category that was not
+     called once the ballot is over. Same selector list, same amounts, because
+     the meaning is the same from the reader's side — a nomination still worth
+     reading with nothing left to do about it. */
+  .vote-cat-row.pro, .vote-cat-row.past { opacity: 0.45; transition: opacity 0.2s; }
+  .vote-cat-row.pro:hover, .vote-cat-row.past:hover { opacity: 0.8; }
+  /* The winner's row stays lit while the rest of the list steps back — the one
+     row worth looking at must not be the faintest thing on the card. Matches
+     .vote-video.won / .vote-video-ribbon in the nominee grid below. */
+  .vote-cat-row.won .vote-cat-thumb { border-color: var(--pink); }
+  .vote-cat-ribbon { display: inline-block; font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.12em;
+    text-transform: uppercase; color: #12000a; background: var(--pink); padding: 0.3rem 0.5rem; margin-bottom: 0.42rem; line-height: 1.3; }
+  .vote-cat-share { margin-top: 0.5rem; font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--pink); background: rgba(255,0,102,0.14);
+    border: 1px solid rgba(255,0,102,0.45); padding: 0.4rem 0.7rem; cursor: pointer; transition: background .15s, border-color .15s; }
+  .vote-cat-share:hover { background: rgba(255,0,102,0.3); border-color: var(--pink); }
+  .vote-cat-share[disabled] { opacity: 0.6; cursor: default; }
+
+  /* Under the closed-ballot line: what the community actually cast. The same
+     block as /vmas carries at the foot of its page — one treatment for one
+     meaning, so the two cannot drift apart. `[hidden]` is spelled out because
+     on this page an author `display` rule outranks the browser's own
+     `[hidden]` rule, which is the whole reason that trap keeps resurfacing. */
+  .vote-thanks { border: 1px solid rgba(255,0,102,0.35); border-radius: 12px; padding: 1.3rem 1rem 1.1rem;
+    margin-bottom: 1.4rem; text-align: center;
+    background: radial-gradient(120% 140% at 50% 0%, rgba(255,0,102,0.16), rgba(255,0,102,0.04) 60%, transparent); }
+  .vote-thanks[hidden] { display: none; }
+  .vote-thanks-hd { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin-bottom: 0.7rem; }
+  /* nowrap + clamp: a 7-digit total inside a phone-width column. */
+  .vote-thanks-big { font-family: var(--display); font-size: clamp(2.2rem, 12vw, 4.6rem); line-height: 0.9; color: var(--pink); white-space: nowrap; }
+  .vote-thanks-sub { font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,240,240,0.82); margin-top: 0.6rem; }
+  .vote-thanks-row { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+    margin-top: 0.9rem; padding-top: 0.8rem; border-top: 1px solid rgba(255,0,102,0.2); }
+  .vote-thanks-row[hidden] { display: none; }
+  .vote-thanks-row b { color: rgba(245,240,240,0.92); font-weight: 700; }
   .vote-cat-thumb { width: 56px; height: 56px; object-fit: cover; border: 1px solid var(--border); flex-shrink: 0; }
   .vote-cat-text { min-width: 0; }
   /* Nominee gallery — a horizontal row of the videos, each with the categories it's up for */
@@ -10548,6 +10581,16 @@ const VOTE_CAMPAIGNS = [
     // costs nothing, because the rules line tells people not to leave it late.
     // Still NOT the show date (Nov 14) — voting shuts before the ceremony.
     deadline: '2026-11-14T07:59:00Z',
+    // Once the ballot is closed, the card reads the results off these two.
+    //   wins  — the global holding the called categories (/kca-wins.js). Named
+    //           as a STRING, not the array: the file is a separate script and
+    //           this object is built while it may not have run yet, so a direct
+    //           reference would freeze whatever `window.BU_KCA_WINS` was at
+    //           parse time (usually undefined). Looked up at render instead.
+    //   tally — which dimension of /api/vma-votes the thank-you figure comes
+    //           from; matches ?award=kca.
+    wins: 'BU_KCA_WINS',
+    tally: 'kca',
     // Promoted out of `rules` into the band above the button: in a grey 0.7rem
     // list it read like "no account needed", and it is the one line here that
     // costs the vote if it is missed.
@@ -11098,10 +11141,32 @@ function renderVoteCampaigns() {
       const urgent = diff <= 48 * 3600000;
       deadlineHtml = `<span class="vote-deadline ${urgent ? 'urgent' : ''}" data-deadline="${c.deadline}">${formatCountdownLabel(diff)}</span>`;
     }
-    const categoriesHtml = c.categories.map(cat => `
-        <div class="vote-cat-row${cat.pro ? ' pro' : ''}">
+    // ── The wins, on the nominations themselves ──
+    // Matched to a row by category name out of the shared list (/kca-wins.js),
+    // so this card, /awards and the share card can never disagree about what
+    // was called. Gated on `ended` because a win cannot exist while the ballot
+    // is still open, and on the list being non-empty: a closed ballot with
+    // nothing called renders exactly as it did before, with no row shaded.
+    //
+    // Two treatments, the same pair and the same amounts as the VMA nominee
+    // grid above (.vote-video.won / .vote-video.past): the winner keeps a lit
+    // ribbon, every category that was NOT called steps back. Nothing anywhere
+    // says we lost — a category without a trophy has already said it, and the
+    // nomination is still worth reading, which is why it dims rather than goes.
+    const winsList = ended && c.wins ? c.wins : null;
+    const wins = winsList ? (window[winsList] || []) : [];
+    const categoriesHtml = c.categories.map(cat => {
+      const cw = wins.find(w => w.cat === cat.name) || null;
+      // `pro` STAYS on its own, alongside `past` rather than replaced by it:
+      // it is the half of a judged row that pairs with the 🔒 chip, and a test
+      // checks the two agree. The shading is the same either way; what differs
+      // is why, and only `pro` also suppresses the Vote link.
+      const notCalled = wins.length > 0 && !cw;
+      return `
+        <div class="vote-cat-row${cat.pro ? ' pro' : ''}${cw ? ' won' : ''}${notCalled ? ' past' : ''}">
           ${cat.thumb ? `<img class="vote-cat-thumb" src="${cat.thumb}" alt="" loading="lazy">` : ''}
           <div class="vote-cat-text">
+            ${cw ? `<div class="vote-cat-ribbon" data-no-i18n>\u{1F3C6} Winner · ${cw.who}${cw.song ? ` · ${cw.song}` : ''}</div>` : ''}
             <div class="vote-category-name"><span data-no-i18n>${cat.name}</span>${
               // `pro` wins over `url`: a category nobody can vote in must never
               // offer a Vote link, whatever else the entry says. MAMA is the
@@ -11114,8 +11179,10 @@ function renderVoteCampaigns() {
             <div class="vote-nominees" data-no-i18n>
               ${cat.nominees.map(n => `<span class="vote-chip ${n.us ? 'us' : ''}">${n.name}</span>`).join('')}
             </div>
+            ${cw ? `<button class="vote-cat-share" onclick="shareAwardWin('${winsList}', ${wins.indexOf(cw)}, this)">↑ Share this win</button>` : ''}
           </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
     // Optional nominee gallery: a horizontal row of videos, each with the
     // categories it's nominated in listed underneath (used by the VMAs card).
     // A nominee whose categories have all closed is dimmed, so the one still
@@ -11208,6 +11275,23 @@ function renderVoteCampaigns() {
           </div>
           <div class="vote-repost-note">Either counts as one vote, and only your <b>first</b> voting post of the day is read — so a repost is the safe one.</div>
         </div>`;
+    // ── What the community cast, under the closed-ballot line ──
+    // The same block /vmas carries (.thanks there), in the place people land
+    // once the ballot shuts: the countdown has nothing left to say and this
+    // does. `c.tally` is the award key its figures come from, so a card
+    // without one is unchanged.
+    //
+    // Ships with no numbers in it and HIDDEN. voteThanksFill() reveals it only
+    // once a real total has come back, so a failed fetch or a cold table can
+    // never flash a dash or print "0 votes" over a ballot thousands of blinks
+    // worked — the one failure mode worth more than the panel itself.
+    const thanksHtml = (ended && c.tally) ? `
+        <div class="vote-thanks" data-vote-thanks="${c.tally}" hidden>
+          <div class="vote-thanks-hd">Thank you, blinks, for voting with us 💗</div>
+          <div class="vote-thanks-big" data-thanks-total>—</div>
+          <div class="vote-thanks-sub">votes counted on blinksunited.com</div>
+          <div class="vote-thanks-row" data-thanks-blinks-row hidden>cast by <b data-thanks-blinks>—</b> blinks</div>
+        </div>` : '';
     const wonBadge = c.winner ? `<div class="vote-winner-badge">🏆 WE WON — ${c.winner.name}</div>` : '';
     return `
       <div class="vote-card${c.winner ? ' won' : ''}" data-campaign="${c.id}">
@@ -11220,6 +11304,7 @@ function renderVoteCampaigns() {
           </div>
           ${deadlineHtml}
         </div>
+        ${thanksHtml}
         ${c.resetOffset && !ended ? `<div class="vote-reset">🔄 Daily votes reset in <span class="vote-reset-time" data-reset-offset="${c.resetOffset}"></span></div>` : ''}
         ${c.standing && !ended ? `<div class="vote-standing">
           <span class="vote-standing-pos">#${c.standing.pos}</span>
@@ -11267,6 +11352,58 @@ function renderVoteCampaigns() {
   }
   el.innerHTML = html;
   tickVoteCountdowns();
+  voteThanksFill();
+}
+
+// Fill the closed-ballot thank-you panels from each award's own tally.
+//
+// The panel stays hidden unless a real total comes back. That is the whole
+// contract: a blip, a cold start or an award whose table is empty must read as
+// "no panel", never as "nobody voted" — and a zero printed under a closed
+// ballot is exactly the claim nobody could correct afterwards. The blinks row
+// is held to the same rule separately, because the total can be real while the
+// per-blink split is not.
+//
+// ONE request per award for the life of the page, not one per panel and not
+// one per render. The vote list is rebuilt every time /voting is opened, and
+// this panel only ever appears on a ballot that has CLOSED — its figure is
+// final, so re-reading it on the way back to the page buys nothing. A FAILED
+// attempt is deliberately not remembered, so a blip on one render does not
+// outlive it.
+//
+// The voting board below asks for the same bare figure separately and that one
+// is NOT shared: it is re-read after a blink logs votes, where a cached copy
+// would show them their old total.
+const _thanksTally = {};
+function voteThanksFill() {
+  const boxes = Array.from(document.querySelectorAll('.vote-thanks[data-vote-thanks]'));
+  if (!boxes.length) return;
+  [...new Set(boxes.map(b => b.dataset.voteThanks))].forEach(award => {
+    const key = award || 'vma';
+    if (!_thanksTally[key]) {
+      // 'vma' is the endpoint's default dimension and takes no parameter;
+      // every other award selects its own table with ?award=.
+      const q = award && award !== 'vma' ? `?award=${encodeURIComponent(award)}` : '';
+      _thanksTally[key] = fetch(`/api/vma-votes${q}`, { cache: 'no-store' })
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error('http ' + r.status))));
+      _thanksTally[key].catch(() => { delete _thanksTally[key]; });
+    }
+    _thanksTally[key]
+      .then(s => {
+        const total = Number(s && s.total) || 0;
+        if (!total) return;
+        const blinks = Number(s && s.blinksTotal) || 0;
+        boxes.filter(b => b.dataset.voteThanks === award).forEach(box => {
+          box.querySelector('[data-thanks-total]').textContent = _vvFmt(total);
+          if (blinks) {
+            box.querySelector('[data-thanks-blinks]').textContent = _vvFmt(blinks);
+            box.querySelector('[data-thanks-blinks-row]').hidden = false;
+          }
+          box.hidden = false;
+        });
+      })
+      .catch(() => { /* leave the panel hidden — see above */ });
+  });
 }
 
 // ── VMA voting leaderboard (account-gated, self-reported) ───────────────────
@@ -11360,7 +11497,15 @@ function shareVmaWin(i, btn) { return shareAwardWin('BU_VMA_WINS', i, btn); }
 function shareAwardWin(list, i, btn) {
   const win = (window[list] || [])[i];
   if (!win || !window.BUWinCard) return;
-  const overlay = document.getElementById('card-overlay');
+  // The overlay is a body child, and in card-embed mode the body is hidden and
+  // the frame is only as tall as the card — so opening it there puts the share
+  // sheet somewhere nobody can see or dismiss. BUWinCard.share() draws its own
+  // canvas and needs no overlay at all, so in the embed take that path: the
+  // button on /awards' Kids' Choice card shares the same PNG, straight to the
+  // OS sheet, and falls back to a download where that is refused.
+  const embedded = document.documentElement.classList.contains('embed-votecard')
+    || document.documentElement.classList.contains('embed-vmaboard');
+  const overlay = embedded ? null : document.getElementById('card-overlay');
   const label = document.getElementById('card-box-label');
   if (!overlay) { window.BUWinCard.share(win, btn); return; }
   overlay.style.display = 'flex';
