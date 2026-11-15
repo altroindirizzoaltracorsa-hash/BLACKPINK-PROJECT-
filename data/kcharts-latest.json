@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-14T21:42:02.248Z",
-  "date": "2026-11-14",
+  "generatedAt": "2026-11-15T01:21:49.503Z",
+  "date": "2026-11-15",
   "source": "https://xn--o39an51b2re.com",
   "charts": [
     {
@@ -21,8 +21,8 @@
       "kr": "실시간 차트",
       "label": "Melon · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/melon/realtime",
-      "available": false,
-      "totalRows": 0,
+      "available": true,
+      "totalRows": 100,
       "entries": []
     },
     {
@@ -33,7 +33,7 @@
       "label": "Melon · Realtime 5-min",
       "url": "https://xn--o39an51b2re.com/chart/melon/realtime-five",
       "available": true,
-      "totalRows": 9,
+      "totalRows": 5,
       "entries": []
     },
     {
@@ -375,32 +375,32 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 52,
-          "previous": 52,
+          "rank": 63,
+          "previous": 70,
           "song": "toxic till the end",
           "artists": "로제 (ROSÉ)",
           "member": "ROSÉ",
           "link": "https://www.melon.com/song/detail.htm?songId=38300904"
         },
         {
-          "rank": 69,
-          "previous": 69,
+          "rank": 81,
+          "previous": 83,
           "song": "뛰어(JUMP)",
           "artists": "BLACKPINK",
           "member": "BLACKPINK",
           "link": "https://www.melon.com/song/detail.htm?songId=39298775"
         },
         {
-          "rank": 83,
-          "previous": 83,
+          "rank": 93,
+          "previous": null,
           "song": "like JENNIE",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
           "link": "https://www.melon.com/song/detail.htm?songId=38629386"
         },
         {
-          "rank": 84,
-          "previous": 84,
+          "rank": 97,
+          "previous": null,
           "song": "APT.",
           "artists": "로제 (ROSÉ), Bruno Mars",
           "member": "ROSÉ",
@@ -419,8 +419,8 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 42,
-          "previous": 38,
+          "rank": 33,
+          "previous": 34,
           "song": "ADDICTED",
           "artists": "지수 (JISOO)",
           "member": "JISOO",
@@ -439,8 +439,8 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 83,
-          "previous": 76,
+          "rank": 63,
+          "previous": 68,
           "song": "ADDICTED",
           "artists": "지수 (JISOO)",
           "member": "JISOO",
@@ -456,7 +456,7 @@
       "label": "Melon · HOT100 5-min",
       "url": "https://xn--o39an51b2re.com/chart/melon/hot100-five",
       "available": true,
-      "totalRows": 14,
+      "totalRows": 10,
       "entries": []
     },
     {
@@ -525,7 +525,7 @@
       "label": "Melon · Newest (1w)",
       "url": "https://xn--o39an51b2re.com/chart/melon/newest-w1",
       "available": true,
-      "totalRows": 76,
+      "totalRows": 86,
       "entries": []
     },
     {
@@ -539,16 +539,16 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 16,
-          "previous": 16,
+          "rank": 30,
+          "previous": 33,
           "song": "ADDICTED",
           "artists": "지수 (JISOO)",
           "member": "JISOO",
           "link": "https://www.melon.com/song/detail.htm?songId=603761119"
         },
         {
-          "rank": 87,
-          "previous": 88,
+          "rank": 92,
+          "previous": 84,
           "song": "Someone to Hold (from the Netflix Film “Steps”)",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
@@ -759,9 +759,42 @@
       "kr": "실시간 차트",
       "label": "Genie · Realtime",
       "url": "https://xn--o39an51b2re.com/chart/genie/realtime",
-      "available": false,
-      "totalRows": 0,
-      "entries": []
+      "available": true,
+      "totalRows": 250,
+      "entries": [
+        {
+          "rank": 63,
+          "previous": 61,
+          "song": "뛰어(JUMP)",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=110931419"
+        },
+        {
+          "rank": 81,
+          "previous": 90,
+          "song": "toxic till the end",
+          "artists": "로제 (ROSÉ)",
+          "member": "ROSÉ",
+          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108575614"
+        },
+        {
+          "rank": 98,
+          "previous": 114,
+          "song": "APT.",
+          "artists": "로제 (ROSÉ), 로제 (ROSÉ) & Bruno Mars, Bruno Mars",
+          "member": "ROSÉ",
+          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=108107291"
+        },
+        {
+          "rank": 107,
+          "previous": 113,
+          "song": "like JENNIE",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://www.genie.co.kr/detail/songInfo?xgnm=109342665"
+        }
+      ]
     },
     {
       "key": "genie-daily",
@@ -834,24 +867,24 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 41,
-          "previous": 85,
+          "rank": 40,
+          "previous": 42,
           "song": "toxic till the end",
           "artists": "로제(ROSÉ)",
           "member": "ROSÉ",
           "link": "https://music.bugs.co.kr/track/6274999"
         },
         {
-          "rank": 53,
-          "previous": 70,
-          "song": "뛰어(JUMP)",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK",
-          "link": "https://music.bugs.co.kr/track/6323217"
+          "rank": 50,
+          "previous": 82,
+          "song": "like JENNIE",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://music.bugs.co.kr/track/6292518"
         },
         {
-          "rank": 55,
-          "previous": 51,
+          "rank": 51,
+          "previous": 62,
           "song": "APT.",
           "artists": "로제(ROSÉ), Bruno Mars(브루노 마스)",
           "member": "ROSÉ",
@@ -860,18 +893,18 @@
         {
           "rank": 59,
           "previous": 56,
-          "song": "like JENNIE",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://music.bugs.co.kr/track/6292518"
-        },
-        {
-          "rank": 63,
-          "previous": 68,
           "song": "Less than a Lover",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
           "link": "https://music.bugs.co.kr/track/6495171"
+        },
+        {
+          "rank": 75,
+          "previous": 45,
+          "song": "뛰어(JUMP)",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK",
+          "link": "https://music.bugs.co.kr/track/6323217"
         }
       ]
     },
@@ -938,36 +971,36 @@
       "totalRows": 100,
       "entries": [
         {
-          "rank": 86,
-          "previous": 86,
+          "rank": 87,
+          "previous": 88,
           "song": "toxic till the end",
           "artists": "로제 (ROSÉ)",
           "member": "ROSÉ",
           "link": "https://www.music-flo.com/detail/track/522311944/details"
         },
         {
-          "rank": 96,
-          "previous": 96,
+          "rank": 91,
+          "previous": 93,
           "song": "뛰어(JUMP)",
           "artists": "BLACKPINK",
           "member": "BLACKPINK",
           "link": "https://www.music-flo.com/detail/track/547505427/details"
         },
         {
-          "rank": 97,
-          "previous": 97,
-          "song": "like JENNIE",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://www.music-flo.com/detail/track/531884639/details"
-        },
-        {
-          "rank": 100,
-          "previous": 100,
+          "rank": 98,
+          "previous": 99,
           "song": "APT.",
           "artists": "로제 (ROSÉ), Bruno Mars",
           "member": "ROSÉ",
           "link": "https://www.music-flo.com/detail/track/517125479/details"
+        },
+        {
+          "rank": 99,
+          "previous": 98,
+          "song": "like JENNIE",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://www.music-flo.com/detail/track/531884639/details"
         }
       ]
     },
@@ -990,40 +1023,40 @@
           "link": "https://vibe.naver.com/track/95226788"
         },
         {
-          "rank": 65,
-          "previous": 84,
-          "song": "ADDICTED",
-          "artists": "지수 (JISOO)",
-          "member": "JISOO",
-          "link": "https://vibe.naver.com/track/109022994"
-        },
-        {
-          "rank": 81,
-          "previous": 86,
+          "rank": 78,
+          "previous": 81,
           "song": "APT.",
           "artists": "로제 (ROSÉ), Bruno Mars",
           "member": "ROSÉ",
           "link": "https://vibe.naver.com/track/87518567"
         },
         {
-          "rank": 82,
-          "previous": 87,
-          "song": "like JENNIE",
-          "artists": "제니 (JENNIE)",
-          "member": "JENNIE",
-          "link": "https://vibe.naver.com/track/90527708"
-        },
-        {
-          "rank": 89,
-          "previous": 82,
+          "rank": 86,
+          "previous": 89,
           "song": "toxic till the end",
           "artists": "로제 (ROSÉ)",
           "member": "ROSÉ",
           "link": "https://vibe.naver.com/track/88110662"
         },
         {
-          "rank": 125,
-          "previous": 145,
+          "rank": 88,
+          "previous": 82,
+          "song": "like JENNIE",
+          "artists": "제니 (JENNIE)",
+          "member": "JENNIE",
+          "link": "https://vibe.naver.com/track/90527708"
+        },
+        {
+          "rank": 100,
+          "previous": 65,
+          "song": "ADDICTED",
+          "artists": "지수 (JISOO)",
+          "member": "JISOO",
+          "link": "https://vibe.naver.com/track/109022994"
+        },
+        {
+          "rank": 136,
+          "previous": 125,
           "song": "Less than a Lover",
           "artists": "제니 (JENNIE)",
           "member": "JENNIE",
@@ -1150,7 +1183,7 @@
   ],
   "summary": {
     "chartsChecked": 26,
-    "chartsAvailable": 23,
-    "totalEntries": 105
+    "chartsAvailable": 25,
+    "totalEntries": 109
   }
 }
