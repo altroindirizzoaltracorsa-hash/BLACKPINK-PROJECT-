@@ -3690,6 +3690,7 @@
   }
 </style>
 <script src="/vma-wins.js"></script>
+<script src="/kca-wins.js"></script>
   <script src="/i18n/i18n.js" defer></script>
 </head>
 <body>
@@ -11334,16 +11335,20 @@ function buDmUrl() {
 // The wins, on the board. The list lives in /vma-wins.js so /vmas and this
 // page can never disagree about what was won. Renders nothing until a category
 // is actually called, so it costs nothing on a normal night.
-function vvWinsHtml() {
-  const wins = window.BU_VMA_WINS || [];
+// Takes WHICH list, because there are two awards with wins now and the block
+// is otherwise identical. The default keeps the VMA call site reading as it
+// did. `list` is the name of the global rather than the array itself, so the
+// share button can name it back and does not need a second lookup table.
+function vvWinsHtml(list = 'BU_VMA_WINS', label = '2026 VMAs') {
+  const wins = window[list] || [];
   if (!wins.length) return '';
   return `<div class="vv-wins">
-    <div class="vv-wins-hd">\u{1F3C6} ${wins.length > 1 ? 'Winners' : 'Winner'} \u00b7 2026 VMAs</div>
+    <div class="vv-wins-hd">\u{1F3C6} ${wins.length > 1 ? 'Winners' : 'Winner'} \u00b7 ${_vvEsc(label)}</div>
     ${wins.map((w, i) => `<div class="vv-win">
       <div class="vv-win-who">${_vvEsc(w.who)}</div>
       <div class="vv-win-cat">${_vvEsc(w.cat)}${w.song ? ` \u00b7 <i>${_vvEsc(w.song)}</i>` : ''}</div>
       ${w.note ? `<div class="vv-win-note">${_vvEsc(w.note)}</div>` : ''}
-      <button class="vv-win-share" onclick="shareVmaWin(${i}, this)">\u2191 Share this win</button>
+      <button class="vv-win-share" onclick="shareAwardWin('${list}', ${i}, this)">\u2191 Share this win</button>
     </div>`).join('')}
   </div>`;
 }
@@ -11351,8 +11356,9 @@ function vvWinsHtml() {
 // Draw it through the page's own card overlay, so it gets the same Share /
 // Copy Image / Download buttons as every other card here rather than a second,
 // lesser share path.
-function shareVmaWin(i, btn) {
-  const win = (window.BU_VMA_WINS || [])[i];
+function shareVmaWin(i, btn) { return shareAwardWin('BU_VMA_WINS', i, btn); }
+function shareAwardWin(list, i, btn) {
+  const win = (window[list] || [])[i];
   if (!win || !window.BUWinCard) return;
   const overlay = document.getElementById('card-overlay');
   const label = document.getElementById('card-box-label');
@@ -13142,10 +13148,11 @@ function drawKcaVoting() {
     ${_vvArchive ? '' : vmaAwardSwitchHtml()}
     <div class="vv-head">
       <div class="vv-title">🧒 Kids’ Choice Voting Leaderboard</div>
-      <div class="vv-note">Register the Nickelodeon Kids’ Choice Awards votes you cast for BLACKPINK, ROSÉ and “Dracula”. Voting runs Oct 8 – Nov 13. <a href="/voting">how &amp; where to vote →</a></div>
+      <div class="vv-note">The Nickelodeon Kids’ Choice Awards have finished — voting ran Oct 8 – Nov 13. The board below is the record of what blinks logged. <a href="/voting">how it worked →</a></div>
       <button class="vv-guide-btn" onclick="startGuide()">🧭 New here? Step-by-step guide</button>
     </div>
     ${vmaVideoGuidesHtml()}
+    ${vvWinsHtml('BU_KCA_WINS', "2026 Kids’ Choice")}
     <div class="vv-daynote">⚠️ <b>Nothing is submitted until you finish the round.</b> The site walks you through all 36 categories and sends the whole round at the end — so stopping after BLACKPINK casts <b>no votes at all</b>, and the counter has nothing to count. Vote every category to the end, then <b>Vote Again</b>.</div>
     ${me}
     ${kcaQualified ? vmaExtensionHtml() : ''}

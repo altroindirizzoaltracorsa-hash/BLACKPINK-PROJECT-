@@ -37,7 +37,11 @@
     }
   ];
 
+  // The DEFAULT show. A win may carry its own `show`, which is what lets this
+  // renderer draw another award's wins (see /kca-wins.js) instead of a second
+  // copy of the same canvas code — a fix to the card is then a fix to both.
   var SHOW = '2026 MTV VIDEO MUSIC AWARDS';
+  var showOf = function (win) { return (win && win.show) || SHOW; };
   var SITE = 'blinksunited.com';
 
   // Shrink a line until it fits the width it has, leaving ctx.font at the size
@@ -139,8 +143,8 @@
     // Show name
     ctx.fillStyle = 'rgba(245,240,240,' + (img ? '0.72' : '0.5') + ')';
     ctx.letterSpacing = '6px';
-    fit(ctx, SHOW, W - pad * 2, Math.max(14, Math.round(A * 0.021)), 'DM Mono', '500');
-    ctx.fillText(SHOW, W / 2, topY);
+    fit(ctx, showOf(win), W - pad * 2, Math.max(14, Math.round(A * 0.021)), 'DM Mono', '500');
+    ctx.fillText(showOf(win), W / 2, topY);
 
     // WINNER
     ctx.fillStyle = '#FF0066';
@@ -217,7 +221,7 @@
 
   function shareText(win) {
     return '🏆 ' + win.who + ' won ' + win.cat
-      + (win.song ? ' for ' + win.song : '') + ' at the ' + SHOW.replace('2026 ', '2026 ')
+      + (win.song ? ' for ' + win.song : '') + ' at the ' + showOf(win).replace('2026 ', '2026 ')
       + (win.note ? ' — ' + win.note : '');
   }
 
@@ -237,7 +241,7 @@
       var blob = await new Promise(function (res) { canvas.toBlob(res, 'image/png'); });
       if (!blob) throw new Error('toBlob returned nothing');
 
-      var name = 'blinksunited-' + (win.key || 'vma-win') + '.png';
+      var name = 'blinksunited-' + (win.key || 'win') + '.png';
       var file = new File([blob], name, { type: 'image/png' });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
