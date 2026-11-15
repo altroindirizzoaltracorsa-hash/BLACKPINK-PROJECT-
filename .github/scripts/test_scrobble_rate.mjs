@@ -323,6 +323,113 @@ console.log('--- the response says enough to alert on');
         body.stoppedAt ? `stopped at ${body.stoppedAt}` : 'finished');
 }
 
+
+// ── 9. THE NAMES LAST.FM DOES NOT HAVE ───────────────────────────────────────
+// About 29 of ~200 rows are not usernames at all — "blackPink@gmail.com", a
+// pasted profile URL, "Userlast.fm". Each cost a call and a slice of the run's
+// time budget every hour forever, and a run that spends its budget stops
+// before the end of the board: those 29 slots were coming out of real blinks
+// further down the list.
+//
+// The two ways a skip list goes wrong are the two things pinned hardest here.
+// It must not retire a real account over a bad night at Last.fm (so: 404/403
+// only, three in a row), and it must be able to let go (so: one retry a day,
+// and a success clears the mark). A skip list that cannot release is worse
+// than the waste it removes, because the one fact it hides is its own error.
+console.log('--- an account Last.fm does not have stops being asked for');
+{
+  STORE.clear();
+  STORE.set('bu_leaderboard_v1', { users: { ghost: entry('ghost'), real: entry('real') }, banned: [] });
+  process.env.SCROBBLE_RUN_BUDGET_MS = '600000';
+
+  // 'ghost' 404s; everyone else is normal.
+  const base = globalThis.fetch;
+  let mode = '404';
+  globalThis.fetch = async (url) => {
+    const q = new URL(url).searchParams;
+    const who = q.get('user') || q.get('username');
+    if (who === 'ghost') {
+      calls.push({ method: q.get('method'), user: who, at: Date.now() });
+      return mode === '404'
+        ? { ok: false, status: 404, json: async () => ({}) }
+        : base(url);
+    }
+    return base(url);
+  };
+  const run = async () => {
+    reset();
+    let body = null;
+    const res = { setHeader() {}, status() { return this; }, json(b) { body = b; return this; } };
+    await mod.default({ headers: {} }, res);
+    return { body, ghostCalls: calls.filter(c => c.user === 'ghost').length };
+  };
+
+  const r1 = await run(), r2 = await run(), r3 = await run();
+  check(r1.ghostCalls > 0 && r2.ghostCalls > 0 && r3.ghostCalls > 0,
+        'it is tried three times before anything is decided',
+        `${r1.ghostCalls}/${r2.ghostCalls}/${r3.ghostCalls} calls`);
+  check((r3.body.dead || []).length === 0,
+        'and is not skipped while that is still happening');
+
+  const r4 = await run();
+  check(r4.ghostCalls === 0, 'the fourth run does not call Last.fm for it', `${r4.ghostCalls} calls`);
+  check((r4.body.dead || []).some(u => String(u).toLowerCase() === 'ghost'),
+        'and says so in the response', JSON.stringify(r4.body.dead));
+  check(!(r4.body.failed || []).some(f => f.username === 'ghost'),
+        'it is no longer counted as a failure');
+
+  // THE ROW SURVIVES. This is the difference between skipping and deleting,
+  // and it is the whole reason this is a skip list.
+  const board = STORE.get('bu_leaderboard_v1');
+  check(!!(board && board.users && board.users.ghost),
+        'the blink keeps their row and their numbers');
+
+  // Everyone else is untouched — the point of the exercise.
+  check((r4.body.refreshed || []).length >= 1, 'and the rest of the board still refreshes',
+        `${(r4.body.refreshed || []).length} refreshed`);
+
+  // ── It lets go. Age the mark past the daily probe and let the account answer.
+  const dead = STORE.get('bu_lfm_dead_v1');
+  for (const k of Object.keys(dead || {})) { dead[k].probed = 0; dead[k].last = 0; }
+  STORE.set('bu_lfm_dead_v1', dead);
+  mode = 'ok';
+  const r5 = await run();
+  check(r5.ghostCalls > 0, 'a day later it is tried once more', `${r5.ghostCalls} calls`);
+  check(!STORE.get('bu_lfm_dead_v1')?.ghost,
+        'and an account that comes back is un-skipped for good');
+
+  globalThis.fetch = base;
+}
+
+// ── 9b. A BAD NIGHT AT LAST.FM RETIRES NOBODY ────────────────────────────────
+// The failure that would make this feature worse than the waste it removes:
+// Last.fm having an outage, or throttling us, and the refresh quietly deciding
+// that a third of the board does not exist. Only "this account is not here"
+// counts, never "I could not reach Last.fm".
+console.log('--- a Last.fm outage never retires an account');
+{
+  STORE.clear();
+  STORE.set('bu_leaderboard_v1', { users: { patient: entry('patient') }, banned: [] });
+  const base = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const q = new URL(url).searchParams;
+    if ((q.get('user') || q.get('username')) === 'patient') {
+      calls.push({ method: q.get('method'), user: 'patient', at: Date.now() });
+      return { ok: false, status: 500, json: async () => ({}) };
+    }
+    return base(url);
+  };
+  for (let i = 0; i < 5; i++) {
+    reset();
+    const res = { setHeader() {}, status() { return this; }, json() { return this; } };
+    await mod.default({ headers: {} }, res);
+  }
+  check(!STORE.get('bu_lfm_dead_v1')?.patient,
+        'five server errors in a row leave the account alone',
+        JSON.stringify(STORE.get('bu_lfm_dead_v1') || {}));
+  globalThis.fetch = base;
+}
+
 globalThis.fetch = realFetch;
 console.log(fails ? `\n${fails} FAILED` : '\nAll correct.');
 process.exit(fails ? 1 : 0);

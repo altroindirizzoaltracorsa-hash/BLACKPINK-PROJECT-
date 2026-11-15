@@ -22944,41 +22944,56 @@ async function shareCard() {
       // left out: the card's clock counts to the reader's own midnight, and a
       // caption that said only "Nov 18" would let someone quote a precision
       // nobody has published.
+      // NO BARE "blinksunited.com" IN A CAPTION — write the NAME, not the
+      // domain. These lines used to say "Count it down on blinksunited.com",
+      // and the real deep link is appended after them, so a shared post
+      // carried two addresses. WhatsApp, Telegram, Discord, iMessage, X and
+      // Facebook all auto-link a bare domain and all build the preview from
+      // the FIRST link in the post — so the picture people saw was never the
+      // release. It was blinksunited.com → which 307s to /awards → whose
+      // og:image is the OT4 group photo. Reported as "the Sun Showers link
+      // previews the OT4 pic"; the Sun Showers page was serving perfect tags
+      // the whole time and nobody was looking at it.
+      //
+      // One post, one address. An artist's own domain (jisoo.io,
+      // lalisaofficial.com) may still lead, which is fine — it is a real
+      // destination for that release. Ours must be the full deep link or
+      // nothing. test_share_links.mjs reads the FIRST url now, not the last.
       statsText = d.campaign === 'leavewithme'
-        ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n🎬 Her song for the documentary ALWAYS LALISA\n⏰ No release time announced yet — this counts to midnight where you are\n👉 Count it down on blinksunited.com — share it!\n`
+        ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n🎬 Her song for the documentary ALWAYS LALISA\n⏰ No release time announced yet — this counts to midnight where you are\n👉 Count it down on Blinks United — share it!\n`
         : d.campaign === 'sunshowers'
         ? (d.earned
-            ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n🐤 From The Angry Birds Movie 3 · out ${d.dateShort}\n👉 Pre-save it too on blinksunited.com — don't forget to share!\n`
-            : `\n🐤 ${d.act} — "${d.release}", from The Angry Birds Movie 3\n📅 Out ${d.dateShort} — no release time announced, so the clock runs to midnight where you are\n👉 ${d.verbCta} on blinksunited.com — every one counts. Share it!\n`)
+            ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n🐤 From The Angry Birds Movie 3 · out ${d.dateShort}\n👉 Pre-save it too on Blinks United — don't forget to share!\n`
+            : `\n🐤 ${d.act} — "${d.release}", from The Angry Birds Movie 3\n📅 Out ${d.dateShort} — no release time announced, so the clock runs to midnight where you are\n👉 ${d.verbCta} on Blinks United — every one counts. Share it!\n`)
         : d.earned
-        ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n⏰ ${d.dateShort}\n👉 Pre-save it too on blinksunited.com — don't forget to share!\n`
-        : `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n👉 ${d.verbCta} on blinksunited.com — every one counts. Share it!\n`;
+        ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n⏰ ${d.dateShort}\n👉 Pre-save it too on Blinks United — don't forget to share!\n`
+        : `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n👉 ${d.verbCta} on Blinks United — every one counts. Share it!\n`;
     }
   } else if (_cardType === 'lisa') {
     const d = _lisaCardData;
     if (d) {
       statsText = d.earned
-        ? `\n🕊️ สวัสดีค่ะ — I'm an Early Supporter of LISA's "SaWaDiKa"\n⏰ ${d.dateShort}\n👉 Pre-save it too at lalisaofficial.com — count yourself in on blinksunited.com!\n`
-        : `\n🕊️ LISA — "SaWaDiKa" (new single) · ${d.dateShort}\n👉 Pre-save it on blinksunited.com — every blink counts. Share it!\n`;
+        ? `\n🕊️ สวัสดีค่ะ — I'm an Early Supporter of LISA's "SaWaDiKa"\n⏰ ${d.dateShort}\n👉 Pre-save it too at lalisaofficial.com — count yourself in on Blinks United!\n`
+        : `\n🕊️ LISA — "SaWaDiKa" (new single) · ${d.dateShort}\n👉 Pre-save it on Blinks United — every blink counts. Share it!\n`;
     }
   } else if (_cardType === 'jisoo') {
     const d = _jisooCardData;
     if (d) {
       statsText = d.earned
-        ? `\n🖤 I'm an Early Supporter — JISOO, ${d.dateShort}\n👉 CLICK jisoo.io — count yourself in on blinksunited.com!\n`
+        ? `\n🖤 I'm an Early Supporter — JISOO, ${d.dateShort}\n👉 CLICK jisoo.io — count yourself in on Blinks United!\n`
         : `\n🖤 JISOO — jisoo.io · ${d.dateShort}\n👉 CLICK jisoo.io — every blink counts. Share it!\n`;
     }
   } else if (_cardType === 'newtrick') {
     const d = _newtrickCardData;
     statsText = (d && d.earned)
-      ? `\n🍭 I pre-saved ROSÉ's "new trick"\n⏰ out Sep 17, 2026 · 7PM EDT\n👉 Pre-save it too on blinksunited.com — every blink counts. Share it!\n`
-      : `\n🍭 ROSÉ — "new trick" (new single) · Sep 17, 2026 · 7PM EDT\n👉 Pre-save it on blinksunited.com — every blink counts. Share it!\n`;
+      ? `\n🍭 I pre-saved ROSÉ's "new trick"\n⏰ out Sep 17, 2026 · 7PM EDT\n👉 Pre-save it too on Blinks United — every blink counts. Share it!\n`
+      : `\n🍭 ROSÉ — "new trick" (new single) · Sep 17, 2026 · 7PM EDT\n👉 Pre-save it on Blinks United — every blink counts. Share it!\n`;
   } else if (_cardType === 'pressplay') {
     const d = _ppCardData;
     if (d) {
       statsText = d.earned
-        ? `\n🎬 I'm an Early Supporter — LISA "PRESS PLAY"\n⏰ ${d.dateShort}\n👉 Pre-save it too on blinksunited.com — don't forget to share!\n`
-        : `\n🎬 LISA — PRESS PLAY (New EP) · ${d.dateShort}\n👉 Pre-save it on blinksunited.com — every one counts. Share it!\n`;
+        ? `\n🎬 I'm an Early Supporter — LISA "PRESS PLAY"\n⏰ ${d.dateShort}\n👉 Pre-save it too on Blinks United — don't forget to share!\n`
+        : `\n🎬 LISA — PRESS PLAY (New EP) · ${d.dateShort}\n👉 Pre-save it on Blinks United — every one counts. Share it!\n`;
     }
   } else if (_cardType === 'goal-hit') {
     const d = window._goalCardData;

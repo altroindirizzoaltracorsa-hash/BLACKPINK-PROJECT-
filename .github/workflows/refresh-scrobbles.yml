@@ -60,10 +60,13 @@ jobs:
           cat response.json
           echo ""
           echo "--- summary ---"
-          jq -r '"refreshed: \(.refreshed | length) · failed: \(.failed | length) · unverified (skipped): \(.unverified | length) · merged duplicates: \(.merged | length)"' response.json || true
+          jq -r '"refreshed: \(.refreshed | length) · failed: \(.failed | length) · dead (skipped): \(.dead // [] | length) · unverified (skipped): \(.unverified | length) · merged duplicates: \(.merged | length)"' response.json || true
           jq -r '"last.fm calls: \(.lastfmCalls // "?") · rate-limited: \(.rateLimited // 0) · took: \(.tookMs // "?")ms · started from: \(.startedFrom // "top") · stopped at: \(.stoppedAt // "finished")"' response.json || true
           jq -r '.failed[]? | "  FAILED: \(.username) — \(.error)"' response.json || true
           jq -r '.merged[]? | "  MERGED (dropped stale duplicate): \(.)"' response.json || true
+          # Printed every run on purpose. A skip list that nobody ever reads is
+          # how a real blink who renamed their Last.fm quietly stops counting.
+          jq -r '.dead[]? | "  SKIPPED (Last.fm has no such account): \(.)"' response.json || true
           if [ "$http_code" -ge 400 ]; then exit 1; fi
 
           # ── THE RUN HAS TO GO RED WHEN THE BOARD STOPS UPDATING ──────────
@@ -86,6 +89,11 @@ jobs:
           fi
           # A 404/403 on a renamed or now-private account is nobody's bug and
           # always a few. A majority failing is never normal.
+          #
+          # `dead` is NOT counted on either side. Those names were not attempted
+          # this run, so putting them in the denominator would dilute the ratio
+          # this guard exists to watch, and putting them in the numerator would
+          # turn a tidy-up into a permanent red run.
           total=$((refreshed + failed))
           if [ "$total" -gt 0 ] && [ "$((failed * 2))" -gt "$total" ]; then
             echo "::error title=Most users failed to refresh::$failed of $total failed. Their rows keep their last-known numbers, so the board looks healthy while it is frozen."

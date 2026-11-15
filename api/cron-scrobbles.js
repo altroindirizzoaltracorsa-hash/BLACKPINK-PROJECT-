@@ -24,6 +24,26 @@ const SCROBBLE_CURSOR_KEY = 'bu_scrobble_cursor_v1';
 // the day.
 const CRON_LOCK_KEY  = 'bu_scrobble_cron_lock';
 const CRON_LOCK_TTL_S = 600;
+// ── Accounts Last.fm does not have ──
+// username (lowercased) → { hits, since, last, probed }. About 29 of ~200 rows
+// are things like "blackPink@gmail.com", "Userlast.fm" or a pasted profile URL
+// — people typed the wrong thing into the signup box. Every one of them cost a
+// Last.fm call and a slice of the run's time budget EVERY HOUR, forever, and a
+// run that spends its budget stops before the end of the board.
+//
+// SKIPPED, NEVER DELETED. A 404 also means "renamed their Last.fm", and the
+// row holds that blink's history. Their entry and their numbers are untouched;
+// all that stops is the hourly call. Three consecutive 404/403s before a
+// username is treated this way, so one bad night at Last.fm cannot retire
+// anybody.
+//
+// AND IT LETS GO BY ITSELF. Once a day one call is allowed through for each
+// skipped name (the probe), so an account that comes back rejoins on its own —
+// otherwise this is a trap: the one thing we would never find out is that we
+// were wrong. A successful refresh clears the mark outright.
+const LFM_DEAD_KEY   = 'bu_lfm_dead_v1';
+const DEAD_AFTER     = 3;                  // consecutive misses before skipping
+const DEAD_PROBE_MS  = 24 * 60 * 60 * 1000; // how often a skipped name is retried
 const GOAL_HISTORY_KEY = 'bu_goal_history_v1';
 const GOAL_PRIMARY   = 15000;
 const GOAL_SECONDARY = 20000;
@@ -1117,6 +1137,38 @@ export default async function handler(req, res) {
   let lfmCache = null;
   try { lfmCache = (await redis.get(LFM_CACHE_KEY)) || {}; } catch { lfmCache = {}; }
 
+  // The names Last.fm does not have — see LFM_DEAD_KEY. Read once, mutated in
+  // the loop, written once at the end, exactly like lfmCache. Failing open
+  // (empty on a read error) means a bad Redis read costs a normal run, never a
+  // run that wrongly skips the whole board.
+  let deadList = null;
+  try { deadList = (await redis.get(LFM_DEAD_KEY)) || {}; } catch { deadList = {}; }
+  const deadNow = Date.now();
+  // Skipped unless it is this name's turn to be re-tried. `probed` is when we
+  // last let one through, so the daily retry is per name rather than a herd of
+  // them on one run.
+  const isDead = (name) => {
+    const d = deadList[String(name || '').toLowerCase()];
+    if (!d || !(d.hits >= DEAD_AFTER)) return false;
+    return !(deadNow - (d.probed || d.last || 0) >= DEAD_PROBE_MS);
+  };
+  const markProbed = (name) => {
+    const k = String(name || '').toLowerCase();
+    if (deadList[k]) deadList[k].probed = deadNow;
+  };
+  const markMiss = (name, msg) => {
+    // Only "Last.fm does not have this account" counts. A timeout, a 500 or a
+    // rate-limit is Last.fm having a bad minute and must never retire a real
+    // blink — which is the whole way a skip list turns into silent data loss.
+    if (!/HTTP (404|403)/.test(String(msg || ''))) return;
+    const k = String(name || '').toLowerCase();
+    const d = deadList[k] || { hits: 0, since: deadNow };
+    d.hits = (d.hits || 0) + 1;
+    d.last = deadNow;
+    deadList[k] = d;
+  };
+  const markAlive = (name) => { delete deadList[String(name || '').toLowerCase()]; };
+
   // Stop cleanly rather than being killed mid-write. Whatever is left becomes
   // the next run's starting point, which is the whole point of the rotation.
   const RUN_BUDGET_MS = Number(process.env.SCROBBLE_RUN_BUDGET_MS || 180000);
@@ -1130,6 +1182,10 @@ export default async function handler(req, res) {
   const ok        = [];
   const failed    = [];
   const unverified = [];
+  // Names skipped this run because Last.fm does not have them. Reported so
+  // the list is visible rather than silently growing — a skip list nobody
+  // can see is how a real blink disappears off the board for good.
+  const dead       = [];
   // Per-user floored daily counts captured this run, keyed by owner id, for the
   // durable per-day archive (user_daily_counts). This is the store that makes
   // badges match the leaderboard/finalized board on every device: each day is
@@ -1147,8 +1203,14 @@ export default async function handler(req, res) {
     }
     await Promise.all(users.slice(i, i + batchSize).map(async entry => {
       if (!isVerified(entry)) { unverified.push(entry.username); return; }
+      // A name Last.fm does not have, outside its daily retry. Costs nothing:
+      // no call, no time off the run's budget, and the row is left exactly as
+      // it is. That budget is the point — the slot this frees goes to a real
+      // blink further down the board.
+      if (isDead(entry.username)) { dead.push(entry.username); return; }
       try {
         const refreshed = await refreshUser(entry, sb, linkedMap, nameInfo, lfmCache);
+        markAlive(entry.username);
         // Key by displayName (lowercased) so linked-account rows consolidate
         data.users[refreshed.displayName.toLowerCase()] = refreshed;
         // Remove the old key if the display name differs from the raw username
@@ -1196,6 +1258,12 @@ export default async function handler(req, res) {
         ok.push(refreshed.displayName);
       } catch (e) {
         failed.push({ username: entry.username, error: e.message });
+        // Count it towards the skip list — but ONLY a 404/403, and only after
+        // three in a row (see LFM_DEAD_KEY). This is also the line that closes
+        // the probe: a retried name that fails again records a fresh `probed`,
+        // so it goes quiet for another day instead of being tried every run.
+        markMiss(entry.username, e.message);
+        markProbed(entry.username);
         // A seed that can't be refreshed (e.g. Last.fm 404/403 on that account)
         // must not linger as a 0-score skeleton — drop it so the board stays clean.
         if (seededKeys.has(entry.username.toLowerCase())) {
@@ -1334,6 +1402,22 @@ export default async function handler(req, res) {
       await redis.set(LFM_CACHE_KEY, lfmCache);
     }
   } catch (e) { console.error('lastfm cache write failed:', e.message || e); }
+
+  // The skip list, written the same way and pruned the same way: a name that
+  // has left the board stops being tracked here too, so this key follows the
+  // board rather than growing forever.
+  try {
+    if (deadList) {
+      const live = new Set();
+      for (const e of Object.values(data.users)) {
+        for (const a of (e.linkedAccounts || [{ username: e.username }])) {
+          if (a.username) live.add(a.username.toLowerCase());
+        }
+      }
+      for (const k of Object.keys(deadList)) if (!live.has(k)) delete deadList[k];
+      await redis.set(LFM_DEAD_KEY, deadList);
+    }
+  } catch (e) { console.error('lastfm dead-list write failed:', e.message || e); }
 
   // Freeze the finalized daily/weekly board for the CURRENT period from the fresh,
   // floored board. Overwrites each run; the last run before the 2am reset (the
@@ -1559,7 +1643,7 @@ export default async function handler(req, res) {
   if (haveLock) { try { await redis.del(CRON_LOCK_KEY); } catch {} }
   res.setHeader('Cache-Control', 'no-store');
   res.status(200).json({
-    ok: true, seeded, refreshed: ok, failed, unverified, merged: [...removedKeys],
+    ok: true, seeded, refreshed: ok, failed, unverified, dead, merged: [...removedKeys],
     dailyArchived, goalRecorded,
     // Diagnostics. lastfmCalls is the number this run actually spent, which is
     // the figure to watch: it was ~3,600 before the idle gate.

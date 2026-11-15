@@ -178,7 +178,8 @@ for (const { slug, call } of cards) {
     if (sent.err) { bad(`${slug} shares its own countdown`, `${call} threw: ${sent.err}`); }
     else {
       const text = sent.caption || sent.opened || '';
-      const url  = (text.match(/https?:\/\/[^\s]+/g) || []).pop() || text.trim().split('\n').pop();
+      const all  = text.match(/https?:\/\/[^\s]+/g) || [];
+      const url  = all.pop() || text.trim().split('\n').pop();
       if (!text) bad(`${slug} shares its own countdown`, 'nothing was shared or copied');
       else if (url && url.includes(`/countdowns/${slug}`))
         ok(`${slug} shares its own countdown`, url);
@@ -186,14 +187,37 @@ for (const { slug, call } of cards) {
         bad(`${slug} shares its own countdown`,
             `it sent ${url || '(no link)'} — ${/\/countdowns\//.test(url || '')
               ? 'that is somebody else\'s release' : 'no countdown link at all'}`);
-      // The link has to be the real host too. A bare "blinksunited.com" in a
-      // caption is not a link on most platforms, and /countdowns/<slug> on its
+      // The link has to be the real host too, and /countdowns/<slug> on its
       // own resolves against whatever the reader is looking at.
       if (url && /\/countdowns\//.test(url)) {
         /^https:\/\/www\.blinksunited\.com\/countdowns\//.test(url)
           ? ok(`  and as a full https link`)
           : bad(`  and as a full https link`, url);
       }
+
+      // ── AND IT IS THE ONLY ADDRESS OF OURS IN THE POST ──
+      // This file used to take the LAST url in the caption, and that is why
+      // it stayed green through the bug it exists to catch. The captions also
+      // said "Count it down on blinksunited.com" in the sentence ABOVE the
+      // link — and every platform that matters (WhatsApp, Telegram, Discord,
+      // iMessage, X, Facebook) auto-links a bare domain and previews the
+      // FIRST link, not the last. So the picture on a shared Sun Showers post
+      // was blinksunited.com → 307 → /awards → the OT4 group photo, while the
+      // countdown's own page served perfect tags that nothing ever fetched.
+      //
+      // So: no bare mention of our host, and the first of our links is the
+      // deep link. An artist's own domain (jisoo.io, lalisaofficial.com) may
+      // come first — that is a real destination for that release and its
+      // preview is correct. Only OUR host is pinned here.
+      const ours = (text.match(/(?:https?:\/\/)?(?:www\.)?blinksunited\.com[^\s]*/gi) || []);
+      const bare = ours.filter((u) => !/^https:\/\/www\.blinksunited\.com\//.test(u));
+      bare.length === 0
+        ? ok(`  and names us without a second address`)
+        : bad(`  and names us without a second address`,
+            `${bare.join(', ')} — a bare domain is auto-linked and previews first, so THIS is the picture people see`);
+      ours[0] && /^https:\/\/www\.blinksunited\.com\/countdowns\//.test(ours[0])
+        ? ok(`  and ours is the first of our links`, ours[0])
+        : bad(`  and ours is the first of our links`, ours[0] || '(none)');
     }
     errs.length === 0 ? ok(`  and nothing threw`) : bad(`  and nothing threw`, errs.slice(0, 2).join(' | '));
   } catch (e) {
