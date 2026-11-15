@@ -86,16 +86,25 @@
     max-width: 48ch; margin: 1rem auto 0;
   }
 
-  /* The wins, in the shape /vmas uses: one line per trophy, category first,
-     then who, then the song. No losses — see the note in the hero. */
-  .hero-wins { display: flex; flex-direction: column; gap: 0.55rem; margin: 0 0 1.1rem; }
-  .hero-win { font-family: var(--mono); font-size: 0.82rem; line-height: 1.5; color: var(--white); }
-  .hero-win .cat { color: var(--white); }
-  .hero-win .who { color: var(--pink); font-weight: 700; }
-  .hero-win .song { color: var(--muted); }
-  .hero-wins-hd { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em;
-    text-transform: uppercase; color: var(--muted); margin-bottom: 0.1rem; }
-  @media (max-width: 560px) { .hero-win { font-size: 0.76rem; } }
+  /* The wins, on the card that won them, in /vmas's own shape: a filled
+     ribbon naming the category, the artist under it, and a share button.
+     Takes --accent, so it is the Kids' Choice pink rather than the site's —
+     the two ballots on this page are told apart by colour and a win should
+     not be the one thing that ignores that. */
+  .kca-wins { display: flex; flex-direction: column; gap: 0.75rem; margin: 0.9rem 0 0; }
+  .won-ribbon { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.14em;
+    text-transform: uppercase; color: #12000a; background: var(--accent);
+    padding: 0.42rem 0.55rem; line-height: 1.3; }
+  .won-who { font-family: var(--mono); font-size: 0.86rem; color: var(--white);
+    margin-top: 0.45rem; line-height: 1.45; }
+  .won-who b { color: var(--accent); font-weight: 700; }
+  .won-who .song { color: var(--muted); }
+  .won-share { margin-top: 0.5rem; width: 100%; font-family: var(--mono); font-size: 0.6rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent);
+    background: rgba(255,126,235,0.12); border: 1px solid rgba(255,126,235,0.45);
+    padding: 0.6rem 0.5rem; cursor: pointer; transition: background .15s, border-color .15s; }
+  .won-share:hover { background: rgba(255,126,235,0.26); border-color: var(--accent); }
+  .won-share[disabled] { opacity: 0.6; cursor: default; }
 
   /* ── The two ballots ────────────────────────────────────────────────── */
   .section { padding: 1.4rem 0 3rem; }
@@ -209,13 +218,14 @@
          carries the dates), but this is static copy and said "taking votes
          right now" a week after the last vote could be cast.
 
-         THE WINS ARE LISTED, THE LOSS IS NOT. Not a hedge: a category we did
-         not win needs no sentence, because not winning is what the absence of
-         a trophy already says. Rendered from BU_KCA_WINS so this page cannot
-         disagree with the board about what was won. -->
+         THE WINS SIT ON THE KIDS' CHOICE CARD, not up here. This page is two
+         ballots side by side, and a win belongs to one of them — in the hero
+         it read as the page's news rather than as that award's result, which
+         is also how /vmas does it: the ribbon goes on the card that won.
+         The loss gets no line anywhere: not winning is what the absence of a
+         trophy already says. -->
     <div class="hero-eyebrow">Both ballots closed</div>
     <h1 class="hero-title">Vote for <span>BLACKPINK</span></h1>
-    <div id="hero-wins" class="hero-wins" hidden></div>
     <p class="hero-sub">
       The MAMA Fans' Choice has finished voting too — the winners are announced at the
       ceremony on <b>20–21 November</b>.
@@ -268,6 +278,12 @@
                   scrolling="no" loading="eager" src="/votecard-embed?embed=votecard&amp;card=kca"></iframe>
         </div>
         <p class="frame-fallback">Couldn't load the card — <a href="/voting?award=kca">open the Kids' Choice ballot on /voting</a>.</p>
+        <!-- UNDER the embed, not above it. The two ballots are one row and the
+             page is built on their cards starting on the same line — anything
+             inserted above a .frame-wrap knocks that column out of step with
+             the other, which is a rule with its own check. Below the card it
+             still reads as this ballot's result, which is the whole ask. -->
+        <div id="kca-wins" class="kca-wins" hidden></div>
         <!-- The collab, on the ballot it belongs to. The page existed only at a
              URL somebody had to be sent, which is useless for the half of its
              audience that is not in this fandom: a BLOOM arriving at the front
@@ -292,22 +308,40 @@
   <div class="foot-fine">Fan-made by Blinks United · Not affiliated with Mnet, Nickelodeon or YG Entertainment</div>
 </footer>
 
+<!-- vma-wins.js is here for BUWinCard, not for the VMA list: it draws and
+     shares whatever win it is handed, and defines globals only — nothing in it
+     touches the DOM until a share button is pressed. kca-wins.js is the data. -->
+<script src="/vma-wins.js"></script>
 <script src="/kca-wins.js"></script>
 <script>
-// The wins, from the single list that also draws them on the board and on the
-// share card. Hidden with nothing in it rather than printing an empty heading.
+// The wins, on the Kids' Choice card, from the single list that also draws
+// them on the voting board and on the share card. Hidden with nothing in it
+// rather than printing an empty heading — the day a ballot here has no result
+// yet, this block should not exist at all.
 (function () {
-  var box = document.getElementById('hero-wins');
+  var box = document.getElementById('kca-wins');
   var wins = window.BU_KCA_WINS || [];
   if (!box || !wins.length) return;
   var esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) {
     return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); };
-  box.innerHTML = '<div class="hero-wins-hd">\uD83C\uDFC6 2026 Kids\u2019 Choice Awards</div>'
-    + wins.map(function (w) {
-        return '<div class="hero-win">\uD83C\uDFC6 <span class="cat">' + esc(w.cat) + '</span> \u00b7 '
-          + '<span class="who">' + esc(w.who) + '</span>'
-          + (w.song ? ' \u2014 <span class="song">' + esc(w.song) + '</span>' : '') + '</div>';
-      }).join('');
+  wins.forEach(function (w) {
+    var row = document.createElement('div');
+    row.innerHTML = '<div class="won-ribbon">\uD83C\uDFC6 Winner \u00b7 ' + esc(w.cat) + '</div>'
+      + '<div class="won-who"><b>' + esc(w.who) + '</b>'
+      + (w.song ? ' \u2014 <span class="song">' + esc(w.song) + '</span>' : '') + '</div>';
+    // Only offered if something can actually draw it. On a page where
+    // vma-wins.js failed to load, a button that does nothing is worse than no
+    // button — the win still reads fine without one.
+    if (window.BUWinCard) {
+      var sh = document.createElement('button');
+      sh.className = 'won-share';
+      sh.type = 'button';
+      sh.textContent = '\u2191 Share this win';
+      sh.onclick = function () { window.BUWinCard.share(w, sh); };
+      row.appendChild(sh);
+    }
+    box.appendChild(row);
+  });
   box.hidden = false;
 })();
   // Each card reports its own height, tagged with which card it is: both
