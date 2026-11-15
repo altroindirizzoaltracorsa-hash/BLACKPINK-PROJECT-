@@ -113,7 +113,11 @@ new RegExp('data-target="' + DAY + 'T\\d\\d:\\d\\d:\\d\\dZ"').test(cardTag)
   : bad('and the date it names is the one that was announced', 'Nov 20 is not in the copy');
 // An unexplained clock is a time claim with no source: the reader cannot see
 // what it counts to, so the card has to say.
-/midnight where you are/i.test(text)
+// The CLAIM, not one phrasing of it: "midnight your time" and "midnight where
+// you are" say the same thing and the wording is the author's to change. What
+// must not happen is the sentence going away, which would leave a clock
+// asserting an hour nobody announced.
+/midnight (your time|where you are)/i.test(text)
   ? ok('and says what the clock is counting to')
   : bad('and says what the clock is counting to', 'the timer silently asserts an hour');
 // The old wording must be gone, not merely outnumbered.
