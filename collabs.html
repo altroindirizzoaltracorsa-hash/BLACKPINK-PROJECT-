@@ -113,8 +113,11 @@
   .cr-mark { flex: 0 0 auto; font-size: 0.8rem; }
   .cr-who { font-weight: 700; color: var(--text); }
   .cr-cat { color: var(--muted); }
-  .cr-row.lost .cr-who { color: var(--muted); }
-  .cr-note { font-size: 0.62rem; color: var(--muted); line-height: 1.6; margin-top: 0.55rem; }
+  /* Whose win it is, in that side's own colour — the same two the bar and the
+     table use, so a row is recognisably ours or theirs without a label. */
+  .cr-row.ours .cr-who { color: var(--pink); }
+  .cr-row.theirs .cr-who { color: var(--them); }
+  .cr-song { color: var(--muted); }
 
   /* The status marker. A collab nobody has agreed to is not an announcement,
      so it says so on its face wherever it is shown. */
@@ -803,10 +806,19 @@ var COLLABS = [
     // votes, not results, and two of the three categories we were in were won.
     // Only OUR categories are here. The partners' results are not recorded,
     // and an absent result must never render as a loss — see resultsHtml.
+    // WINNERS ONLY, both sides of the trade. A category that was not won needs
+    // no row: not winning is what the absence of a trophy already says, and
+    // spelling it out turns a record of what the trade achieved into a
+    // scoreline. BLACKPINK were up for Favorite Music Group or Duo — that is
+    // still listed under OUR CATEGORIES below, where the nominations live.
+    //
+    // Their side is here too, which is the whole point of a trade page: BINI
+    // and Ahn Hyo-seop are what BLINKs filled in, and both took their category.
     results: [
-      { who: 'JENNIE',    cat: 'Favorite Music Collaboration', nominee: 'Dracula (with JENNIE)', won: true },
-      { who: 'ROSÉ',      cat: 'Favorite Female Artist',  won: true },
-      { who: 'BLACKPINK', cat: 'Favorite Music Group or Duo', won: false },
+      { who: 'JENNIE',       cat: 'Favorite Music Collaboration', song: 'Dracula', ours: true },
+      { who: 'ROSÉ',         cat: 'Favorite Female Artist', ours: true },
+      { who: 'BINI',         cat: 'Favorite Global Music Star' },
+      { who: 'Ahn Hyo-seop', cat: 'Favorite Male Animated Voice From a Movie' },
     ],
     award: '2026 Kids’ Choice Awards',
     // Deadline is the KCA ballot's, copied from the campaign card on /voting:
@@ -2738,27 +2750,31 @@ function setPairView(k) { PAIR_VIEW = k; render(); }
 function toggleSplit() { SPLIT_OPEN = !SPLIT_OPEN; render(); }
 function openDay(k) { DAY_OPEN = (DAY_OPEN === k) ? null : k; render(); }
 
-// WON AND LOST ARE BOTH PRINTED, and the ones we have no result for are not
-// printed at all. An absent result rendering as a loss is the failure to avoid
-// here: this page carries other fandoms' categories too, nobody has told us
-// how those went, and quietly showing them as losses would be inventing a
-// result about somebody else's artist on their own collab page.
+// WINNERS ONLY, and both sides of the trade. A category that was not won gets
+// no row: not winning is what the absence of a trophy already says, and a
+// scoreline is not what this page is for. The nominations themselves are still
+// listed further down, so nothing is hidden by leaving a loss unwritten.
+//
+// `ours` only chooses the colour. Everything in this block is a win the trade
+// helped produce, and that is the point of showing their side beside ours —
+// BLINKs filled in BINI and Ahn Hyo-seop, and both took their category.
 function resultsHtml(c) {
-  if (!Array.isArray(c.results) || !c.results.length) return '';
-  var won = c.results.filter(function (r) { return r.won; }).length;
-  return '<div class="cr"><div class="cr-h">How it ended · '
-    + won + ' of ' + c.results.length + ' won</div>'
-    + c.results.map(function (r) {
-        return '<div class="cr-row' + (r.won ? '' : ' lost') + '">'
-          + '<span class="cr-mark">' + (r.won ? '🏆' : '—') + '</span>'
+  var wins = (c.results || []);
+  if (!wins.length) return '';
+  return '<div class="cr"><div class="cr-h">🏆 How it ended · '
+    + wins.length + ' win' + (wins.length === 1 ? '' : 's') + ' across the trade</div>'
+    + wins.map(function (r) {
+        return '<div class="cr-row' + (r.ours ? ' ours' : ' theirs') + '">'
+          + '<span class="cr-mark">🏆</span>'
           + '<span><span class="cr-who">' + esc(r.who) + '</span> · '
-          + '<span class="cr-cat">' + esc(r.cat)
-          + (r.nominee && r.nominee !== r.who ? ' (' + esc(r.nominee) + ')' : '')
-          + '</span></span></div>';
+          + '<span class="cr-cat">' + esc(r.cat) + '</span>'
+          // The song in the shape /vmas uses. The ballot's own entry name is
+          // "Dracula (with JENNIE)", and printing that whole string after her
+          // name gave "JENNIE · … (Dracula (with JENNIE))" — her name twice
+          // and two sets of brackets.
+          + (r.song ? ' \u2014 <span class="cr-song">\u201c' + esc(r.song) + '\u201d</span>' : '')
+          + '</span></div>';
       }).join('')
-    + '<div class="cr-note">Only the categories BLACKPINK and the members were in. '
-    + 'How ' + esc(partnerActs(c)) + ' finished is not recorded here — a blank is a '
-    + 'result we were not told, never a loss.</div>'
     + '</div>';
 }
 

@@ -1749,8 +1749,8 @@ console.log('\n--- when the trade has finished');
   const got = await prev.evaluate(() => {
     COLLABS[0].status = 'ended';
     COLLABS[0].results = [
-      { who: 'JENNIE', cat: 'Favorite Music Collaboration', won: true },
-      { who: 'BLACKPINK', cat: 'Favorite Music Group or Duo', won: false },
+      { who: 'JENNIE', cat: 'Favorite Music Collaboration', ours: true },
+      { who: 'BINI', cat: 'Favorite Global Music Star' },
     ];
     render();
     const art = document.querySelector('.collab');
@@ -1759,22 +1759,22 @@ console.log('\n--- when the trade has finished');
       result:  !!art.querySelector('.cr'),
       rows:    art.querySelectorAll('.cr-row').length,
       lost:    art.querySelectorAll('.cr-row.lost').length,
+      theirs:  art.querySelectorAll('.cr-row.theirs').length,
       board:   !!art.querySelector('.vt, .board, .lb'),
       tally:   !!art.querySelector('.bar'),
       tabs:    art.querySelectorAll('.tabs > .tab').length,
       closed:  /CLOSED/.test(txt),
       finished: /Finished/.test(txt),
-      notRecorded: /not recorded here/i.test(txt),
     };
   });
   const check = (c, m, d) => (c ? ok(m, d) : bad(m, d));
   check(got.result, 'the result is shown');
-  check(got.rows === 2, '  one row per category we were in', `${got.rows}`);
-  // Both outcomes printed. A results block that only listed wins would be a
-  // scoreboard, not a record.
-  check(got.lost === 1, '  including the one that was lost', `${got.lost} lost`);
-  check(got.notRecorded,
-        '  and says a blank is a result we were not told, not a loss');
+  check(got.rows === 2, '  one row per win', `${got.rows}`);
+  // WINNERS ONLY, on both sides of the trade. A lost category gets no row —
+  // the nominations are listed further down, so nothing is hidden by leaving
+  // a defeat unwritten, and a trade page is not a scoreline.
+  check(got.lost === 0, '  and nothing rendered as a loss', `${got.lost} loss rows`);
+  check(got.theirs === 1, '  with the partner\'s win beside ours', `${got.theirs}`);
   check(got.tally, 'the vote totals survive the close');
   check(got.board, '  and so does the board of who helped');
   check(got.tabs === 0, 'but the period tabs are gone', `${got.tabs} tabs`);

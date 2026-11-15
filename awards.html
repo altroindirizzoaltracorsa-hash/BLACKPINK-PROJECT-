@@ -4,18 +4,18 @@
 <meta charset="UTF-8">
 <title>Vote for BLACKPINK — MAMA 2026</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="The 2026 MAMA Awards Fans' Choice ballot is open for BLACKPINK. The Kids' Choice Awards have finished — JENNIE and ROSÉ won. Where to vote, the rules, and how long is left.">
+<meta name="description" content="JENNIE and ROSÉ won at the 2026 Nickelodeon Kids' Choice Awards. The MAMA Fans' Choice has finished voting too — winners at the ceremony, 20–21 November.">
 <meta name="theme-color" content="#080808">
 <meta property="og:site_name" content="Blinks United">
 <meta property="og:title" content="Vote for BLACKPINK — MAMA 2026">
-<meta property="og:description" content="The MAMA Fans' Choice ballot is open. The Kids' Choice Awards have finished — JENNIE and ROSÉ won.">
+<meta property="og:description" content="JENNIE and ROSÉ won at the 2026 Kids' Choice Awards. MAMA's winners come at the ceremony, 20–21 November.">
 <meta property="og:url" content="https://www.blinksunited.com/awards">
 <meta property="og:image" content="https://www.blinksunited.com/vote-blackpink-ot4.jpg">
 <meta property="og:image:alt" content="BLACKPINK">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Vote for BLACKPINK — MAMA 2026">
-<meta name="twitter:description" content="The MAMA Fans' Choice ballot is open. The Kids' Choice Awards have finished — JENNIE and ROSÉ won.">
+<meta name="twitter:description" content="JENNIE and ROSÉ won at the 2026 Kids' Choice Awards. MAMA's winners come at the ceremony, 20–21 November.">
 <meta name="twitter:image" content="https://www.blinksunited.com/vote-blackpink-ot4.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -85,6 +85,17 @@
     color: var(--muted); font-size: 0.82rem; line-height: 1.75;
     max-width: 48ch; margin: 1rem auto 0;
   }
+
+  /* The wins, in the shape /vmas uses: one line per trophy, category first,
+     then who, then the song. No losses — see the note in the hero. */
+  .hero-wins { display: flex; flex-direction: column; gap: 0.55rem; margin: 0 0 1.1rem; }
+  .hero-win { font-family: var(--mono); font-size: 0.82rem; line-height: 1.5; color: var(--white); }
+  .hero-win .cat { color: var(--white); }
+  .hero-win .who { color: var(--pink); font-weight: 700; }
+  .hero-win .song { color: var(--muted); }
+  .hero-wins-hd { font-family: var(--mono); font-size: 0.62rem; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 0.1rem; }
+  @media (max-width: 560px) { .hero-win { font-size: 0.76rem; } }
 
   /* ── The two ballots ────────────────────────────────────────────────── */
   .section { padding: 1.4rem 0 3rem; }
@@ -192,16 +203,22 @@
 
 <section id="hero">
   <div class="wrap">
-    <!-- ONE ballot now. The Kids' Choice closed on 14 Nov and its card below
-         knows that on its own (VV_AWARD_CLOSES carries the date, and the embed
-         draws the closed state) — but this line is static copy and went on
-         saying two were open after one had finished and been won. -->
-    <div class="hero-eyebrow">One ballot open · one finished</div>
+    <!-- NEITHER BALLOT IS OPEN. The Kids' Choice closed on 14 Nov and has been
+         won; MAMA's final round closed on 8 Nov and is waiting on the ceremony,
+         20–21 Nov. Both cards below know their own state (VV_AWARD_CLOSES
+         carries the dates), but this is static copy and said "taking votes
+         right now" a week after the last vote could be cast.
+
+         THE WINS ARE LISTED, THE LOSS IS NOT. Not a hedge: a category we did
+         not win needs no sentence, because not winning is what the absence of
+         a trophy already says. Rendered from BU_KCA_WINS so this page cannot
+         disagree with the board about what was won. -->
+    <div class="hero-eyebrow">Both ballots closed</div>
     <h1 class="hero-title">Vote for <span>BLACKPINK</span></h1>
+    <div id="hero-wins" class="hero-wins" hidden></div>
     <p class="hero-sub">
-      The MAMA Fans' Choice is taking votes right now. The Nickelodeon Kids' Choice Awards
-      have finished — <b>JENNIE</b> won Favorite Music Collaboration and <b>ROSÉ</b> won
-      Favorite Female Artist; BLACKPINK did not take Favorite Music Group or Duo.
+      The MAMA Fans' Choice has finished voting too — the winners are announced at the
+      ceremony on <b>20–21 November</b>.
       Each card below is the live one from our voting page — the countdown, the rules and the ballot
       link are the same ones it carries there.
     </p>
@@ -275,7 +292,24 @@
   <div class="foot-fine">Fan-made by Blinks United · Not affiliated with Mnet, Nickelodeon or YG Entertainment</div>
 </footer>
 
+<script src="/kca-wins.js"></script>
 <script>
+// The wins, from the single list that also draws them on the board and on the
+// share card. Hidden with nothing in it rather than printing an empty heading.
+(function () {
+  var box = document.getElementById('hero-wins');
+  var wins = window.BU_KCA_WINS || [];
+  if (!box || !wins.length) return;
+  var esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) {
+    return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); };
+  box.innerHTML = '<div class="hero-wins-hd">\uD83C\uDFC6 2026 Kids\u2019 Choice Awards</div>'
+    + wins.map(function (w) {
+        return '<div class="hero-win">\uD83C\uDFC6 <span class="cat">' + esc(w.cat) + '</span> \u00b7 '
+          + '<span class="who">' + esc(w.who) + '</span>'
+          + (w.song ? ' \u2014 <span class="song">' + esc(w.song) + '</span>' : '') + '</div>';
+      }).join('');
+  box.hidden = false;
+})();
   // Each card reports its own height, tagged with which card it is: both
   // frames post to the same window, so an untagged height would be applied to
   // whichever frame the parent happened to look up.
