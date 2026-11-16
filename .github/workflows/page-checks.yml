@@ -183,6 +183,14 @@ jobs:
         if: always()
         run: node .github/scripts/test_awards_page.mjs
 
+      # A shared link is half the site's reach and none of it is visible from
+      # the page. /vmas asked for a wide banner and handed the scraper a
+      # 414x414 square, so every share came up as a small thumbnail — correct
+      # markup, correct picture, wrong shape, and nothing on screen to see.
+      - name: Link previews are the shape the pages ask for
+        if: always()
+        run: node .github/scripts/test_og_images.mjs
+
       # The panel under a closed ballot. One endpoint serves several awards and
       # the VMA dimension is the one you get by forgetting the parameter, so a
       # wrong total here would be real, large and plausible — and a failed
