@@ -89,9 +89,19 @@ const COUNTDOWNS = {
     description: "Counting down to LISA's “Leave With Me”, her song for the documentary ALWAYS LALISA, out Nov 18, 2026. No release time announced yet — the countdown runs to midnight where you are.",
     image: '/og-countdown-leavewithme.jpg',
   },
+  // PAST TENSE, and it stays that way. This entry announced "voting closes
+  // Sep 25" — title, description and the picture all three — until the middle
+  // of November, because a preview is the one part of a page that nothing on
+  // screen ever shows you. The card itself in index.html had been switched to
+  // "Fan Voting Closed" the day the ballot shut; this had not, and nobody
+  // could see the difference without sharing the link to somebody.
+  //
+  // So every claim here is now a settled one: an award that was held, a
+  // ballot that shut, a list of who was nominated, a result. Write nothing in
+  // this file that has to be revisited on a date.
   'vmas': {
-    title: '2026 VMAs — voting closes Sep 25 | Countdown · BLINKS UNITED',
-    description: 'BLACKPINK, LISA and JISOO x ZAYN are nominated at the 2026 VMAs. Fan voting closes Sep 25, 6PM ET.',
+    title: '2026 VMAs — BLACKPINK, LISA and JISOO × ZAYN | Countdown · BLINKS UNITED',
+    description: 'BLACKPINK, LISA and JISOO × ZAYN were nominated at the 2026 VMAs. Fan voting closed Sep 25 — LISA won Best Pop for “Dream”.',
     image: '/og-countdown-vmas.jpg',
   },
 };

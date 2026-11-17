@@ -4,11 +4,11 @@
 <meta charset="UTF-8">
 <title>BLACKPINK at the 2026 BreakTudo Awards</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="BLACKPINK, JENNIE, LISA, JISOO and BLINKs are nominated in 8 categories at the 2026 BreakTudo Awards. Where to vote, the rules, and where we stand in the partial rankings.">
+<meta name="description" content="BLACKPINK, JENNIE, LISA, JISOO and BLINKs are nominated in 8 categories at the 2026 BreakTudo Awards. Voting has closed — the winners are revealed at the ceremony in São Paulo on 24 November 2026.">
 <meta name="theme-color" content="#080808">
 <meta property="og:site_name" content="Blinks United">
 <meta property="og:title" content="BLACKPINK at the 2026 BreakTudo Awards">
-<meta property="og:description" content="Nominated in 8 categories. Voting is open until Oct 17 — here is where to vote and where we stand.">
+<meta property="og:description" content="Nominated in 8 categories. Voting closed on Oct 17 — the winners are revealed at the ceremony in São Paulo on 24 November 2026.">
 <meta property="og:url" content="https://www.blinksunited.com/breaktudo">
 <meta property="og:image" content="https://www.blinksunited.com/og-awards.jpg">
 <meta property="og:image:width" content="1200">
@@ -17,7 +17,7 @@
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="BLACKPINK at the 2026 BreakTudo Awards">
-<meta name="twitter:description" content="Nominated in 8 categories. Voting is open until Oct 17 — here is where to vote and where we stand.">
+<meta name="twitter:description" content="Nominated in 8 categories. Voting closed on Oct 17 — the winners are revealed at the ceremony in São Paulo on 24 November 2026.">
 <meta name="twitter:image" content="https://www.blinksunited.com/og-awards.jpg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -100,6 +100,22 @@
     text-decoration: none; display: inline-block; transition: filter .15s, transform .15s; }
   .cta-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
   .cta-note { margin-top: 0.7rem; text-align: center; font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.06em; color: var(--muted); }
+
+  /* ── Where to watch ──
+     Shown once the ballot is shut, which is when "where do I see it" is the
+     only question the page can still answer. Reads as one quiet block under
+     the countdown rather than a section of its own: it is four facts, and a
+     full-width heading over four facts is a page pretending to have more to
+     say than it has. */
+  .watch { margin: 1.5rem auto 0; max-width: 40rem; border: 1px solid var(--border);
+    border-radius: 12px; padding: 1rem 1.1rem; text-align: center; }
+  .watch-hd { font-family: var(--mono); font-size: 0.58rem; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--pink); margin-bottom: 0.55rem; }
+  .watch-when { font-family: var(--mono); font-size: 0.82rem; color: var(--white); line-height: 1.5; }
+  .watch-when b { color: var(--pink); font-weight: 500; }
+  .watch-where { font-family: var(--mono); font-size: 0.66rem; line-height: 1.75;
+    color: var(--muted); margin-top: 0.6rem; }
+  .watch-where b { color: rgba(245,240,240,0.9); font-weight: 500; }
 
   /* ── Sections ── */
   .section { padding: 2.6rem 0 0; }
@@ -279,6 +295,18 @@
       <a class="cta-btn" href="https://vote.breaktudoawards.com/" target="_blank" rel="noopener noreferrer">🗳️ Vote now ↗</a>
     </div>
     <div class="cta-note" id="cta-note">Opens vote.breaktudoawards.com · winners revealed Nov 24</div>
+
+    <!-- The ceremony, as BreakTudo themselves announce it. Not a schedule we
+         worked out: every line here is from the award's own site, which is
+         the only thing that can say where it will be shown. -->
+    <div class="watch" id="watch" hidden>
+      <div class="watch-hd">The ceremony</div>
+      <div class="watch-when"><b>Tue 24 November 2026</b> &middot; S&atilde;o Paulo</div>
+      <div class="watch-where">
+        Live on the <b>BreakTudo</b> and <b>Telemil&ecirc;nio</b> channels on YouTube, and on <b>Yeeaah TV</b>.<br>
+        Also on <b>Box Brazil Play</b>, through <b>Prime Video</b> and <b>Claro TV</b>.
+      </div>
+    </div>
   </div>
 </section>
 
@@ -288,7 +316,7 @@
     <div class="pr-table" id="pr-table"></div>
     <!-- Below the table, not above it: this explains what you have just read,
          and above it was the last thing between the reader and the standings. -->
-    <div class="pr-note">BreakTudo publishes a <b>top 5 per category</b> while voting runs. Each partial counts <b>every vote since voting opened on 17 September</b> — they are running totals, not separate rounds, so holding a place across a longer window means the lead held as more votes came in. The <b>fourth is the last</b>, published 11 October and counting votes to <b>10 October</b> — and it is a special edition that lists <b>all eight</b> places per category instead of five. That is why BLINKs finally show a number rather than “Not top 5”: nothing moved, we can simply see further down the list. Voting is still open until the 17th, so none of this is final.</div>
+    <div class="pr-note">BreakTudo publishes a <b>top 5 per category</b> while voting runs. Each partial counts <b>every vote since voting opened on 17 September</b> — they are running totals, not separate rounds, so holding a place across a longer window means the lead held as more votes came in. The <b>fourth is the last</b>, published 11 October and counting votes to <b>10 October</b> — and it is a special edition that lists <b>all eight</b> places per category instead of five. That is why BLINKs finally show a number rather than “Not top 5”: nothing moved, we can simply see further down the list. Voting has since closed, so this is the last partial there will be — the standings below are where the ballot ended, not where it finished.</div>
     <button class="pr-share" id="pr-share" type="button" onclick="shareStandings(this)">↑ Share these standings</button>
     <div class="pr-legend" id="pr-legend"></div>
     <div id="pr-sources"></div>
@@ -297,7 +325,7 @@
 
 <section class="section">
   <div class="wrap">
-    <p class="hero-sub noms-intro">BLACKPINK, JENNIE, LISA, JISOO and BLINKs are up for <b>8 awards</b>. No account, no app, no daily limit — you can vote as many times as you like until the ballot closes.</p>
+    <p class="hero-sub noms-intro">BLACKPINK, JENNIE, LISA, JISOO and BLINKs are up for <b>8 awards</b>. No account, no app and no daily limit while the ballot was open — it closed on <b>Oct 17</b>, and the winners come at the ceremony.</p>
     <div class="section-head" id="noms-head">Nominations</div>
     <div class="noms" id="noms"></div>
   </div>
@@ -431,7 +459,7 @@
     'No account and no app — vote straight at <b>vote.breaktudoawards.com</b>.',
     'Cast in <b>sequences of 5</b>, clear the Cloudflare check, then hit <b>“Enviar Votos”</b>.',
     '<b>No total limit.</b> The page refreshes after each batch so you can keep going — and every category is separate, so vote in all eight.',
-    'Voting runs to <b>Oct 17, 23:59 BRT</b> (Brasília time).',
+    'Voting ran to <b>Oct 17, 23:59 BRT</b> (Brasília time) and is now closed.',
     'Winners are revealed <b>Nov 24, 2026</b>.',
   ];
 
@@ -828,6 +856,10 @@
       if (row) row.style.display = 'none';
       var note = document.getElementById('cta-note');
       if (note) note.textContent = 'The ballot is closed — nothing more can be cast';
+      // "Where do I watch it" is the only question left once nobody can vote,
+      // so this appears on the same condition that takes the Vote button away.
+      var watch = document.getElementById('watch');
+      if (watch) watch.hidden = false;
       return;
     }
     var d = Math.floor(diff / 86400000);
