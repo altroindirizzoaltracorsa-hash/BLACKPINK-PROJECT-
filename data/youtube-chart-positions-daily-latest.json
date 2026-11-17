@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-11-16T15:00:25.952Z",
+  "generatedAt": "2026-11-17T15:36:31.621Z",
   "chartType": "daily",
-  "date": "2026-11-16",
+  "date": "2026-11-17",
   "regions": {
     "global": {
       "region": "Global",
       "gl": "US",
       "period": {
-        "entityId": "daily:20261116:global",
+        "entityId": "daily:20261117:global",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "global"
       },
       "totalEntries": 100,
@@ -20,10 +20,10 @@
       "region": "South Korea",
       "gl": "KR",
       "period": {
-        "entityId": "daily:20261116:kr",
+        "entityId": "daily:20261117:kr",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "kr"
       },
       "totalEntries": 100,
@@ -31,26 +31,14 @@
         {
           "chartType": "TOP_VIDEOS",
           "member": "JISOO",
-          "position": 85,
+          "position": 93,
           "name": "ADDICTED",
           "artists": [
             "JISOO"
           ],
           "videoId": "Pksr9T8m_aA",
-          "viewCount": 37362,
+          "viewCount": 31567,
           "releaseDate": "2026-10-29"
-        },
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "JISOO",
-          "position": 98,
-          "name": "ADDICTED (Dance Performance Video)",
-          "artists": [
-            "JISOO"
-          ],
-          "videoId": "dND8ysuZqlA",
-          "viewCount": 33068,
-          "releaseDate": "2026-11-05"
         }
       ]
     },
@@ -58,10 +46,10 @@
       "region": "Japan",
       "gl": "JP",
       "period": {
-        "entityId": "daily:20261116:jp",
+        "entityId": "daily:20261117:jp",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "jp"
       },
       "totalEntries": 100,
@@ -71,10 +59,10 @@
       "region": "Taiwan",
       "gl": "TW",
       "period": {
-        "entityId": "daily:20261116:tw",
+        "entityId": "daily:20261117:tw",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "tw"
       },
       "totalEntries": 100,
@@ -82,25 +70,25 @@
         {
           "chartType": "TOP_VIDEOS",
           "member": "JISOO",
-          "position": 42,
+          "position": 37,
           "name": "ADDICTED",
           "artists": [
             "JISOO"
           ],
           "videoId": "Pksr9T8m_aA",
-          "viewCount": 33698,
+          "viewCount": 29684,
           "releaseDate": "2026-10-29"
         },
         {
           "chartType": "TOP_VIDEOS",
           "member": "JISOO",
-          "position": 94,
+          "position": 83,
           "name": "ADDICTED (Dance Performance Video)",
           "artists": [
             "JISOO"
           ],
           "videoId": "dND8ysuZqlA",
-          "viewCount": 19421,
+          "viewCount": 15848,
           "releaseDate": "2026-11-05"
         }
       ]
@@ -109,10 +97,10 @@
       "region": "Hong Kong",
       "gl": "HK",
       "period": {
-        "entityId": "daily:20261116:hk",
+        "entityId": "daily:20261117:hk",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "hk"
       },
       "totalEntries": 100,
@@ -120,13 +108,155 @@
         {
           "chartType": "TOP_VIDEOS",
           "member": "JISOO",
-          "position": 34,
+          "position": 33,
           "name": "ADDICTED",
           "artists": [
             "JISOO"
           ],
           "videoId": "Pksr9T8m_aA",
-          "viewCount": 7509,
+          "viewCount": 7215,
+          "releaseDate": "2026-10-29"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 83,
+          "name": "ADDICTED (Dance Performance Video)",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "dND8ysuZqlA",
+          "viewCount": 3875,
+          "releaseDate": "2026-11-05"
+        }
+      ]
+    },
+    "id": {
+      "region": "Indonesia",
+      "gl": "ID",
+      "period": {
+        "entityId": "daily:20261117:id",
+        "periodType": "daily",
+        "startDate": "20261117",
+        "endDate": "20261117",
+        "region": "id"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "th": {
+      "region": "Thailand",
+      "gl": "TH",
+      "period": {
+        "entityId": "daily:20261117:th",
+        "periodType": "daily",
+        "startDate": "20261117",
+        "endDate": "20261117",
+        "region": "th"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "ph": {
+      "region": "Philippines",
+      "gl": "PH",
+      "period": {
+        "entityId": "daily:20261117:ph",
+        "periodType": "daily",
+        "startDate": "20261117",
+        "endDate": "20261117",
+        "region": "ph"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "my": {
+      "region": "Malaysia",
+      "gl": "MY",
+      "period": {
+        "entityId": "daily:20261117:my",
+        "periodType": "daily",
+        "startDate": "20261117",
+        "endDate": "20261117",
+        "region": "my"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JENNIE",
+          "position": 62,
+          "name": "One Of The Girls",
+          "artists": [
+            "The Weeknd",
+            "JENNIE",
+            "Lily-Rose Depp"
+          ],
+          "videoId": "Mx92lTYxrJQ",
+          "viewCount": 30583,
+          "releaseDate": "2023-07-06"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 97,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 22471,
+          "releaseDate": "2026-09-03"
+        }
+      ]
+    },
+    "vn": {
+      "region": "Vietnam",
+      "gl": "VN",
+      "period": {
+        "entityId": "daily:20261117:vn",
+        "periodType": "daily",
+        "startDate": "20261117",
+        "endDate": "20261117",
+        "region": "vn"
+      },
+      "totalEntries": 100,
+      "hits": []
+    },
+    "sg": {
+      "region": "Singapore",
+      "gl": "SG",
+      "period": {
+        "entityId": "daily:20261117:sg",
+        "periodType": "daily",
+        "startDate": "20261117",
+        "endDate": "20261117",
+        "region": "sg"
+      },
+      "totalEntries": 100,
+      "hits": [
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "LISA",
+          "position": 44,
+          "name": "SaWaDiKa (Official Music Video)",
+          "artists": [
+            "LISA"
+          ],
+          "videoId": "FyS5dAywkEo",
+          "viewCount": 3763,
+          "releaseDate": "2026-09-03"
+        },
+        {
+          "chartType": "TOP_VIDEOS",
+          "member": "JISOO",
+          "position": 45,
+          "name": "ADDICTED",
+          "artists": [
+            "JISOO"
+          ],
+          "videoId": "Pksr9T8m_aA",
+          "viewCount": 3754,
           "releaseDate": "2026-10-29"
         },
         {
@@ -138,149 +268,19 @@
             "JISOO"
           ],
           "videoId": "dND8ysuZqlA",
-          "viewCount": 4575,
-          "releaseDate": "2026-11-05"
-        }
-      ]
-    },
-    "id": {
-      "region": "Indonesia",
-      "gl": "ID",
-      "period": {
-        "entityId": "daily:20261116:id",
-        "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
-        "region": "id"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "th": {
-      "region": "Thailand",
-      "gl": "TH",
-      "period": {
-        "entityId": "daily:20261116:th",
-        "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
-        "region": "th"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "ph": {
-      "region": "Philippines",
-      "gl": "PH",
-      "period": {
-        "entityId": "daily:20261116:ph",
-        "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
-        "region": "ph"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "my": {
-      "region": "Malaysia",
-      "gl": "MY",
-      "period": {
-        "entityId": "daily:20261116:my",
-        "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
-        "region": "my"
-      },
-      "totalEntries": 100,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "JENNIE",
-          "position": 70,
-          "name": "One Of The Girls",
-          "artists": [
-            "The Weeknd",
-            "JENNIE",
-            "Lily-Rose Depp"
-          ],
-          "videoId": "Mx92lTYxrJQ",
-          "viewCount": 32758,
-          "releaseDate": "2023-07-06"
-        }
-      ]
-    },
-    "vn": {
-      "region": "Vietnam",
-      "gl": "VN",
-      "period": {
-        "entityId": "daily:20261116:vn",
-        "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
-        "region": "vn"
-      },
-      "totalEntries": 100,
-      "hits": []
-    },
-    "sg": {
-      "region": "Singapore",
-      "gl": "SG",
-      "period": {
-        "entityId": "daily:20261116:sg",
-        "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
-        "region": "sg"
-      },
-      "totalEntries": 100,
-      "hits": [
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "LISA",
-          "position": 38,
-          "name": "SaWaDiKa (Official Music Video)",
-          "artists": [
-            "LISA"
-          ],
-          "videoId": "FyS5dAywkEo",
-          "viewCount": 4229,
-          "releaseDate": "2026-09-03"
-        },
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "JISOO",
-          "position": 52,
-          "name": "ADDICTED",
-          "artists": [
-            "JISOO"
-          ],
-          "videoId": "Pksr9T8m_aA",
-          "viewCount": 3875,
-          "releaseDate": "2026-10-29"
-        },
-        {
-          "chartType": "TOP_VIDEOS",
-          "member": "JISOO",
-          "position": 66,
-          "name": "ADDICTED (Dance Performance Video)",
-          "artists": [
-            "JISOO"
-          ],
-          "videoId": "dND8ysuZqlA",
-          "viewCount": 3269,
+          "viewCount": 2629,
           "releaseDate": "2026-11-05"
         },
         {
           "chartType": "TOP_VIDEOS",
           "member": "LISA",
-          "position": 90,
+          "position": 100,
           "name": "Tarantino (Official Music Video)",
           "artists": [
             "LISA"
           ],
           "videoId": "-5ZXrO_lYSA",
-          "viewCount": 2464,
+          "viewCount": 2182,
           "releaseDate": "2026-10-22"
         }
       ]
@@ -289,10 +289,10 @@
       "region": "India",
       "gl": "IN",
       "period": {
-        "entityId": "daily:20261116:in",
+        "entityId": "daily:20261117:in",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "in"
       },
       "totalEntries": 100,
@@ -302,10 +302,10 @@
       "region": "Australia",
       "gl": "AU",
       "period": {
-        "entityId": "daily:20261116:au",
+        "entityId": "daily:20261117:au",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "au"
       },
       "totalEntries": 100,
@@ -315,10 +315,10 @@
       "region": "New Zealand",
       "gl": "NZ",
       "period": {
-        "entityId": "daily:20261116:nz",
+        "entityId": "daily:20261117:nz",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "nz"
       },
       "totalEntries": 100,
@@ -328,10 +328,10 @@
       "region": "United States",
       "gl": "US",
       "period": {
-        "entityId": "daily:20261116:us",
+        "entityId": "daily:20261117:us",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "us"
       },
       "totalEntries": 100,
@@ -341,10 +341,10 @@
       "region": "Canada",
       "gl": "CA",
       "period": {
-        "entityId": "daily:20261116:ca",
+        "entityId": "daily:20261117:ca",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "ca"
       },
       "totalEntries": 100,
@@ -354,10 +354,10 @@
       "region": "Mexico",
       "gl": "MX",
       "period": {
-        "entityId": "daily:20261116:mx",
+        "entityId": "daily:20261117:mx",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "mx"
       },
       "totalEntries": 100,
@@ -367,10 +367,10 @@
       "region": "Brazil",
       "gl": "BR",
       "period": {
-        "entityId": "daily:20261116:br",
+        "entityId": "daily:20261117:br",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "br"
       },
       "totalEntries": 100,
@@ -380,10 +380,10 @@
       "region": "Argentina",
       "gl": "AR",
       "period": {
-        "entityId": "daily:20261116:ar",
+        "entityId": "daily:20261117:ar",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "ar"
       },
       "totalEntries": 100,
@@ -393,10 +393,10 @@
       "region": "Chile",
       "gl": "CL",
       "period": {
-        "entityId": "daily:20261116:cl",
+        "entityId": "daily:20261117:cl",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "cl"
       },
       "totalEntries": 100,
@@ -406,10 +406,10 @@
       "region": "Colombia",
       "gl": "CO",
       "period": {
-        "entityId": "daily:20261116:co",
+        "entityId": "daily:20261117:co",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "co"
       },
       "totalEntries": 100,
@@ -419,10 +419,10 @@
       "region": "Peru",
       "gl": "PE",
       "period": {
-        "entityId": "daily:20261116:pe",
+        "entityId": "daily:20261117:pe",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "pe"
       },
       "totalEntries": 100,
@@ -432,10 +432,10 @@
       "region": "United Kingdom",
       "gl": "GB",
       "period": {
-        "entityId": "daily:20261116:gb",
+        "entityId": "daily:20261117:gb",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "gb"
       },
       "totalEntries": 100,
@@ -445,10 +445,10 @@
       "region": "France",
       "gl": "FR",
       "period": {
-        "entityId": "daily:20261116:fr",
+        "entityId": "daily:20261117:fr",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "fr"
       },
       "totalEntries": 100,
@@ -458,10 +458,10 @@
       "region": "Germany",
       "gl": "DE",
       "period": {
-        "entityId": "daily:20261116:de",
+        "entityId": "daily:20261117:de",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "de"
       },
       "totalEntries": 100,
@@ -471,10 +471,10 @@
       "region": "Spain",
       "gl": "ES",
       "period": {
-        "entityId": "daily:20261116:es",
+        "entityId": "daily:20261117:es",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "es"
       },
       "totalEntries": 100,
@@ -484,10 +484,10 @@
       "region": "Italy",
       "gl": "IT",
       "period": {
-        "entityId": "daily:20261116:it",
+        "entityId": "daily:20261117:it",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "it"
       },
       "totalEntries": 100,
@@ -497,10 +497,10 @@
       "region": "Netherlands",
       "gl": "NL",
       "period": {
-        "entityId": "daily:20261116:nl",
+        "entityId": "daily:20261117:nl",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "nl"
       },
       "totalEntries": 100,
@@ -510,10 +510,10 @@
       "region": "Sweden",
       "gl": "SE",
       "period": {
-        "entityId": "daily:20261116:se",
+        "entityId": "daily:20261117:se",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "se"
       },
       "totalEntries": 100,
@@ -523,10 +523,10 @@
       "region": "Norway",
       "gl": "NO",
       "period": {
-        "entityId": "daily:20261116:no",
+        "entityId": "daily:20261117:no",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "no"
       },
       "totalEntries": 100,
@@ -536,10 +536,10 @@
       "region": "Poland",
       "gl": "PL",
       "period": {
-        "entityId": "daily:20261116:pl",
+        "entityId": "daily:20261117:pl",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "pl"
       },
       "totalEntries": 100,
@@ -549,10 +549,10 @@
       "region": "Turkey",
       "gl": "TR",
       "period": {
-        "entityId": "daily:20261116:tr",
+        "entityId": "daily:20261117:tr",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "tr"
       },
       "totalEntries": 100,
@@ -562,10 +562,10 @@
       "region": "Saudi Arabia",
       "gl": "SA",
       "period": {
-        "entityId": "daily:20261116:sa",
+        "entityId": "daily:20261117:sa",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "sa"
       },
       "totalEntries": 100,
@@ -575,10 +575,10 @@
       "region": "South Africa",
       "gl": "ZA",
       "period": {
-        "entityId": "daily:20261116:za",
+        "entityId": "daily:20261117:za",
         "periodType": "daily",
-        "startDate": "20261116",
-        "endDate": "20261116",
+        "startDate": "20261117",
+        "endDate": "20261117",
         "region": "za"
       },
       "totalEntries": 100,
