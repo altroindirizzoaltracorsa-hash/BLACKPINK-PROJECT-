@@ -8,10 +8,13 @@
 // What this guards against is the OTHER way those gaps get filled: a plausible
 // value written in because every neighbouring card has one.
 //
-//   · NO LINK. Every other card on this page carries one, so the pattern
-//     pulls hard toward lalisaofficial.lnk.to/leavewithme — which either 404s
-//     or, worse, lands somewhere real and wrong. This card is the thing
-//     people screenshot.
+//   · THE LINK. For three weeks there was none, because every other card on
+//     this page carries one and the pattern pulled hard toward
+//     lalisaofficial.lnk.to/leavewithme — which either 404s or, worse, lands
+//     somewhere real and wrong on the thing people screenshot. The MV has
+//     since been published, so the card links to THAT and to nothing else.
+//     The rule did not change when the link arrived: link what was announced,
+//     invent nothing. A lnk.to on this card still fails.
 //
 //   · NO HOUR. The card counts to MIDNIGHT ON THE READER'S OWN CLOCK
 //     (data-target-local), and says so. Writing "1PM KST / 12AM EST" in the
@@ -93,23 +96,50 @@ card ? ok('found the card', `${card.length} chars`)
      : bad('found the card', 'nothing below means anything');
 
 if (card) {
-  // THE ANNOUNCED INSTANT, and nothing that can outrank it. cardTargetAt()
-  // PREFERS data-target-local, so leaving that attribute on the card would
-  // keep the clock on local midnight while the card printed a time — wrong
-  // and invisible, since both look like a working countdown.
-  /data-target="2026-11-18T18:00:00Z"/.test(card)
-    ? ok('  counts to the announced premiere instant')
-    : bad('  counts to the announced premiere instant',
-          `got ${(card.match(/data-target="[^"]*"/) || ['none'])[0]} — the poster's 28 countries are all 18:00Z`);
+  // TWO INSTANTS, THREE HOURS APART, and the card must not confuse them. The
+  // SONG dropped at 00:00 KST (15:00Z); the FILM premieres at 18:00Z, which is
+  // what the poster's 28 countries time. This card is the song's, so its clock
+  // is the song's — a card saying "out in 3h" about a track already on YouTube
+  // is wrong in the way nobody reports, because it still looks like it works.
+  //
+  // cardTargetAt() also PREFERS data-target-local, so that attribute coming
+  // back would quietly outrank whatever is set here.
+  /data-target="2026-11-18T15:00:00Z"/.test(card)
+    ? ok('  counts to the song\'s own release, 00:00 KST')
+    : bad('  counts to the song\'s own release, 00:00 KST',
+          `got ${(card.match(/data-target="[^"]*"/) || ['none'])[0]}`);
+  /data-live-at="2026-11-18T18:00:00Z"/.test(card)
+    ? ok('  and carries the film premiere as its own event')
+    : bad('  and carries the film premiere as its own event',
+          'the premiere is 3h after the song and has to be a separate instant');
+  // The check that would have caught the few hours this card spent counting
+  // the song down to the film's hour.
+  (card.match(/data-target="([^"]*)"/) || [])[1] !== (card.match(/data-live-at="([^"]*)"/) || [])[1]
+    ? ok('  and the two are not the same moment')
+    : bad('  and the two are not the same moment', 'the song and the film have been collapsed into one instant');
   !/data-target-local=/.test(card)
     ? ok('  and nothing overrides it')
     : bad('  and nothing overrides it',
           'data-target-local wins in cardTargetAt, so the clock would ignore the time the card prints');
 
-  !/<a\b/.test(card)
-    ? ok('  and carries no link at all')
-    : bad('  and carries no link at all',
-          `${(card.match(/href="([^"]*)"/g) || []).join(', ')} — nothing official has been published to link to`);
+  // THE LINK RULE INVERTED, the same way the hour rule did. While nothing had
+  // been published the card carried NO link, because every neighbour has a
+  // pre-save URL and the pull was to invent one — a guess that either 404s or
+  // lands somewhere real and wrong on the card people screenshot. The MV is
+  // published, so it goes on; what has to stay true is that this is the ONLY
+  // link, and that it is the one that was actually announced.
+  const hrefs = [...card.matchAll(/href="([^"]*)"/g)].map((m) => m[1]);
+  hrefs.includes('https://youtu.be/M8fO5lQpfrc')
+    ? ok('  links to the official MV')
+    : bad('  links to the official MV', hrefs.length ? hrefs.join(', ') : 'no link at all');
+  // Nothing else, and in particular nothing lnk.to-shaped: no pre-save has
+  // been published for this release, and one invented here is the original
+  // failure this card was written to avoid.
+  const extra = hrefs.filter((h) => h !== 'https://youtu.be/M8fO5lQpfrc');
+  extra.length === 0
+    ? ok('  and to nothing that was never published')
+    : bad('  and to nothing that was never published',
+          `${extra.join(', ')} — only the MV has been announced for this release`);
 
   // EVERY HOUR PRINTED ON THE CARD IS A CONVERSION OF 18:00Z, computed here
   // rather than compared to a list typed twice. This is the check the old
@@ -130,13 +160,17 @@ if (card) {
       : bad(`  ${label} reads ${want}`, `the card does not say "${want} ${label}" — 18:00Z is ${want} there`);
   }
 
-  // And it still says WHICH event the clock is for. The 28 times are the
-  // film's premiere; no hour has been announced for the single by itself, so
-  // a card that just says "out at 1PM ET" claims something nobody published.
-  /premiere/i.test(text) && /ALWAYS LALISA/.test(text)
-    ? ok('  and says the clock is the film\'s premiere')
-    : bad('  and says the clock is the film\'s premiere',
-          'an unlabelled time on a single\'s card reads as the single\'s release hour');
+  // And it still says which of the two each time belongs to. The hours above
+  // are the FILM's; the song's own moment is 00:00 KST. A card carrying both
+  // and labelling neither is four numbers a reader will attach to whichever
+  // one they came for.
+  /ALWAYS LALISA/.test(text) && /premiere/i.test(text)
+    ? ok('  and names the film premiere as the film\'s')
+    : bad('  and names the film premiere as the film\'s',
+          'unlabelled times on a single\'s card read as the single\'s release hour');
+  /00:00 KST/.test(text)
+    ? ok('  and the song\'s own hour as the song\'s')
+    : bad('  and the song\'s own hour as the song\'s', 'the release time it actually dropped at is not on the card');
 
   /onclick="openLeaveWithMeCard\(\)"/.test(card)
     ? ok('  and can be posted')
@@ -194,9 +228,9 @@ if (fn) {
 
   // The share card and the page card must count to the SAME moment. They are
   // two clocks on one release and nothing else keeps them together.
-  /const LWM_PREMIERE = '2026-11-18T18:00:00Z'/.test(ix)
-    ? ok('  and the share card uses the same instant as the page')
-    : bad('  and the share card uses the same instant as the page',
+  /const LWM_RELEASE  = '2026-11-18T15:00:00Z'/.test(ix) && /lwmReleaseAt = \(\) => LWM_RELEASE/.test(ix)
+    ? ok('  and the share card counts to the song, like the page does')
+    : bad('  and the share card counts to the song, like the page does',
           'two clocks on one release that are set separately will disagree');
 
   // The poster is portrait and the card is landscape, so without fitWhole a
@@ -263,8 +297,8 @@ async function clockIn(tz, nowISO) {
 // Getting this backwards is silent either way — a countdown that is wrong by
 // time zone still counts down, perfectly, to the wrong instant.
 const NOW = '2026-11-17T13:00:00Z';
-// 2026-11-17T13:00Z to 2026-11-18T18:00Z is 29 hours exactly, everywhere.
-const WAIT_H = 29;
+// 2026-11-17T13:00Z to 2026-11-18T15:00Z is 26 hours exactly, everywhere.
+const WAIT_H = 26;
 console.log(`\n--- the clock, read at ${NOW} from five places`);
 const ZONES = ['Pacific/Auckland', 'Asia/Seoul', 'Europe/Rome',
                'America/New_York', 'America/Los_Angeles'];
@@ -275,8 +309,8 @@ for (const tz of ZONES) {
   const m = r.timer.match(/^(\d+)Days(\d+)Hrs/);
   const h = m ? Number(m[1]) * 24 + Number(m[2]) : -1;
   h === WAIT_H
-    ? ok(`${tz}: ${h}h to the premiere`)
-    : bad(`${tz}: ${WAIT_H}h to the premiere`, `clock says ${r.timer}`);
+    ? ok(`${tz}: ${h}h to the drop`)
+    : bad(`${tz}: ${WAIT_H}h to the drop`, `clock says ${r.timer}`);
 }
 seen.size === 1
   ? ok('five places, one answer', `all read ${[...seen][0]}`)
@@ -286,12 +320,12 @@ seen.size === 1
 // And it is out for EVERYONE at once, not zone by zone. Read a minute after.
 console.log('\n--- and a minute after it starts');
 const after = new Set();
-for (const tz of ZONES) after.add((await clockIn(tz, '2026-11-18T18:01:00Z')).timer);
+for (const tz of ZONES) after.add((await clockIn(tz, '2026-11-18T15:01:00Z')).timer);
 (after.size === 1 && /OUT NOW/.test([...after][0]))
   ? ok('every zone flips together', [...after][0])
   : bad('every zone flips together', [...after].join(' | '));
 
 await browser.close();
 server.close();
-console.log(fails ? `\n${fails} FAILED` : '\nNo link, one instant, and every clock agrees.');
+console.log(fails ? `\n${fails} FAILED` : '\nThe song is out, the film is not, and the card knows which is which.');
 process.exit(fails ? 1 : 0);

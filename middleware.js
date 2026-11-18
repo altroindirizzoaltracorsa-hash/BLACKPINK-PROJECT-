@@ -88,7 +88,7 @@ const COUNTDOWNS = {
   // wrong by the next day. Rebuilt by hand if the art or the date changes.
   'leavewithme': {
     title: 'LISA — Leave With Me, Nov 18, 2026 | Countdown · BLINKS UNITED',
-    description: "LISA's “Leave With Me”, her song for the documentary ALWAYS LALISA. The film premieres on YouTube Premium at one moment worldwide on Nov 18, 2026 — 1PM ET / 6PM UK / 3AM KST.",
+    description: "LISA's “Leave With Me” is out — it dropped at 00:00 KST on Nov 19, 2026. Her song for the documentary ALWAYS LALISA, which premieres on YouTube Premium three hours later, at one moment worldwide.",
     image: '/og-countdown-leavewithme.jpg',
   },
   // PAST TENSE, and it stays that way. This entry announced "voting closes

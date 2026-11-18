@@ -1883,6 +1883,11 @@
   .cd-card-lwm .cd-num, .cd-card-lwm .cd-out { color: #a9bcff; }
   .cd-card-lwm .cd-links { justify-content: center; margin-bottom: 1rem; }
   .lwm-btn { border-radius: 99px; background: #8fa5ff; color: #0a0c1c; }
+  /* Two buttons now that there is somewhere to send people. The MV is the
+     filled one — it is the thing to do; Share steps back to an outline so
+     the row has one obvious action rather than two competing. */
+  .lwm-btn-ghost { background: transparent; color: #a9bcff; border: 1px solid rgba(169,188,255,0.45); }
+  .lwm-btn-ghost:hover { background: rgba(169,188,255,0.14); }
   .lwm-note { font-family: var(--mono); font-size: 0.58rem; line-height: 1.75;
     color: rgba(236,240,255,0.62); }
   .lwm-note b { color: #cdd8ff; font-weight: 500; }
@@ -2676,16 +2681,16 @@
   .cd-card-lisa .cd-goal-fill { background: linear-gradient(90deg, #e11d2a, #ff6f78); }
   /* Listening party row — a dated event sitting on a dated card, so it reads as
      a separate thing from the release the countdown is for. */
-  .cd-card-lisa .cd-live { display: flex; align-items: center; gap: 0.55rem; width: min(94%, 340px);
+  .cd-card-lisa .cd-live, .cd-card-lwm .cd-live { display: flex; align-items: center; gap: 0.55rem; width: min(94%, 340px);
     margin: 0.3rem auto 0.05rem; padding: 0.42rem 0.7rem; border-radius: 12px; text-decoration: none;
     text-align: left; color: var(--la-cream); background: rgba(26,4,6,0.55);
     border: 1px solid rgba(242,233,226,0.26); backdrop-filter: blur(3px); }
   /* The author display:flex above outranks the browser's own [hidden] rule, and
      expiring is this row's whole point. */
-  .cd-card-lisa .cd-live[hidden] { display: none; }
+  .cd-card-lisa .cd-live[hidden], .cd-card-lwm .cd-live[hidden] { display: none; }
   .cd-card-lisa .cd-live:hover { border-color: var(--la-red); background: rgba(225,29,42,0.18); }
   .cd-card-lisa .cd-live.is-on { border-color: var(--la-red); background: rgba(225,29,42,0.2); }
-  .cd-card-lisa .cd-live-dot { flex: none; width: 7px; height: 7px; border-radius: 50%;
+  .cd-card-lisa .cd-live-dot, .cd-card-lwm .cd-live-dot { flex: none; width: 7px; height: 7px; border-radius: 50%;
     background: rgba(242,233,226,0.5); }
   .cd-card-lisa .cd-live.is-on .cd-live-dot { background: var(--la-red);
     animation: ppLivePulse 1.5s ease-in-out infinite; }
@@ -2694,18 +2699,35 @@
   @media (prefers-reduced-motion: reduce) {
     .cd-card-lisa .cd-live.is-on .cd-live-dot { animation: none; }
   }
-  .cd-card-lisa .cd-live-txt { min-width: 0; display: flex; flex-direction: column; gap: 0.08rem; }
-  .cd-card-lisa .cd-live-txt b { font-family: 'DM Mono', monospace; font-weight: 500; font-size: 0.6rem;
+  .cd-card-lisa .cd-live-txt, .cd-card-lwm .cd-live-txt { min-width: 0; display: flex; flex-direction: column; gap: 0.08rem; }
+  .cd-card-lisa .cd-live-txt b, .cd-card-lwm .cd-live-txt b { font-family: 'DM Mono', monospace; font-weight: 500; font-size: 0.6rem;
     letter-spacing: 0.14em; text-transform: uppercase; }
   .cd-card-lisa .cd-live-txt small { font-family: 'GaramondPremierPro', 'Cormorant Garamond', Georgia, serif;
     font-style: italic; font-size: 0.78rem; line-height: 1.25; color: rgba(242,233,226,0.78); }
   /* Its own line rather than running on: the announced time and the viewer's
      own are different facts, and a locale that writes a long one would break
      the run-on mid-phrase anyway. */
-  .cd-card-lisa .cd-live-txt [data-live-local] { display: block; color: rgba(242,233,226,0.62); }
-  .cd-card-lisa .cd-live-txt [data-live-local]:empty { display: none; }
-  .cd-card-lisa .cd-live-go { margin-left: auto; flex: none; font-family: 'DM Mono', monospace;
+  .cd-card-lisa .cd-live-txt [data-live-local], .cd-card-lwm .cd-live-txt [data-live-local] { display: block; color: rgba(242,233,226,0.62); }
+  .cd-card-lisa .cd-live-txt [data-live-local]:empty, .cd-card-lwm .cd-live-txt [data-live-local]:empty { display: none; }
+  .cd-card-lisa .cd-live-go, .cd-card-lwm .cd-live-go { margin-left: auto; flex: none; font-family: 'DM Mono', monospace;
     font-size: 0.58rem; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.85; }
+  /* The same row in this card's blue. Only colour lives here — the layout,
+     the dot, the two lines of text and the trailing "Watch ↗" are the shared
+     rules above, which is why a third card needs a palette and nothing else.
+     The row is tinted by HAND rather than by a variable because this card has
+     no palette variables of its own; give it some if it grows a third use. */
+  .cd-card-lwm .cd-live { color: #dfe6ff; background: rgba(10,12,28,0.55);
+    border-color: rgba(169,188,255,0.3); }
+  .cd-card-lwm .cd-live:hover { border-color: #8fa5ff; background: rgba(143,165,255,0.16); }
+  .cd-card-lwm .cd-live.is-on { border-color: #8fa5ff; background: rgba(143,165,255,0.2); }
+  .cd-card-lwm .cd-live-dot { background: rgba(223,230,255,0.5); }
+  .cd-card-lwm .cd-live.is-on .cd-live-dot { background: #8fa5ff;
+    animation: ppLivePulse 1.5s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) {
+    .cd-card-lwm .cd-live.is-on .cd-live-dot { animation: none; }
+  }
+  .cd-card-lwm .cd-live-txt small { font-size: 0.72rem; line-height: 1.35; color: rgba(223,230,255,0.78); }
+  .cd-card-lwm .cd-live-txt [data-live-local] { color: rgba(223,230,255,0.6); }
   .cd-card-lisa .cd-mv-note { display: flex; flex-direction: column; align-items: center; gap: 0.1rem;
     font-family: 'DM Mono', monospace; font-size: 0.56rem; letter-spacing: 0.1em;
     text-transform: uppercase; color: rgba(242,233,226,0.62); margin-top: 0.15rem;
@@ -4249,14 +4271,20 @@
                moment to count to and `data-target-local` has to GO. Leaving it
                in would keep winning: cardTargetAt() prefers it, and the card
                would quietly ignore the time it is printing.
-               WHAT THE 28 TIMES ARE: the premiere of ALWAYS LALISA on YouTube
-               Premium. That is the instant on the poster, so that is the
-               instant on the clock, and the card says which of the two things
-               it is counting to. The SONG's own release hour has still not
-               been announced separately — do not relabel this as the single
-               dropping until something official says they are the same. -->
+               AND THEN THERE WERE TWO INSTANTS, three hours apart. The song
+               dropped at 00:00 KST — 2026-11-18T15:00Z — and the film
+               premieres at 18:00Z, which is what the poster's 28 countries
+               time. This card is the SONG's, so the clock is the song's and
+               it reads OUT NOW. The premiere is a side event (data-live-at,
+               the same mechanism the PRESS PLAY listening party used) and the
+               worldwide list below stays, labelled as the film's.
+               The two were nearly collapsed into one — the poster was the
+               only time anybody had published, so for a few hours the song's
+               card counted to the film. Keep them apart: a card that says
+               "out in 3h" about a song already on YouTube is wrong in the
+               way nobody reports, because it still looks like it works. -->
           <div class="cd-card cd-card-lwm" data-slug="leavewithme" data-member="lisa"
-               data-target="2026-11-18T18:00:00Z"
+               data-target="2026-11-18T15:00:00Z"
                data-live="OUT NOW ✨" data-prerelease-name="leave with me">
             <div class="lwm-hero">
               <img class="lwm-poster" src="/leavewithme/always-lalisa-poster.webp"
@@ -4266,26 +4294,56 @@
               <div class="lwm-title">Leave With Me</div>
               <div class="lwm-by">LISA · New Single</div>
             </div>
-            <div class="cd-eyebrow">ALWAYS LALISA · premiere</div>
-            <div class="cd-sub">Wed, Nov 18, 2026 — the same moment everywhere</div>
+            <div class="cd-sub">Out now — dropped 00:00 KST, Nov 19</div>
             <div class="cd-timer" data-timer></div>
+            <!-- The film, which is NOT the song and is still ahead of it. Starts
+                 hidden and is revealed by renderCardLiveEvents only while it is
+                 worth showing; it takes itself down three hours after it starts,
+                 so nothing here has to be remembered and removed by hand.
+                 A DIV, NOT A LINK, and that is the point of it. Every other
+                 .cd-live is an anchor with "Watch ↗" on the end, and the pull
+                 was to copy that — but the only URL in hand is the SONG's MV,
+                 and sending people to a music video from a row announcing the
+                 film is the same mistake as a guessed pre-save, wearing the
+                 right label. The film's own premiere URL has not been
+                 published; make this an anchor the day it is. -->
+            <div class="cd-live" hidden
+                 data-live-at="2026-11-18T18:00:00Z" data-live-until="2026-11-18T21:00:00Z"
+                 data-live-soon="ALWAYS LALISA premieres" data-live-on="ALWAYS LALISA · premiering now">
+              <span class="cd-live-dot" aria-hidden="true"></span>
+              <span class="cd-live-txt">
+                <b data-live-state>ALWAYS LALISA premieres</b>
+                <small>YouTube Premium · 1PM ET<span data-live-local></span></small>
+              </span>
+            </div>
             <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
-              <summary>Premiere times worldwide</summary>
+              <summary>ALWAYS LALISA premiere times worldwide</summary>
               <div class="cd-times-body" data-times-for="2026-11-18T18:00:00Z"></div>
             </details>
             <div class="cd-links">
-              <button class="cd-btn lwm-btn" onclick="openLeaveWithMeCard()">📸 Share</button>
+              <!-- THE FIRST OFFICIAL LINK THIS CARD HAS EVER CARRIED. It shipped
+                   with none on purpose — every neighbouring card has a pre-save
+                   URL and the pull was to invent one, which either 404s or
+                   lands somewhere real and wrong on the card people screenshot.
+                   This one was published, so it goes on. It is the MV, not a
+                   pre-save: the official title is "LISA - Leave With Me
+                   (Featured in Always Lalisa) (Official Music Video)". -->
+              <a class="cd-btn lwm-btn" href="https://youtu.be/M8fO5lQpfrc"
+                 target="_blank" rel="noopener">▶ Watch MV ↗</a>
+              <button class="cd-btn lwm-btn lwm-btn-ghost" onclick="openLeaveWithMeCard()">📸 Share</button>
             </div>
             <div class="lwm-note">
               LISA's song for <b>ALWAYS LALISA</b>, the documentary — the art
               is the film's poster, standing in until a sleeve exists.
               <br><br>
-              The film premieres on <b>YouTube Premium</b> at one instant
-              worldwide, and the clock above counts to it: <b>1PM ET</b> /
-              <b>6PM UK</b> / <b>11:30PM India</b> / <b>3AM KST</b> on the
-              19th. Open the list for your own city. No release hour has been
-              announced for the <i>song</i> on its own, so that is the one
-              thing this card still does not claim.
+              The song is out — it dropped at <b>00:00 KST</b> on Nov 19, and
+              the MV is the official <i>Leave With Me (Featured in Always
+              Lalisa)</i>.
+              <br><br>
+              The <b>film</b> is three hours behind it: ALWAYS LALISA premieres
+              on <b>YouTube Premium</b> at one instant worldwide — <b>1PM ET</b>
+              / <b>6PM UK</b> / <b>11:30PM India</b> / <b>3AM KST</b>. Open the
+              list below for your own city.
             </div>
           </div>
           <!-- SUN SHOWERS — JISOO, from The Angry Birds Movie 3. Out Nov 20.
@@ -22982,7 +23040,7 @@ async function shareCard() {
       // destination for that release. Ours must be the full deep link or
       // nothing. test_share_links.mjs reads the FIRST url now, not the last.
       statsText = d.campaign === 'leavewithme'
-        ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n🎬 Her song for the documentary ALWAYS LALISA\n⏰ Premieres on YouTube Premium at one moment worldwide — 1PM ET / 6PM UK / 3AM KST\n👉 Count it down on Blinks United — share it!\n`
+        ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n🎬 Her song for the documentary ALWAYS LALISA\n▶ Watch the MV: https://youtu.be/M8fO5lQpfrc\n👉 Count it down on Blinks United — share it!\n`
         : d.campaign === 'sunshowers'
         ? (d.earned
             ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n🐤 From The Angry Birds Movie 3 · out ${d.dateShort}\n👉 Pre-save it too on Blinks United — don't forget to share!\n`
@@ -27201,16 +27259,17 @@ async function openSunShowersCard() {
 //   outlives the moment it was made, so a guessed link on one is wrong for
 //   longer than anything on the page. Put the real one here when it exists.
 //
-//   THE HOUR ARRIVED. This used to build the reader's OWN midnight from
-//   parts, because no time had been announced and Date.parse('2026-11-18')
-//   would have handed Los Angeles a card sixteen hours early. The premiere
-//   card now gives 28 countries and every one of them resolves to the same
-//   instant, so there is a real moment and the local-midnight construction is
-//   gone with the guesswork that needed it.
-//   It is the ALWAYS LALISA premiere on YouTube Premium, which is what the
-//   poster timed — not a separately announced hour for the single.
-const LWM_PREMIERE = '2026-11-18T18:00:00Z';
-const lwmReleaseAt = () => LWM_PREMIERE;
+//   THE HOUR ARRIVED, and then there were two of them. This used to build the
+//   reader's OWN midnight from parts, because nothing had been announced and
+//   Date.parse('2026-11-18') would have handed Los Angeles a card sixteen
+//   hours early. Then the premiere poster gave 28 countries, all one instant.
+//   Then the song itself dropped, three hours before the film.
+//   SO THE RELEASE IS THE SONG'S, 00:00 KST, and the film's premiere is the
+//   card's other instant. They are separate constants because they are
+//   separate events, and the one this card is FOR is the single.
+const LWM_RELEASE  = '2026-11-18T15:00:00Z';   // 00:00 KST Nov 19 — the song
+const LWM_PREMIERE = '2026-11-18T18:00:00Z';   // the film, on YouTube Premium
+const lwmReleaseAt = () => LWM_RELEASE;
 const lwmLive = () => Date.now() >= Date.parse(lwmReleaseAt());
 
 const LWM_POSTER_IMG = '/leavewithme/always-lalisa-poster.webp';
@@ -27257,7 +27316,7 @@ async function openLeaveWithMeCard() {
     // One instant, so the line can finally name it. Two zones and not ten:
     // the card is read at thumbnail size and the full list lives on the page.
     dateLine: out ? 'Out now · Nov 18, 2026'
-                  : 'Premieres Wed, Nov 18 · 1PM ET / 3AM KST',
+                  : 'Out Wed, Nov 18 · 00:00 KST',
     dateShort: 'Nov 18, 2026',
     // The CTA slot carries the ARTIST, not a link. It is always drawn, in the
     // accent, and with no photo and no wordmark on this card it was the one
