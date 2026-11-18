@@ -5878,6 +5878,10 @@
              board that cannot have a single play on it invites a click that
              shows an empty list. Revealed by sthLive() below. -->
         <button class="lb-subtab" id="lb-subtab-sth" style="display:none" onclick="switchLbSong('sth', this)">SOMEONE TO HOLD</button>
+        <!-- Same treatment: hidden until the song is out, revealed by lwmLive()
+             — the same instant the card's clock counts to — so the tab and the
+             countdown cannot disagree about whether it has dropped. -->
+        <button class="lb-subtab" id="lb-subtab-lwm" style="display:none" onclick="switchLbSong('lwm', this)">LEAVE WITH ME</button>
       </div>
       <!-- Nested per-track row for PRESS PLAY — shown only when that tab is open.
            SaWaDiKa is track 1 and leads it; it kept the `sawadika` id it had as a
@@ -7658,6 +7662,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // playlist note read — sthLive() — so the tab, the countdown and the copy
   // cannot disagree about whether the song is out.
   if (sthLive()) { const _sth = document.getElementById('lb-subtab-sth'); if (_sth) _sth.style.display = ''; }
+  if (lwmLive()) { const _lwm = document.getElementById('lb-subtab-lwm'); if (_lwm) _lwm.style.display = ''; }
   loadLisaSaveCount();
   loadJisooSaveCount();
   loadNewTrickSaveCount();
@@ -10335,6 +10340,18 @@ const TRACKS = [
   // probe-lastfm-title.yml and probe-track-user.yml both answer that for the
   // next release; the latter prints the exact strings and flags a mismatch.
   { id: 'sth',         title: 'SOMEONE TO HOLD',   artist: 'Jennie', track: 'Someone to Hold (from the Netflix Film "Steps")', year: '2026', era: 'STEPS',        spotify: 'https://open.spotify.com/track/41GdHxKlxBzXZde4io6tbz' },
+  // LISA for the documentary ALWAYS LALISA (2026-11-18, 00:00 KST). The `track`
+  // string is the BARE title, NOT Spotify's "Leave With Me (Featured in Always
+  // Lalisa)" — probe-lastfm-title, 45 minutes after release, resolved the bare
+  // one and returned "Track not found" for both suffixed spellings. The entry
+  // above it goes the other way for the same reason: what matters is which
+  // string Last.fm has, and only the probe knows. See the long note on this
+  // release in api/cron-scrobbles.js; the two must stay byte-identical, and
+  // test_track_titles_match.mjs fails if they drift.
+  // The id is `lwm`, which this release already uses everywhere else on the
+  // page (cd-card-lwm, LWM_RELEASE, lwm-note). The spotify link is the one off
+  // her discography, with its share-tracking parameters stripped.
+  { id: 'lwm',         title: 'LEAVE WITH ME',     artist: 'LISA',   track: 'Leave With Me', year: '2026', era: 'ALWAYS LALISA', spotify: 'https://open.spotify.com/track/6SDT6lj8sVzFK0o8UI2Y2G' },
 ];
 
 // Display name for a leaderboard sub-tab, taken from TRACKS rather than typed
@@ -10394,7 +10411,7 @@ const EP_TRACK_IDS = ['ltal', 'fallenangel', 'heaven'];
 // STAMP stays campaign-only — see CAMPAIGN_TRACK_IDS above).
 // PRESS PLAY's other five join SaWaDiKa here: the EP counts toward the
 // community goal, the way the Fallen Angel EP does.
-const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'sawadika', 'click', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted', 'sth'];
+const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'sawadika', 'click', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted', 'sth', 'lwm'];
 function campaignTotalOf(tp) { return CAMPAIGN_TOTAL_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
 
 // ── MOMENTARY: Fallen Angel EP push ──────────────────────────
@@ -13528,6 +13545,7 @@ const DAILY_TIERS = {
   // soundtrack album but it is released as a single two weeks ahead of the
   // film, so it is a single's bar, not an EP track's 30.
   sth:         makeTiers(40, 'SOMEONE TO HOLD'),
+  lwm:         makeTiers(40, 'LEAVE WITH ME'),
 };
 
 const WEEKLY_TIERS = {
@@ -13553,6 +13571,7 @@ const WEEKLY_TIERS = {
   addicted:    makeTiers(40 * 7, 'ADDICTED', '/wk'),
   // JENNIE for the Netflix film "Steps" — 40, the singles' bar, as above.
   sth:         makeTiers(40 * 7, 'SOMEONE TO HOLD', '/wk'),
+  lwm:         makeTiers(40 * 7, 'LEAVE WITH ME', '/wk'),
 };
 
 function getDailyBadge(trackId, count) {
@@ -13849,6 +13868,10 @@ function countLbByTrack(listens) {
     } else if (_lbMemberKey(l.track_metadata?.artist_name) === 'lisa') {
       if (k === 'sawadika') counts.sawadika++;
       else if (PRESS_PLAY_KEYS.includes(k)) counts[k]++;
+      // "Leave With Me (Featured in Always Lalisa)" — _trackKey strips (...)
+      // and [...] first, so the documentary suffix collapses to the bare
+      // title, exactly as the Steps suffix does above.
+      else if (k === 'leavewithme') counts.lwm++;
     } else if (_lbMemberKey(l.track_metadata?.artist_name) === 'jisoo') {
       if (k === 'click') counts.click++;
       else if (k === 'addicted') counts.addicted++;
@@ -16562,7 +16585,7 @@ function computeDailyCommunityTotal(users) {
     // Heaven) and PRESS PLAY (SaWaDiKa + the five new tracks) — so a
     // release lifts the community goal — mirrors CAMPAIGN_TOTAL_IDS / daily_all.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_newtrick || 0) + (s.daily_addicted || 0) + (s.daily_sth || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_newtrick || 0) + (s.daily_addicted || 0) + (s.daily_sth || 0) + (s.daily_lwm || 0);
   }, 0);
 }
 
@@ -16666,6 +16689,10 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       overall_addicted: totalPlays.addicted || 0,
       // JENNIE "Someone to Hold" (Netflix film Steps) — same three reasons.
       overall_sth:      totalPlays.sth      || 0,
+      // LISA "Leave With Me" (ALWAYS LALISA) — same three reasons again. Posted
+      // because the server stores what this payload carries: a field left out
+      // is not "unchanged", it is zero.
+      overall_lwm:      totalPlays.lwm      || 0,
       // Fallen Angel EP tracks — submitted so the per-track boards fill live from
       // badges visits (the daily cron only recomputes them once at 01:15 UTC). Kept
       // out of overall_all/daily_all/weekly_all so they never inflate campaign totals.
@@ -16700,6 +16727,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       daily_click:      todayCounts.click    || 0,
       daily_addicted:   todayCounts.addicted || 0,
       daily_sth:        todayCounts.sth      || 0,
+      daily_lwm:        todayCounts.lwm      || 0,
       daily_fallenangel: todayCounts.fallenangel || 0,
       daily_heaven:      todayCounts.heaven      || 0,
       daily_newtrick:    todayCounts.newtrick    || 0,
@@ -16715,6 +16743,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       weekly_click:     weekCounts.click    || 0,
       weekly_addicted:  weekCounts.addicted || 0,
       weekly_sth:       weekCounts.sth      || 0,
+      weekly_lwm:       weekCounts.lwm      || 0,
       weekly_fallenangel: weekCounts.fallenangel || 0,
       weekly_heaven:      weekCounts.heaven      || 0,
       weekly_newtrick:    weekCounts.newtrick    || 0,

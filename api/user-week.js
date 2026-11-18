@@ -87,6 +87,15 @@ export default async function handler(req, res) {
       if (!sr.error) for (const row of (sr.data || [])) sthByDay[row.day_key] = row.sth || 0;
     } catch {}
 
+    // "Leave With Me" (LISA, 2026-11-18) in its own tolerant query, same
+    // reason as the three above: one column that does not exist yet must not
+    // take the whole grid down with it.
+    const lwmByDay = {};
+    try {
+      const lr = await runQuery('day_key,lwm');
+      if (!lr.error) for (const row of (lr.data || [])) lwmByDay[row.day_key] = row.lwm || 0;
+    } catch {}
+
     const days = {};
     for (const row of (data || [])) {
       days[row.day_key] = {
@@ -102,6 +111,7 @@ export default async function handler(req, res) {
         newtrick:    ntByDay[row.day_key] || 0,
         addicted:    adByDay[row.day_key] || 0,
         sth:         sthByDay[row.day_key] || 0,
+        lwm:         lwmByDay[row.day_key] || 0,
         by_source: hasBySource ? (row.by_source || null) : null,
       };
     }

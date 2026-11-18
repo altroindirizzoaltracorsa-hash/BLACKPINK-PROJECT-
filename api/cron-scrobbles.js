@@ -69,7 +69,7 @@ function communityGoalTotal(users, todayDDMM) {
     // Whole campaign incl. the Fallen Angel EP — matches computeDailyCommunityTotal
     // (client) and the record-goal path in leaderboard.js so all three agree.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_newtrick || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_addicted || 0) + (s.daily_sth || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_newtrick || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_addicted || 0) + (s.daily_sth || 0) + (s.daily_lwm || 0);
   }, 0);
 }
 
@@ -127,6 +127,28 @@ const TRACKS = [
   // feed the same Last.fm call from different surfaces and
   // test_track_titles_match.mjs fails if they drift.
   { id: 'sth',        artist: 'Jennie', track: 'Someone to Hold (from the Netflix Film "Steps")' },
+  // LISA for the documentary ALWAYS LALISA (2026-11-18, 00:00 KST). THE BARE
+  // TITLE — and that is a MEASUREMENT, not the house style.
+  //
+  // The entry above carries Spotify's full suffixed title because that is what
+  // its scrobbles arrive as. I assumed the same here and probe-lastfm-title
+  // said no. Asked 45 minutes after release, with autocorrect off and on:
+  //   'Leave With Me'                              HIT   playcount 124
+  //   'Leave With Me (Featured in Always Lalisa)'  MISS  Track not found
+  //   'Leave With Me (Featured in Always LALISA)'  MISS  Track not found
+  // So the suffix is Spotify's display title and not what scrobblers write.
+  // fetchTrackPlays -> track.getInfo is an EXACT string lookup with no
+  // normalisation, so the suffixed spelling would have returned nothing and
+  // the all-time per-track figure would have sat at 0 while today and this
+  // week — matched through trackKey(), which strips (...) — read correctly.
+  // That is the "the card says 2" shape, and it is invisible from the page.
+  //
+  // THE RULE IS NOT "use Spotify's title", it is "use the one that resolves".
+  // Run probe-lastfm-title.yml for the next release; it answers in seconds and
+  // needs no account, because it asks about the track and not about a person.
+  // Must stay byte-identical to index.html's TRACKS entry —
+  // test_track_titles_match.mjs fails if the two copies drift.
+  { id: 'lwm',        artist: 'LISA',   track: 'Leave With Me' },
 ];
 
 // Less Than a Lover leaves the campaign at the reset cutoff. Per-track ltal values
@@ -445,7 +467,7 @@ async function extensionCountsForUsers(sb, appUserIds, dayFrom, dayTo, weekFrom,
   // Includes the Fallen Angel EP ids so the extension's per-song plays fold into
   // overall_fallenangel / overall_heaven (the EP boards). They're excluded from
   // campaignTotal / *_all above, so this never inflates the campaign totals.
-  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0 });
+  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0, lwm: 0 });
   const out = { total: empty(), week: empty(), today: empty() };
   if (!sb || !appUserIds || !appUserIds.length) return out;
   // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
@@ -529,10 +551,10 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
   const dayWindowKey  = dayKey(dayFrom);
   const weekWindowKey = dayKey(weekFrom);
 
-  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0 };
+  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0, lwm: 0 };
   let artistPlays   = 0;
-  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0 };
-  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0 };
+  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0, lwm: 0 };
+  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0, lwm: 0 };
   let lastScrobbleAt = entry.lastScrobbleAt || null;
   // Per-scrobbler split of TODAY's counts, for the personal history calendar. Each
   // key is a human label ("Last.fm · Alice9629", "BU Extension", "Musicat / Stats.fm")
@@ -668,6 +690,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
         totalPlays.sweat    += lbTotals.sweat    || 0;
         totalPlays.addicted += lbTotals.addicted || 0;
         totalPlays.sth      += lbTotals.sth      || 0;
+        totalPlays.lwm      += lbTotals.lwm      || 0;
 
         const todayListens = weekListens.filter(l => l.listened_at >= dayFrom && l.listened_at < dayTo);
         const lbTodayCounts = countLbByTrack(todayListens);
@@ -688,6 +711,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
         todayCounts.sweat    += lbTodayCounts.sweat    || 0;
         todayCounts.addicted += lbTodayCounts.addicted || 0;
         todayCounts.sth      += lbTodayCounts.sth      || 0;
+        todayCounts.lwm      += lbTodayCounts.lwm      || 0;
         todayBySource[`ListenBrainz · ${u}`] = {
           jump: lbTodayCounts.jump || 0, shutdown: lbTodayCounts.shutdown || 0, ddududu: lbTodayCounts.ddududu || 0, ltal: lbTodayCounts.ltal || 0, go: lbTodayCounts.go || 0,
         };
@@ -710,6 +734,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
         weekCounts.sweat    += lbWeekCounts.sweat    || 0;
         weekCounts.addicted += lbWeekCounts.addicted || 0;
         weekCounts.sth      += lbWeekCounts.sth      || 0;
+        weekCounts.lwm      += lbWeekCounts.lwm      || 0;
 
         // ListenBrainz never fed lastScrobbleAt before -- a fan scrobbling only
         // through LB (e.g. after moving off Last.fm) would drift towards a
@@ -819,7 +844,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
   // Whole campaign incl. the Fallen Angel EP (LTAL + Fallen Angel + Heaven) so a
   // new release lifts the board. Mirrors CAMPAIGN_TOTAL_IDS / rankTids on the client
   // + leaderboard.js. (Per-track EP boards stay separate via overall_fallenangel/heaven.)
-  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go + totalPlays.sawadika + totalPlays.click + totalPlays.fallenangel + totalPlays.heaven + totalPlays.newtrick + totalPlays.v12 + totalPlays.cobra + totalPlays.tarantino + totalPlays.cutuoff + totalPlays.sweat + totalPlays.addicted + totalPlays.sth;
+  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go + totalPlays.sawadika + totalPlays.click + totalPlays.fallenangel + totalPlays.heaven + totalPlays.newtrick + totalPlays.v12 + totalPlays.cobra + totalPlays.tarantino + totalPlays.cutuoff + totalPlays.sweat + totalPlays.addicted + totalPlays.sth + totalPlays.lwm;
 
   return {
     username:      displayName,
@@ -858,8 +883,9 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
       overall_sweat:    totalPlays.sweat,
       overall_addicted: totalPlays.addicted,
       overall_sth:      totalPlays.sth,
+      overall_lwm:      totalPlays.lwm,
       overall_artist:   artistPlays,
-      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0) + (todayCounts.sawadika || 0) + (todayCounts.click || 0) + (todayCounts.fallenangel || 0) + (todayCounts.heaven || 0) + (todayCounts.newtrick || 0) + (todayCounts.v12 || 0) + (todayCounts.cobra || 0) + (todayCounts.tarantino || 0) + (todayCounts.cutuoff || 0) + (todayCounts.sweat || 0) + (todayCounts.addicted || 0) + (todayCounts.sth || 0),
+      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0) + (todayCounts.sawadika || 0) + (todayCounts.click || 0) + (todayCounts.fallenangel || 0) + (todayCounts.heaven || 0) + (todayCounts.newtrick || 0) + (todayCounts.v12 || 0) + (todayCounts.cobra || 0) + (todayCounts.tarantino || 0) + (todayCounts.cutuoff || 0) + (todayCounts.sweat || 0) + (todayCounts.addicted || 0) + (todayCounts.sth || 0) + (todayCounts.lwm || 0),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
       daily_ddududu:    todayCounts.ddududu  || 0,
@@ -877,8 +903,9 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
       daily_sweat:    todayCounts.sweat    || 0,
       daily_addicted: todayCounts.addicted || 0,
       daily_sth:      todayCounts.sth      || 0,
+      daily_lwm:      todayCounts.lwm      || 0,
       daily_date:       todayLabel,
-      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0) + (weekCounts.sawadika || 0) + (weekCounts.click || 0) + (weekCounts.fallenangel || 0) + (weekCounts.heaven || 0) + (weekCounts.newtrick || 0) + (weekCounts.v12 || 0) + (weekCounts.cobra || 0) + (weekCounts.tarantino || 0) + (weekCounts.cutuoff || 0) + (weekCounts.sweat || 0) + (weekCounts.addicted || 0) + (weekCounts.sth || 0),
+      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0) + (weekCounts.sawadika || 0) + (weekCounts.click || 0) + (weekCounts.fallenangel || 0) + (weekCounts.heaven || 0) + (weekCounts.newtrick || 0) + (weekCounts.v12 || 0) + (weekCounts.cobra || 0) + (weekCounts.tarantino || 0) + (weekCounts.cutuoff || 0) + (weekCounts.sweat || 0) + (weekCounts.addicted || 0) + (weekCounts.sth || 0) + (weekCounts.lwm || 0),
       weekly_jump:      weekCounts.jump     || 0,
       weekly_shutdown:  weekCounts.shutdown || 0,
       weekly_ddududu:   weekCounts.ddududu  || 0,
@@ -896,6 +923,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
       weekly_sweat:    weekCounts.sweat    || 0,
       weekly_addicted: weekCounts.addicted || 0,
       weekly_sth:      weekCounts.sth      || 0,
+      weekly_lwm:      weekCounts.lwm      || 0,
       weekly_start:     weekStartLabel,
     },
   };
@@ -1252,6 +1280,7 @@ export default async function handler(req, res) {
             sweat:    s.daily_sweat    || 0,
             addicted: s.daily_addicted || 0,
             sth:      s.daily_sth      || 0,
+            lwm:      s.daily_lwm      || 0,
             by_source: Object.keys(bySrc).length ? bySrc : null,
           });
         }
@@ -1624,6 +1653,35 @@ export default async function handler(req, res) {
         }
       } catch (eSth) {
         console.error('user_daily_counts sth upsert skipped (column migrated yet?):', eSth.message || eSth);
+      }
+
+      // LISA "Leave With Me" (2026-11-18), its own isolated guarded upsert for
+      // the same reason as the three above: a missing `lwm` column must not
+      // disturb any column beside it. Shipped WITH the release rather than
+      // after somebody notices a flat row — ADDICTED's column arrived a week
+      // late, nothing threw because every path here is deliberately forgiving,
+      // and the badges grid simply had no ADDICTED row for that week, which
+      // reads exactly like nobody having streamed it.
+      //   ALTER TABLE user_daily_counts ADD COLUMN IF NOT EXISTS lwm integer NOT NULL DEFAULT 0;
+      try {
+        const { data: lwmEx } = await sb
+          .from('user_daily_counts')
+          .select('app_user_id,lwm')
+          .eq('day_key', todayKey)
+          .in('app_user_id', ids);
+        const lwmMap = new Map((lwmEx || []).map(r => [r.app_user_id, r]));
+        const lwmRows = ids.map(id => ({
+          app_user_id: id, day_key: todayKey,
+          lwm: Math.max(dailyByUser.get(id).lwm || 0, lwmMap.get(id)?.lwm || 0),
+        }));
+        if (lwmRows.length) {
+          const { error: lwmErr } = await sb
+            .from('user_daily_counts')
+            .upsert(lwmRows, { onConflict: 'app_user_id,day_key' });
+          if (lwmErr) throw lwmErr;
+        }
+      } catch (eLwm) {
+        console.error('user_daily_counts lwm upsert skipped (column migrated yet?):', eLwm.message || eLwm);
       }
     } catch (e) {
       console.error('user_daily_counts upsert failed:', e.message || e);

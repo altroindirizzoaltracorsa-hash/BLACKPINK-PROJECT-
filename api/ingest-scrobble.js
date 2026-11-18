@@ -48,6 +48,12 @@ const TRACKS = [
   // Added on release day rather than a week later, which is what left every
   // extension-scrobbled ADDICTED play in the generic solo_jisoo bucket.
   { id: 'sth',         artist: 'jennie',    track: 'someone to hold' },
+  // LISA for the documentary ALWAYS LALISA (2026-11-18). BARE TITLE, like the
+  // entry above and for the same reason: keyName() runs norm() first, which
+  // strips (...) and [...], so Spotify's "Leave With Me (Featured in Always
+  // Lalisa)" collapses to the same key. The full title belongs in
+  // cron-scrobbles, where the lookup is exact; here it would never match.
+  { id: 'lwm',         artist: 'lisa',      track: 'leave with me' },
 ];
 
 function norm(s) {

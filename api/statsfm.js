@@ -179,6 +179,11 @@ export default async function handler(request) {
       // matched either way. This is the one of the three matchers that does
       // not care which punctuation the suffix arrives with.
       { id: 'sth',         prefix: 'someone to hold',   artist: 'JENNIE' },
+      // LISA for ALWAYS LALISA (2026-11-18). A PREFIX match, so whatever
+      // soundtrack attribution hangs off the end — "(Featured in Always
+      // Lalisa)" today, something else on a re-release — is matched either
+      // way. This matcher is the one that does not care about punctuation.
+      { id: 'lwm',         prefix: 'leave with me',     artist: 'LISA' },
     ];
 
     function countTracks(list) {
