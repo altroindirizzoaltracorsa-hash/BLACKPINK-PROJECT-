@@ -2524,6 +2524,10 @@
      square-ish corner is exactly the mismatch this block was created to fix,
      so it takes the pill radius here and nowhere else. */
   .cd-pl-pills .cd-pl-share { width: 100%; margin: 0.7rem 0 0; border-radius: 99px; }
+  /* This card's blue, through the component's own variables — the block is
+     generic and only its palette is per-card. */
+  .cd-card-lwm { --pl-ink: #a9bcff; --pl-line: rgba(169,188,255,0.34);
+    --pl-edge: rgba(169,188,255,0.22); --pl-on-ink: #06060f; }
   .cd-card-jisoo .js-park { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; height: auto; opacity: 0.9; mix-blend-mode: multiply; pointer-events: none; z-index: 2; }
   .cd-badge-chip.js-locket { color: var(--js-ink); background: rgba(255,251,250,0.28);
@@ -4320,6 +4324,31 @@
               <summary>ALWAYS LALISA premiere times worldwide</summary>
               <div class="cd-times-body" data-times-for="2026-11-18T18:00:00Z"></div>
             </details>
+            <!-- OUR PLAYLISTS. The same block the Steps and ADDICTED cards carry,
+                 and the links are the ones we published — no ?si= on any of
+                 them, as everywhere else here: that token is tied to whoever
+                 copied the link and would be handed to every visitor alike.
+                 NO DATED NOTE, unlike the Steps card's. That one is filled by
+                 script because it had to switch from "pre-save these" to
+                 "put one on" at the release instant, and PRESS PLAY's still
+                 reads "they fill up when PRESS PLAY lands" two weeks after it
+                 landed. This song is already out, so the line here can be
+                 written once and stay true. -->
+            <div class="cd-pl-pills">
+              <div class="cd-pl-pills-head">🎧 Community Playlists</div>
+              <p class="cd-pl-note">Three of ours for “Leave With Me”. Put one on and let it run.</p>
+              <div class="cd-pl-pills-list">
+                <a class="cd-pl-pill" href="https://open.spotify.com/playlist/38Y1aP8mrJ6cMYQBO3jxan" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>LEAVE WITH ME FOCUSED</a>
+                <a class="cd-pl-pill" href="https://open.spotify.com/playlist/3CMn4kAbVhgUgXFv8UtgOq" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>LEAVE WITH ME x PINKS</a>
+                <a class="cd-pl-pill" href="https://open.spotify.com/playlist/7bnJm0zga3YiZNSJ8lALLr" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>LEAVE WITH ME x BP</a>
+              </div>
+              <!-- Three links are not a picture, so this shares TEXT — the same
+                   shape as the other cards', which copy to the clipboard inside
+                   the tap gesture before opening the sheet, because Instagram,
+                   X and TikTok drop a share `text` when anything else rides
+                   along. -->
+              <button class="cd-pl-share" onclick="shareLeaveWithMePlaylists()">🎧 Share these playlists</button>
+            </div>
             <div class="cd-links">
               <!-- THE LINKS THIS CARD SPENT THREE WEEKS REFUSING TO GUESS, now
                    that both have been published. It shipped with none because
@@ -19717,6 +19746,37 @@ function _sthPlaylistPost() {
     : 'JENNIE’s “Someone to Hold” lands soon. Pre-save these and they fill up the moment it does.';
   return 'BLINKs — our “Someone to Hold” playlists 🎧\n' + lead + '\n\n'
        + rows + '\n\n' + PRESAVE_CARD_LINKS.sth;
+}
+
+// Our three "Leave With Me" playlists as a post. Text, not a picture, for the
+// same reason as the other two: there is no image of three links, and
+// attaching one makes the targets that drop `text` swallow the whole thing.
+//
+// The rows are read OFF THE CARD rather than listed here. A second copy of
+// three URLs is a second place to edit, and the one that gets forgotten is the
+// one nobody looks at — the post, which is the half that travels.
+//
+// NO LEAD LINE THAT EXPIRES. The Steps version switches its opening sentence
+// at the release instant because it shipped before the song; this one is only
+// ever posted about a song that is out.
+function _lwmPlaylistPost() {
+  const links = [...document.querySelectorAll('.cd-card-lwm .cd-pl-pill')];
+  if (!links.length) return null;
+  const rows = links.map(a => `▶ ${a.textContent.trim()}\n${a.href}`).join('\n\n');
+  return 'BLINKs — here are our playlists for #LISA’s “Leave With Me”, out now 🎧\n\n'
+       + rows + '\n\n#AlwaysLalisa\n' + PRESAVE_CARD_LINKS.leavewithme;
+}
+
+async function shareLeaveWithMePlaylists() {
+  const post = _lwmPlaylistPost();
+  if (!post) { _showShareToast('Playlists not loaded — try again'); return; }
+  // Clipboard FIRST, inside the tap gesture: a write attempted after the share
+  // sheet opens has lost the gesture that permits it, so copying here means the
+  // post is always pasteable whatever the target does with `text`.
+  let copied = false;
+  try { await navigator.clipboard?.writeText(post); copied = true; } catch {}
+  if (navigator.share) navigator.share({ title: 'LISA — Leave With Me playlists', text: post }).catch(() => {});
+  else _showShareToast(copied ? 'Playlists copied — paste them anywhere ✨' : 'Copy failed — try again');
 }
 
 async function shareSomeoneToHoldPlaylists() {
