@@ -78,15 +78,17 @@ const COUNTDOWNS = {
     title: 'JENNIE — Someone to Hold, Nov 20, 2026 | Countdown · BLINKS UNITED',
     description: "Counting down to JENNIE's “Someone to Hold” — her original song for Netflix's animated film Steps, out Nov 20, 2026 with the film.",
   },
-  // No hour in the description because none has been announced — a preview is
-  // the half of a shared link people read without clicking, so a time guessed
-  // here travels further than one on the page.
+  // The hour is HERE now because it was announced, not inferred: the official
+  // premiere card lists 28 countries and all 28 are the same instant. Until
+  // then this said none, deliberately — a preview is the half of a shared link
+  // people read without clicking, so a guessed time travels further than one
+  // on the page.
   // The image is composed rather than screenshotted: the share card's middle
   // is a live countdown, and a frozen "6D 18H" baked into a static preview is
   // wrong by the next day. Rebuilt by hand if the art or the date changes.
   'leavewithme': {
     title: 'LISA — Leave With Me, Nov 18, 2026 | Countdown · BLINKS UNITED',
-    description: "Counting down to LISA's “Leave With Me”, her song for the documentary ALWAYS LALISA, out Nov 18, 2026. No release time announced yet — the countdown runs to midnight where you are.",
+    description: "LISA's “Leave With Me”, her song for the documentary ALWAYS LALISA. The film premieres on YouTube Premium at one moment worldwide on Nov 18, 2026 — 1PM ET / 6PM UK / 3AM KST.",
     image: '/og-countdown-leavewithme.jpg',
   },
   // PAST TENSE, and it stays that way. This entry announced "voting closes

@@ -93,36 +93,50 @@ card ? ok('found the card', `${card.length} chars`)
      : bad('found the card', 'nothing below means anything');
 
 if (card) {
-  /data-target-local="2026-11-18"/.test(card)
-    ? ok('  counts to the reader\'s own midnight on Nov 18')
-    : bad('  counts to the reader\'s own midnight on Nov 18',
-          'without data-target-local the clock runs to one worldwide instant nobody announced');
-
-  // The floor the countdown falls back on. It must still be the 18th: a
-  // fallback on the wrong day is worse than none, because nothing reports it.
-  /data-target="2026-11-18T\d\d:\d\d:\d\dZ"/.test(card)
-    ? ok('  with a same-day floor for readers of data-target')
-    : bad('  with a same-day floor for readers of data-target',
-          'liveCountdownFor ranks on data-target and the card is skipped without one');
+  // THE ANNOUNCED INSTANT, and nothing that can outrank it. cardTargetAt()
+  // PREFERS data-target-local, so leaving that attribute on the card would
+  // keep the clock on local midnight while the card printed a time — wrong
+  // and invisible, since both look like a working countdown.
+  /data-target="2026-11-18T18:00:00Z"/.test(card)
+    ? ok('  counts to the announced premiere instant')
+    : bad('  counts to the announced premiere instant',
+          `got ${(card.match(/data-target="[^"]*"/) || ['none'])[0]} — the poster's 28 countries are all 18:00Z`);
+  !/data-target-local=/.test(card)
+    ? ok('  and nothing overrides it')
+    : bad('  and nothing overrides it',
+          'data-target-local wins in cardTargetAt, so the clock would ignore the time the card prints');
 
   !/<a\b/.test(card)
     ? ok('  and carries no link at all')
     : bad('  and carries no link at all',
           `${(card.match(/href="([^"]*)"/g) || []).join(', ')} — nothing official has been published to link to`);
 
-  // Any clock time in the visible copy. Deliberately broad: KST/EST were the
-  // shapes used on the other cards, "12AM"/"9:00" are what a hand edit writes.
+  // EVERY HOUR PRINTED ON THE CARD IS A CONVERSION OF 18:00Z, computed here
+  // rather than compared to a list typed twice. This is the check the old
+  // "names no hour" rule turned into: the risk is no longer inventing a time,
+  // it is printing a real time converted wrongly — which looks completely
+  // normal and sends people to the wrong hour.
   const text = card.replace(/<[^>]+>/g, ' ');
-  const hour = text.match(/\b\d{1,2}\s*(?:AM|PM)\b|\b\d{1,2}:\d{2}\b|\b(?:KST|EST|EDT|PST|PDT|CET|UTC|GMT)\b/i);
-  !hour ? ok('  and names no hour')
-        : bad('  and names no hour', `"${hour[0]}" — no release time has been announced`);
+  const PREMIERE = Date.parse('2026-11-18T18:00:00Z');
+  const inZone = (tz) => new Intl.DateTimeFormat('en-US',
+    { timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true })
+    .format(new Date(PREMIERE)).replace(/\s/g, '').replace(':00', '');
+  for (const [label, tz] of [['ET', 'America/New_York'], ['UK', 'Europe/London'],
+                             ['India', 'Asia/Kolkata'], ['KST', 'Asia/Seoul']]) {
+    const want = inZone(tz);
+    const re = new RegExp(want.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*' + label, 'i');
+    re.test(text.replace(/\s+/g, ' '))
+      ? ok(`  ${label} reads ${want}`)
+      : bad(`  ${label} reads ${want}`, `the card does not say "${want} ${label}" — 18:00Z is ${want} there`);
+  }
 
-  // The clock is counting to something the reader cannot see named, so the
-  // card has to say what. Without this line it silently asserts a time.
-  /midnight where you are/i.test(text)
-    ? ok('  but does say what it is counting to')
-    : bad('  but does say what it is counting to',
-          'an unexplained clock is a time claim with no source');
+  // And it still says WHICH event the clock is for. The 28 times are the
+  // film's premiere; no hour has been announced for the single by itself, so
+  // a card that just says "out at 1PM ET" claims something nobody published.
+  /premiere/i.test(text) && /ALWAYS LALISA/.test(text)
+    ? ok('  and says the clock is the film\'s premiere')
+    : bad('  and says the clock is the film\'s premiere',
+          'an unlabelled time on a single\'s card reads as the single\'s release hour');
 
   /onclick="openLeaveWithMeCard\(\)"/.test(card)
     ? ok('  and can be posted')
@@ -178,12 +192,12 @@ if (fn) {
     ? ok('  carries no link either')
     : bad('  carries no link either', 'a card outlives the moment it was made — a guessed link on one is worse than none');
 
-  // The same trap as on the page, in the one place it is easy to reintroduce:
-  // releaseAt is a STRING, so a plain date string here is UTC midnight.
-  /new Date\(LWM_DAY\[0\], LWM_DAY\[1\] - 1, LWM_DAY\[2\]/.test(ix)
-    ? ok('  and builds its release instant from parts, not Date.parse')
-    : bad('  and builds its release instant from parts, not Date.parse',
-          "Date.parse('2026-11-18') is UTC midnight — sixteen hours early in Los Angeles");
+  // The share card and the page card must count to the SAME moment. They are
+  // two clocks on one release and nothing else keeps them together.
+  /const LWM_PREMIERE = '2026-11-18T18:00:00Z'/.test(ix)
+    ? ok('  and the share card uses the same instant as the page')
+    : bad('  and the share card uses the same instant as the page',
+          'two clocks on one release that are set separately will disagree');
 
   // The poster is portrait and the card is landscape, so without fitWhole a
   // cover-crop shows a horizontal slice of her waist and nothing else.
@@ -239,41 +253,45 @@ async function clockIn(tz, nowISO) {
   return r;
 }
 
-// Hours each zone still waits, from 2026-11-17T13:00Z, to ITS OWN midnight.
+// ── The clock, read from five places at one instant ────────────────────────
+// THIS CHECK IS NOW THE EXACT INVERSE OF WHAT IT USED TO BE, and that is the
+// point of keeping it rather than deleting it. While no hour was announced the
+// card counted to each reader's own midnight and the rule was "five places,
+// five different answers". A worldwide premiere is the opposite rule: everyone
+// is waiting for the same moment, so all five must agree to the second.
+//
+// Getting this backwards is silent either way — a countdown that is wrong by
+// time zone still counts down, perfectly, to the wrong instant.
 const NOW = '2026-11-17T13:00:00Z';
-const ZONES = [
-  ['Pacific/Auckland',    'OUT'],  // +13 — its 18th began hours ago
-  ['Asia/Seoul',            2],    // +9
-  ['Europe/Rome',           10],   // +1 (CET in November, not CEST)
-  ['America/New_York',      16],   // -5 (EST in November)
-  ['America/Los_Angeles',   19],   // -8
-];
+// 2026-11-17T13:00Z to 2026-11-18T18:00Z is 29 hours exactly, everywhere.
+const WAIT_H = 29;
 console.log(`\n--- the clock, read at ${NOW} from five places`);
-for (const [tz, wantH] of ZONES) {
+const ZONES = ['Pacific/Auckland', 'Asia/Seoul', 'Europe/Rome',
+               'America/New_York', 'America/Los_Angeles'];
+const seen = new Set();
+for (const tz of ZONES) {
   const r = await clockIn(tz, NOW);
-  if (wantH === 'OUT') {
-    /OUT NOW/.test(r.timer)
-      ? ok(`${tz}: already out`, 'its own midnight has passed')
-      : bad(`${tz}: already out`, r.timer);
-  } else {
-    const m = r.timer.match(/^(\d+)Days(\d+)Hrs/);
-    const h = m ? Number(m[1]) * 24 + Number(m[2]) : -1;
-    h === wantH
-      ? ok(`${tz}: ${h}h to its own midnight`)
-      : bad(`${tz}: ${wantH}h to its own midnight`, `clock says ${r.timer}`);
-  }
+  seen.add(r.timer);
+  const m = r.timer.match(/^(\d+)Days(\d+)Hrs/);
+  const h = m ? Number(m[1]) * 24 + Number(m[2]) : -1;
+  h === WAIT_H
+    ? ok(`${tz}: ${h}h to the premiere`)
+    : bad(`${tz}: ${WAIT_H}h to the premiere`, `clock says ${r.timer}`);
 }
+seen.size === 1
+  ? ok('five places, one answer', `all read ${[...seen][0]}`)
+  : bad('five places, one answer',
+        `${seen.size} distinct — the clock is still each reader's own, not the announced instant`);
 
-// If every zone agreed, the local rule is not running at all — and the five
-// checks above would still pass on whichever single zone happened to match.
-const spread = new Set();
-for (const [tz] of ZONES) spread.add((await clockIn(tz, NOW)).timer);
-spread.size === ZONES.length
-  ? ok('five places, five different answers', 'the clock really is each reader\'s own')
-  : bad('five places, five different answers',
-        `${spread.size} distinct — a single worldwide instant gives everyone the same number`);
+// And it is out for EVERYONE at once, not zone by zone. Read a minute after.
+console.log('\n--- and a minute after it starts');
+const after = new Set();
+for (const tz of ZONES) after.add((await clockIn(tz, '2026-11-18T18:01:00Z')).timer);
+(after.size === 1 && /OUT NOW/.test([...after][0]))
+  ? ok('every zone flips together', [...after][0])
+  : bad('every zone flips together', [...after].join(' | '));
 
 await browser.close();
 server.close();
-console.log(fails ? `\n${fails} FAILED` : '\nNo link, no hour, and the clock is yours.');
+console.log(fails ? `\n${fails} FAILED` : '\nNo link, one instant, and every clock agrees.');
 process.exit(fails ? 1 : 0);

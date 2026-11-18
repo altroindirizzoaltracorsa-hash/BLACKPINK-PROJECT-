@@ -4240,8 +4240,23 @@
                site already uses, not because any hour is claimed.
                data-prerelease-name keeps the auto-discovered Spotify card
                from turning up a second time beside this one. -->
+          <!-- THE HOUR ARRIVED, and with it the half of this card's rule that
+               was always going to move. It shipped counting to MIDNIGHT ON THE
+               READER'S OWN CLOCK (data-target-local) because no time had been
+               announced and a guessed hour is worse than no hour. The official
+               premiere card now lists 28 countries, and all 28 resolve to one
+               instant — 2026-11-18T18:00:00Z — so there is a real worldwide
+               moment to count to and `data-target-local` has to GO. Leaving it
+               in would keep winning: cardTargetAt() prefers it, and the card
+               would quietly ignore the time it is printing.
+               WHAT THE 28 TIMES ARE: the premiere of ALWAYS LALISA on YouTube
+               Premium. That is the instant on the poster, so that is the
+               instant on the clock, and the card says which of the two things
+               it is counting to. The SONG's own release hour has still not
+               been announced separately — do not relabel this as the single
+               dropping until something official says they are the same. -->
           <div class="cd-card cd-card-lwm" data-slug="leavewithme" data-member="lisa"
-               data-target-local="2026-11-18" data-target="2026-11-18T00:00:00Z"
+               data-target="2026-11-18T18:00:00Z"
                data-live="OUT NOW ✨" data-prerelease-name="leave with me">
             <div class="lwm-hero">
               <img class="lwm-poster" src="/leavewithme/always-lalisa-poster.webp"
@@ -4251,8 +4266,13 @@
               <div class="lwm-title">Leave With Me</div>
               <div class="lwm-by">LISA · New Single</div>
             </div>
-            <div class="cd-sub">Out Wed, Nov 18, 2026</div>
+            <div class="cd-eyebrow">ALWAYS LALISA · premiere</div>
+            <div class="cd-sub">Wed, Nov 18, 2026 — the same moment everywhere</div>
             <div class="cd-timer" data-timer></div>
+            <details class="cd-times" ontoggle="if(this.open)fillReleaseTimesInto(this.querySelector('.cd-times-body'))">
+              <summary>Premiere times worldwide</summary>
+              <div class="cd-times-body" data-times-for="2026-11-18T18:00:00Z"></div>
+            </details>
             <div class="cd-links">
               <button class="cd-btn lwm-btn" onclick="openLeaveWithMeCard()">📸 Share</button>
             </div>
@@ -4260,10 +4280,12 @@
               LISA's song for <b>ALWAYS LALISA</b>, the documentary — the art
               is the film's poster, standing in until a sleeve exists.
               <br><br>
-              No release time has been announced, so this counts to
-              <b>midnight where you are</b> — it reaches zero when the date
-              turns over on your clock, not on Seoul's or New York's. The
-              moment a time or a pre-save exists, this card gets them.
+              The film premieres on <b>YouTube Premium</b> at one instant
+              worldwide, and the clock above counts to it: <b>1PM ET</b> /
+              <b>6PM UK</b> / <b>11:30PM India</b> / <b>3AM KST</b> on the
+              19th. Open the list for your own city. No release hour has been
+              announced for the <i>song</i> on its own, so that is the one
+              thing this card still does not claim.
             </div>
           </div>
           <!-- SUN SHOWERS — JISOO, from The Angry Birds Movie 3. Out Nov 20.
@@ -22960,7 +22982,7 @@ async function shareCard() {
       // destination for that release. Ours must be the full deep link or
       // nothing. test_share_links.mjs reads the FIRST url now, not the last.
       statsText = d.campaign === 'leavewithme'
-        ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n🎬 Her song for the documentary ALWAYS LALISA\n⏰ No release time announced yet — this counts to midnight where you are\n👉 Count it down on Blinks United — share it!\n`
+        ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n🎬 Her song for the documentary ALWAYS LALISA\n⏰ Premieres on YouTube Premium at one moment worldwide — 1PM ET / 6PM UK / 3AM KST\n👉 Count it down on Blinks United — share it!\n`
         : d.campaign === 'sunshowers'
         ? (d.earned
             ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n🐤 From The Angry Birds Movie 3 · out ${d.dateShort}\n👉 Pre-save it too on Blinks United — don't forget to share!\n`
@@ -27179,12 +27201,16 @@ async function openSunShowersCard() {
 //   outlives the moment it was made, so a guessed link on one is wrong for
 //   longer than anything on the page. Put the real one here when it exists.
 //
-//   NO dateLine HOUR, for the same reason: none has been announced. releaseAt
-//   is the reader's OWN midnight, built from parts exactly as cardTargetAt
-//   does it — Date.parse('2026-11-18') would be UTC midnight and hand a Los
-//   Angeles reader a card that is sixteen hours early.
-const LWM_DAY = [2026, 11, 18];
-const lwmReleaseAt = () => new Date(LWM_DAY[0], LWM_DAY[1] - 1, LWM_DAY[2], 0, 0, 0, 0).toISOString();
+//   THE HOUR ARRIVED. This used to build the reader's OWN midnight from
+//   parts, because no time had been announced and Date.parse('2026-11-18')
+//   would have handed Los Angeles a card sixteen hours early. The premiere
+//   card now gives 28 countries and every one of them resolves to the same
+//   instant, so there is a real moment and the local-midnight construction is
+//   gone with the guesswork that needed it.
+//   It is the ALWAYS LALISA premiere on YouTube Premium, which is what the
+//   poster timed — not a separately announced hour for the single.
+const LWM_PREMIERE = '2026-11-18T18:00:00Z';
+const lwmReleaseAt = () => LWM_PREMIERE;
 const lwmLive = () => Date.now() >= Date.parse(lwmReleaseAt());
 
 const LWM_POSTER_IMG = '/leavewithme/always-lalisa-poster.webp';
@@ -27228,11 +27254,10 @@ async function openLeaveWithMeCard() {
     base: '#06060f',
     accent: '#a9bcff',
     releaseAt: lwmReleaseAt(),
-    // The DATE, never an hour — and "midnight where you are" rather than a
-    // timezone, because that is the honest description of what the clock on
-    // the card is counting to.
+    // One instant, so the line can finally name it. Two zones and not ten:
+    // the card is read at thumbnail size and the full list lives on the page.
     dateLine: out ? 'Out now · Nov 18, 2026'
-                  : 'Out Wed, Nov 18, 2026 · midnight where you are',
+                  : 'Premieres Wed, Nov 18 · 1PM ET / 3AM KST',
     dateShort: 'Nov 18, 2026',
     // The CTA slot carries the ARTIST, not a link. It is always drawn, in the
     // accent, and with no photo and no wordmark on this card it was the one
