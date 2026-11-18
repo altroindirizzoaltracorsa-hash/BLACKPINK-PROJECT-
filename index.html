@@ -4321,24 +4321,30 @@
               <div class="cd-times-body" data-times-for="2026-11-18T18:00:00Z"></div>
             </details>
             <div class="cd-links">
-              <!-- THE FIRST OFFICIAL LINK THIS CARD HAS EVER CARRIED. It shipped
-                   with none on purpose — every neighbouring card has a pre-save
-                   URL and the pull was to invent one, which either 404s or
-                   lands somewhere real and wrong on the card people screenshot.
-                   This one was published, so it goes on. It is the MV, not a
-                   pre-save: the official title is "LISA - Leave With Me
-                   (Featured in Always Lalisa) (Official Music Video)". -->
-              <a class="cd-btn lwm-btn" href="https://youtu.be/M8fO5lQpfrc"
-                 target="_blank" rel="noopener">▶ Watch MV ↗</a>
+              <!-- THE LINKS THIS CARD SPENT THREE WEEKS REFUSING TO GUESS, now
+                   that both have been published. It shipped with none because
+                   every neighbouring card carries a pre-save URL and the pull
+                   was to invent one; the comment here and the test both named
+                   the guess the pattern produced — lalisaofficial.lnk.to.
+                   THE REAL ONE IS LISA.lnk.to. Different host. A card that had
+                   gone with the obvious guess would have sent every reader,
+                   and every screenshot of it, to a dead address for three
+                   weeks, and nothing on the page would have looked wrong.
+                   Streaming leads because "out on all platforms" is what was
+                   announced; the MV is one of the places it is. -->
+              <a class="cd-btn lwm-btn" href="https://LISA.lnk.to/leavewithme"
+                 target="_blank" rel="noopener">🎧 Listen ↗</a>
+              <a class="cd-btn lwm-btn lwm-btn-ghost" href="https://youtu.be/M8fO5lQpfrc"
+                 target="_blank" rel="noopener">▶ MV ↗</a>
               <button class="cd-btn lwm-btn lwm-btn-ghost" onclick="openLeaveWithMeCard()">📸 Share</button>
             </div>
             <div class="lwm-note">
               LISA's song for <b>ALWAYS LALISA</b>, the documentary — the art
               is the film's poster, standing in until a sleeve exists.
               <br><br>
-              The song is out — it dropped at <b>00:00 KST</b> on Nov 19, and
-              the MV is the official <i>Leave With Me (Featured in Always
-              Lalisa)</i>.
+              The song is out on <b>all streaming platforms</b> — it dropped at
+              <b>00:00 KST</b> on Nov 19, and the MV is the official <i>Leave
+              With Me (Featured in Always Lalisa)</i>.
               <br><br>
               The <b>film</b> is three hours behind it: ALWAYS LALISA premieres
               on <b>YouTube Premium</b> at one instant worldwide — <b>1PM ET</b>
@@ -23040,7 +23046,7 @@ async function shareCard() {
       // destination for that release. Ours must be the full deep link or
       // nothing. test_share_links.mjs reads the FIRST url now, not the last.
       statsText = d.campaign === 'leavewithme'
-        ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n🎬 Her song for the documentary ALWAYS LALISA\n▶ Watch the MV: https://youtu.be/M8fO5lQpfrc\n👉 Count it down on Blinks United — share it!\n`
+        ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n🎬 Her song for the documentary ALWAYS LALISA\n🎧 Out on every platform: https://LISA.lnk.to/leavewithme\n👉 Count it down on Blinks United — share it!\n`
         : d.campaign === 'sunshowers'
         ? (d.earned
             ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n🐤 From The Angry Birds Movie 3 · out ${d.dateShort}\n👉 Pre-save it too on Blinks United — don't forget to share!\n`

@@ -8,13 +8,16 @@
 // What this guards against is the OTHER way those gaps get filled: a plausible
 // value written in because every neighbouring card has one.
 //
-//   · THE LINK. For three weeks there was none, because every other card on
+//   · THE LINKS, and the best evidence this file has that the rule is worth
+//     keeping. For three weeks there were none, because every other card on
 //     this page carries one and the pattern pulled hard toward
-//     lalisaofficial.lnk.to/leavewithme — which either 404s or, worse, lands
-//     somewhere real and wrong on the thing people screenshot. The MV has
-//     since been published, so the card links to THAT and to nothing else.
-//     The rule did not change when the link arrived: link what was announced,
-//     invent nothing. A lnk.to on this card still fails.
+//     lalisaofficial.lnk.to/leavewithme — the domain on every other LISA
+//     card. The real one, published with the release, is LISA.lnk.to. A
+//     DIFFERENT HOST. The obvious guess was never going to be right, and a
+//     card that had taken it would have been dead for three weeks with
+//     nothing on the page looking wrong.
+//     So: the streaming link and the MV, because those were announced, and
+//     nothing else. The rule did not change when the links arrived.
 //
 //   · NO HOUR. The card counts to MIDNIGHT ON THE READER'S OWN CLOCK
 //     (data-target-local), and says so. Writing "1PM KST / 12AM EST" in the
@@ -129,17 +132,35 @@ if (card) {
   // published, so it goes on; what has to stay true is that this is the ONLY
   // link, and that it is the one that was actually announced.
   const hrefs = [...card.matchAll(/href="([^"]*)"/g)].map((m) => m[1]);
-  hrefs.includes('https://youtu.be/M8fO5lQpfrc')
-    ? ok('  links to the official MV')
-    : bad('  links to the official MV', hrefs.length ? hrefs.join(', ') : 'no link at all');
-  // Nothing else, and in particular nothing lnk.to-shaped: no pre-save has
-  // been published for this release, and one invented here is the original
-  // failure this card was written to avoid.
-  const extra = hrefs.filter((h) => h !== 'https://youtu.be/M8fO5lQpfrc');
+  // Both of the published ones, and the streaming link is the one that leads:
+  // "out on all streaming platforms" is what was announced, and the MV is one
+  // of the places it is.
+  const OFFICIAL = ['https://LISA.lnk.to/leavewithme', 'https://youtu.be/M8fO5lQpfrc'];
+  for (const url of OFFICIAL) {
+    hrefs.includes(url)
+      ? ok(`  links to ${url.includes('lnk.to') ? 'the streaming link' : 'the official MV'}`)
+      : bad(`  links to ${url}`, hrefs.length ? hrefs.join(', ') : 'no link at all');
+  }
+  hrefs[0] === OFFICIAL[0]
+    ? ok('  with listening first')
+    : bad('  with listening first', `${hrefs[0]} leads — the announcement is that it is out everywhere`);
+
+  // THE GUESS THIS CARD REFUSED, pinned because it came true the other way.
+  // For three weeks the card carried no link, and both this file and the
+  // markup named the URL the pattern pulls toward: lalisaofficial.lnk.to,
+  // built from the domain on every other LISA card. The published one is
+  // LISA.lnk.to — a different host. A card that had gone with the obvious
+  // guess would have sent every reader, and every screenshot of it, to a dead
+  // address for three weeks with nothing on the page looking wrong.
+  !/lalisaofficial\.lnk\.to/i.test(card)
+    ? ok('  and never acquired the guess that was never right')
+    : bad('  and never acquired the guess that was never right',
+          'lalisaofficial.lnk.to is the invented one; LISA.lnk.to is the real one');
+  const extra = hrefs.filter((h) => !OFFICIAL.includes(h));
   extra.length === 0
     ? ok('  and to nothing that was never published')
     : bad('  and to nothing that was never published',
-          `${extra.join(', ')} — only the MV has been announced for this release`);
+          `${extra.join(', ')} — only these two have been announced for this release`);
 
   // EVERY HOUR PRINTED ON THE CARD IS A CONVERSION OF 18:00Z, computed here
   // rather than compared to a list typed twice. This is the check the old
