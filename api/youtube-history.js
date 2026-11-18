@@ -37,7 +37,7 @@ const YT_API = 'https://www.googleapis.com/youtube/v3/videos';
 // to freeze. A release has to be in ALL THREE lists; test_youtube_marks.mjs
 // now fails if a marked video is missing from this one.
 const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc', 'FyS5dAywkEo', 'sf02ugzPFE4', 's466YCiHfKw', 'Lufa9QAFFeY',
-  '-5ZXrO_lYSA', 'Pksr9T8m_aA', 'qbr271qnviI'];
+  '-5ZXrO_lYSA', 'Pksr9T8m_aA', 'qbr271qnviI', 'M8fO5lQpfrc'];
 const MAX_POINTS = 2400;              // ~100 days at hourly — keep the full-life gain list
 const MIN_GAP_MS = 55 * 60 * 1000;    // don't store more than ~once an hour
 const key = id => `bu_yt_hist_${id}`;
@@ -118,6 +118,17 @@ const RELEASE = {
   // looked entirely plausible doing it. Taken from the video's own
   // publishedAt via /api/youtube-stats rather than inferred from the single.
   'qbr271qnviI': '2026-11-06T21:00:00Z',
+  // LISA "Leave With Me (Featured in Always Lalisa)" — LISAOfficialVEVO.
+  // :05 because /api/youtube-stats reports publishedAt as 2026-11-18T15:00:05Z,
+  // five seconds after the single's own instant (00:00 KST). Read from the API,
+  // not inferred: the two entries above are the reason that distinction is
+  // written down — ADDICTED's is :09 and "Someone to Hold"'s video went up
+  // SIXTEEN HOURS after its song, so "release + 24h" is not a rule, it is a
+  // coincidence that holds until it does not.
+  // Added the same hour the video went up, which is the whole point: ADDICTED's
+  // 24h figure is permanently gone because its entry was made too late to
+  // freeze anything.
+  'M8fO5lQpfrc': '2026-11-18T15:00:05Z',
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -139,6 +150,7 @@ const EXTRA_MARKS = {
   'Lufa9QAFFeY': [{ key: '7d', label: '7 DAYS', at: '2026-09-24T23:00:00Z' }], // ROSÉ new trick — release + 7d
   '-5ZXrO_lYSA': [{ key: '7d', label: '7 DAYS', at: '2026-10-30T04:00:00Z' }], // LISA Tarantino — release + 7d
   'Pksr9T8m_aA': [{ key: '7d', label: '7 DAYS', at: '2026-11-05T23:00:09Z' }], // JISOO ADDICTED — release + 7d
+  'M8fO5lQpfrc': [{ key: '7d', label: '7 DAYS', at: '2026-11-25T15:00:05Z' }], // LISA — Leave With Me (release + 7d)
   'qbr271qnviI': [{ key: '7d', label: '7 DAYS', at: '2026-11-13T21:00:00Z' }], // JENNIE Someone to Hold (Netflix) — release + 7d
 };
 const marksOf = id => [

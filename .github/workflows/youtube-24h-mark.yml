@@ -23,6 +23,8 @@ name: YouTube 24h Mark Capture
 #   pending  2026-10-30T04:00Z  -5ZXrO_lYSA Tarantino MV 7-day
 #   MANUAL   2026-10-30T23:00:09Z  Pksr9T8m_aA ADDICTED MV 24h  (not measured — see below)
 #   pending  2026-11-05T23:00:09Z  Pksr9T8m_aA ADDICTED MV 7-day
+#   pending  2026-11-19T15:00:05Z  M8fO5lQpfrc Leave With Me MV 24h
+#   pending  2026-11-25T15:00:05Z  M8fO5lQpfrc Leave With Me MV 7-day
 #
 # That last one is NOT on the hour, and deliberately. /api/youtube-stats
 # reports the MV's publishedAt as 2026-10-29T23:00:09Z — nine seconds after
@@ -119,7 +121,7 @@ jobs:
           # 21:00Z, sixteen hours after the single's own 05:00Z. Its marks are
           # taken from the VIDEO's publishedAt, not from the release: 24h on
           # 2026-11-07T21:00Z and 7d on 2026-11-13T21:00Z.
-          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-10-24T04:00:00Z,2026-10-30T04:00:00Z,2026-10-30T23:00:09Z,2026-11-05T23:00:09Z,2026-11-07T21:00:00Z,2026-11-13T21:00:00Z' }}
+          MARK_UTC: ${{ inputs.mark_utc != '' && inputs.mark_utc || '2026-10-24T04:00:00Z,2026-10-30T04:00:00Z,2026-10-30T23:00:09Z,2026-11-05T23:00:09Z,2026-11-07T21:00:00Z,2026-11-13T21:00:00Z,2026-11-19T15:00:05Z,2026-11-25T15:00:05Z' }}
         run: |
           set -u
           now=$(date -u +%s)
