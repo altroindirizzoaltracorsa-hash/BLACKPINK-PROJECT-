@@ -7,8 +7,8 @@
 // is the RELEASE DATE — confirmed at the source, not assumed: the
 // distributor's own pre-save page carries releaseDateInfo.date = null.
 //
-// So the rule has now flipped for BOTH halves, one at a time, and each flip
-// is written down here because a check whose meaning silently inverts is
+// So the rule has now flipped for ALL THREE halves, one at a time, and each
+// flip is written down here because a check whose meaning silently inverts is
 // worse than no check.
 //   · The performing credit was unknown when this card shipped and this file
 //     FORBADE claiming it; it was confirmed, so the file REQUIRES it.
@@ -17,8 +17,15 @@
 //     requires it to be the SAME date in all four places (card, share card,
 //     shared caption, link preview), because four copies of a date is four
 //     chances for one of them to be stale.
-// What has NOT flipped is the hour: a date was given, a time was not, so the
-// card counts to the reader's own midnight and must name no clock time.
+//   · The HOUR was unknown and this file FORBADE naming one, and required
+//     data-target-local so the clock ran to the reader's own midnight. 2PM
+//     KST was announced, so both halves invert: the card must name the hour,
+//     and data-target-local must be GONE rather than merely joined by a
+//     data-target. That is the check worth having. cardTargetAt() PREFERS
+//     data-target-local, so a card left carrying both announces one instant
+//     in its copy and counts to another in its clock, and nothing anywhere
+//     reports the difference — which is precisely how the Leave With Me card
+//     spent an afternoon counting to its film's premiere instead of its song.
 //
 // This site has already made the mirror-image mistake. The Steps card claimed
 // Jennie "wrote and performs" a song the HMMA nominee list credits to Justin
@@ -84,44 +91,62 @@ HEDGE.test(text)
   ? bad('the old "we do not know if she sings it" hedge is gone', 'it is back, and it is now untrue')
   : ok('the old "we do not know if she sings it" hedge is gone');
 
-// 2. THE DATE — 20 Nov 2026, announced, so this half is inverted. See header.
+// 2. THE DATE AND THE HOUR — 2PM KST on 20 Nov 2026, both announced, so both
+//    halves are inverted. See header.
 const DATEY = /\b(20\d\d|jan(uary)?|feb(ruary)?|mar(ch)?|apr(il)?|may|jun(e)?|jul(y)?|aug(ust)?|sep(t|tember)?|oct(ober)?|nov(ember)?|dec(ember)?)\b/i;
 const DAY = '2026-11-20';
-// MIDNIGHT ON THE READER'S OWN CLOCK, because a date was given and an hour
-// was not. data-target alone would count every reader to one instant nobody
-// announced; Date.parse('2026-11-20') is UTC midnight, which is most of a day
-// early in the Americas.
-(cardTag.match(/data-target-local="([^"]+)"/) || [])[1] === DAY
-  ? ok('the card counts to the reader\'s own midnight on Nov 20', 'data-target-local')
-  : bad('the card counts to the reader\'s own midnight on Nov 20',
-        'without data-target-local the clock runs to one worldwide instant nobody gave');
-// The floor for anything reading this card without the local rule. It has to
-// be the SAME DAY — a fallback on the wrong date is worse than none, because
-// nothing reports it.
-new RegExp('data-target="' + DAY + 'T\\d\\d:\\d\\d:\\d\\dZ"').test(cardTag)
-  ? ok('  with a same-day floor for readers of data-target')
-  : bad('  with a same-day floor for readers of data-target', 'liveCountdownFor ranks on it');
-// The date is allowed on the card now; an HOUR is not, because none was
-// announced. This is the half that did not flip.
+// 2PM KST = 05:00 UTC = 12AM EST. ONE instant for everybody, so the card
+// carries data-target and NOTHING ELSE.
+const INSTANT = '2026-11-20T05:00:00Z';
+// THE DANGEROUS ATTRIBUTE, and the reason this check is first. It was
+// REQUIRED here while no hour was known. Now it must be absent — not
+// "absent or overridden", absent — because cardTargetAt() reads
+// data-target-local FIRST and returns the reader's own midnight from it,
+// ignoring data-target entirely. A card with both looks right in a diff, in
+// the markup and in its own copy, and counts to the wrong instant for every
+// reader on earth except whoever is at UTC+0 at the time.
+/data-target-local=/.test(cardTag)
+  ? bad('data-target-local is gone now that an hour was announced',
+        'cardTargetAt prefers it, so the clock runs to local midnight and ignores data-target')
+  : ok('data-target-local is gone now that an hour was announced');
+new RegExp('data-target="' + INSTANT + '"').test(cardTag)
+  ? ok('and the card counts to the announced instant', `${INSTANT} = 2PM KST`)
+  : bad('and the card counts to the announced instant',
+        `want data-target="${INSTANT}", got ${(cardTag.match(/data-target="[^"]*"/) || ['nothing'])[0]}`);
+// The script-side gate (Early Supporter, the pre-save bar) must agree with the
+// clock on the page. These were two independent constants and one of them sat
+// at null for the card's whole life.
+new RegExp("SS_RELEASE_AT = '" + INSTANT + "'").test(site)
+  ? ok('  and the Early Supporter gate opens at the same instant', 'SS_RELEASE_AT')
+  : bad('  and the Early Supporter gate opens at the same instant',
+        'SS_RELEASE_AT disagrees with the card, or is still null — badges go to late arrivals');
+// The HOUR is now required, and a specific one. This is the half that just
+// flipped: it used to fail on finding any clock time at all.
 {
-  const hour = text.match(/\b\d{1,2}\s*(?:AM|PM)\b|\b\d{1,2}:\d{2}\b|\b(?:KST|EST|EDT|PST|PDT|CET|UTC|GMT)\b/i);
-  hour ? bad('and names no release hour', `"${hour[0]}" — no time has been announced`)
-       : ok('and names no release hour');
+  const hour = text.match(/\b\d{1,2}\s*(?:AM|PM)\s*(?:KST|EST|EDT|PST|PDT|CET|UTC|GMT)\b/i);
+  hour ? ok('and the card names the release hour', hour[0])
+       : bad('and the card names the release hour', 'an hour was announced and the copy does not give it');
 }
+/2\s*PM\s*KST/i.test(text)
+  ? ok('  and it is the one that was announced', '2PM KST')
+  : bad('  and it is the one that was announced', '2PM KST is not in the copy');
 /nov(ember)?\s*20/i.test(text)
   ? ok('and the date it names is the one that was announced')
   : bad('and the date it names is the one that was announced', 'Nov 20 is not in the copy');
-// An unexplained clock is a time claim with no source: the reader cannot see
-// what it counts to, so the card has to say.
-// The CLAIM, not one phrasing of it: "midnight your time" and "midnight where
-// you are" say the same thing and the wording is the author's to change. What
-// must not happen is the sentence going away, which would leave a clock
-// asserting an hour nobody announced.
+// The reader's OWN clock, still printed — not because the instant is unknown
+// now, but because naming KST and EST leaves everyone else doing arithmetic,
+// and west of Eastern even the DATE differs (Thu Nov 19, 9PM in Los Angeles).
+/<span class="cd-sub-local" data-local-target><\/span>/.test(cardHtml)
+  ? ok('and still prints the instant in the reader\'s own clock', 'data-local-target')
+  : bad('and still prints the instant in the reader\'s own clock',
+        'readers west of Eastern are left to work out which day it is for them');
+// The old midnight-local copy must be GONE, not merely outnumbered: it is now
+// a false statement sitting next to a clock that contradicts it.
 /midnight (your time|where you are)/i.test(text)
-  ? ok('and says what the clock is counting to')
-  : bad('and says what the clock is counting to', 'the timer silently asserts an hour');
-// The old wording must be gone, not merely outnumbered.
-/not announced|nothing to count down/i.test(text.replace(/no release time has been announced/ig, ' '))
+  ? bad('and the old "midnight where you are" line is gone',
+        'the copy and the timer now disagree')
+  : ok('and the old "midnight where you are" line is gone');
+/not announced|nothing to count down/i.test(text)
   ? bad('and the "no date announced" copy is gone', 'the card contradicts its own timer')
   : ok('and the "no date announced" copy is gone');
 
@@ -143,6 +168,19 @@ if (btn) {
 /onclick="saveSunShowers\(\)"/.test(cardHtml)
   ? ok('and the tap is counted', 'saveSunShowers()')
   : bad('and the tap is counted', 'the button does not call saveSunShowers(), so the bar and badge never move');
+// THE LABEL IS SCRIPT-DRIVEN, which only became possible with an instant to
+// read. ADDICTED, new trick and Fallen Angel each carry a hand-typed
+// "Listen ↗" that somebody had to remember on release morning; this release
+// lands in the small hours for most of Europe.
+/id="ss-cta"/.test(cardHtml)
+  ? ok('and the button has the id the swap writes to', 'ss-cta')
+  : bad('and the button has the id the swap writes to', 'renderSsCta has nothing to write to');
+/function renderSsCta\(\)[\s\S]{0,200}ssLive\(\) \? 'Listen/.test(site)
+  ? ok('  and its label follows ssLive()', 'no release-morning edit to remember')
+  : bad('  and its label follows ssLive()', 'the card will still say Pre-save after the song is out');
+/renderSsCta\(\);/.test(site.replace(/function renderSsCta\(\)[\s\S]*?\n\}/, ' '))
+  ? ok('  and something actually calls it')
+  : bad('  and something actually calls it', 'it is defined and never runs, so the label never moves');
 
 
 // The share card is a canvas, so what it PRINTS is pinned in a real browser by
@@ -193,24 +231,32 @@ openFn ? ok('found openSunShowersCard()') : bad('found openSunShowersCard()', 'i
 /releaseAt:\s*ssReleaseAt\(\)/.test(openFn)
   ? ok('it hands the renderer a release date', 'releaseAt: ssReleaseAt()')
   : bad('it hands the renderer a release date', 'the share card would print RELEASE DATE NOT ANNOUNCED');
-// THE READER'S OWN MIDNIGHT, same instant as the card on the page. Built from
-// parts: Date.parse('2026-11-20') is UTC midnight, and a share card that
-// disagreed with the card it was made from would be wrong by up to a day
-// depending only on who pressed the button.
-/new Date\(SS_DAY\[0\], SS_DAY\[1\] - 1, SS_DAY\[2\]/.test(site)
-  ? ok('  built from parts, not Date.parse of a date string')
-  : bad('  built from parts, not Date.parse of a date string',
-        "Date.parse('2026-11-20') is UTC midnight — hours early in the Americas");
-/SS_DAY = \[2026, 11, 20\]/.test(site)
-  ? ok('  and it is the announced day')
-  : bad('  and it is the announced day', 'the share card counts to a different date than the page');
+// THE SAME INSTANT AS THE PAGE, and now literally the same constant.
+// ssReleaseAt() used to rebuild the reader's own midnight from an
+// SS_DAY = [2026, 11, 20] triple kept beside it, which was correct while no
+// hour was announced and is a second copy of the release now that one is — a
+// share card that disagreed with the card it was made from would be wrong by
+// up to a day depending only on who pressed the button.
+/const ssReleaseAt = \(\) => SS_RELEASE_AT;/.test(site)
+  ? ok('  and it is the page\'s own constant, not a second copy', 'ssReleaseAt() => SS_RELEASE_AT')
+  : bad('  and it is the page\'s own constant, not a second copy',
+        'the share card builds its own instant and can drift from the card it was made from');
+/SS_DAY/.test(site)
+  ? bad('  with the old [y, m, d] triple removed', 'SS_DAY is still there, so there are two answers again')
+  : ok('  with the old [y, m, d] triple removed');
 /dateLine:[^\n]*Nov 20, 2026/.test(openFn)
   ? ok('and a date line naming it')
   : bad('and a date line naming it', 'the card prints no date under the title');
+// The hour is required here too, for the same reason it is on the card: the
+// share card is read by people who never see the page.
 {
-  const oHour = openFn.match(/\b\d{1,2}\s*(?:AM|PM)\b|\b(?:KST|EST|EDT|PST|PDT)\b/i);
-  oHour ? bad('and names no hour either', `"${oHour[0]}"`) : ok('and names no hour either');
+  const oHour = openFn.match(/\b\d{1,2}\s*(?:AM|PM)\s*(?:KST|EST|EDT|PST|PDT)\b/i);
+  oHour ? ok('and names the hour too', oHour[0])
+        : bad('and names the hour too', 'the share card is a day vaguer than the page it came from');
 }
+/midnight where you are/i.test(openFn)
+  ? bad('  and not the old midnight-local line', 'it contradicts the instant it counts to')
+  : ok('  and not the old midnight-local line');
 // THE TITLE HEADS THE TYPE COLUMN ON EVERY PICTURE, including the sleeve that
 // letters its own name. That was forbidden while the artwork was the card's
 // background — setting it again printed it twice over the same picture — and
@@ -320,9 +366,18 @@ console.log('\n--- and the words posted with the card say the same thing');
     const sDate = branch.replace(/sunshowers|sun ?showers|angry birds movie 3/ig, ' ').match(DATEY);
     sDate ? bad('  so there is no literal date in it', `"${sDate[0]}"`)
           : ok('  so there is no literal date in it');
-    /not announced/i.test(branch.replace(/no release time announced/ig, ' '))
-      ? bad('and the old "no date" wording is gone', 'the caption contradicts the card')
-      : ok('and the old "no date" wording is gone');
+    // Same rule for the HOUR, which is new: it goes through timeShort for
+    // exactly the reason the date goes through dateShort.
+    /\$\{d\.timeShort\}/.test(branch)
+      ? ok('and takes the hour from the card too', '${d.timeShort}')
+      : bad('and takes the hour from the card too',
+            'a literal hour typed into the caption is the copy that survives the edit that moves the other');
+    /\b\d{1,2}\s*(?:AM|PM)\b|\b(?:KST|EST|EDT|PST|PDT)\b/i.test(branch)
+      ? bad('  so there is no literal hour in it either', branch.match(/\b\d{1,2}\s*(?:AM|PM)\b|\b(?:KST|EST|EDT|PST|PDT)\b/i)[0])
+      : ok('  so there is no literal hour in it either');
+    /not announced|midnight where you are/i.test(branch)
+      ? bad('and the old "no date / no time" wording is gone', 'the caption contradicts the card')
+      : ok('and the old "no date / no time" wording is gone');
   }
 }
 
@@ -368,9 +423,12 @@ console.log('\n--- and the share preview makes the same two claims, no more');
   /nov(ember)?\s*20,?\s*2026/i.test(blk)
     ? ok('the preview names the announced date')
     : bad('the preview names the announced date', 'a shared link would still read as undated');
-  /not announced/i.test(blk.replace(/no release time announced/ig, ' '))
-    ? bad('and not the old "no date" line', 'it contradicts the card')
-    : ok('and not the old "no date" line');
+  /2\s*PM\s*KST/i.test(blk)
+    ? ok('and the announced hour', '2PM KST')
+    : bad('and the announced hour', 'the preview is vaguer than the card it previews');
+  /not announced|midnight where you are/i.test(blk)
+    ? bad('and not the old "no date / no time" line', 'it contradicts the card')
+    : ok('and not the old "no date / no time" line');
 }
 
 console.log(fails ? `\n${fails} FAILED` : '\nAll correct.');

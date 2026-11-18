@@ -4400,11 +4400,23 @@
                release date. The clause before it was re-read.
                test_sunshowers_claims.mjs pins both halves.
 
-               NO HOUR: a date was given, a time was not, so the card counts to
-               MIDNIGHT ON THE READER'S OWN CLOCK through data-target-local and
-               says so in the note. data-target is the floor for anything that
-               reads this card without the local rule, at 00:00 UTC because
-               that is the site's day boundary — not a claimed release hour.
+               THE HOUR HAS NOW ARRIVED TOO: 2PM KST on Nov 20, one worldwide
+               instant, so data-target-local is GONE and data-target carries
+               the real thing. Deleting that attribute IS the edit, not tidying
+               afterwards: cardTargetAt() prefers data-target-local over
+               data-target, so leaving the date there would have kept every
+               reader counting to their own midnight while a correct-looking
+               data-target sat beside it. A card carrying both announces one
+               instant and counts to another, and nothing reports it — the
+               Leave With Me card spent an afternoon doing exactly that.
+
+               2PM KST = 05:00 UTC = 12AM EST, the same instant "Someone to
+               Hold" counts to, which is the ordinary shape for a US-label
+               release (midnight Eastern) rather than a coincidence. West of
+               Eastern the DATE differs — Thu Nov 19, 9PM in Los Angeles — so
+               the card names the two clocks that were announced and then
+               prints the reader's own through data-local-target, instead of
+               leaving anyone to work out which day it is where they are.
 
                Still not stated anywhere here: the film's own release date.
                That is the film's, not the song's. -->
@@ -4413,14 +4425,14 @@
                it dedupes bespoke cards by this name, and a card without it is
                invisible to that check. -->
           <div class="cd-card cd-card-sunshowers" data-slug="sunshowers" data-member="jisoo"
-               data-target-local="2026-11-20" data-target="2026-11-20T00:00:00Z"
+               data-target="2026-11-20T05:00:00Z"
                data-live="OUT NOW ✨" data-prerelease-name="sun showers">
             <img class="ss-art" src="/sunshowers/sun-showers-cover.webp" width="1400" height="1400"
                  alt="Sun Showers — JISOO, from The Angry Birds Movie 3. The Angry Birds cast on a yellow field, with Shumon, a small grey dustball, at the front right."
                  loading="lazy">
             <div class="ss-body">
               <div class="cd-eyebrow">JISOO · Original Song<div class="cd-badge-chip ss-shumon" id="ss-badge" style="display:none;"><img src="/sunshowers/shumon.webp" alt="" aria-hidden="true">Early Supporter</div></div>
-              <div class="cd-sub">Out Fri, Nov 20, 2026</div>
+              <div class="cd-sub">Fri, Nov 20, 2026 · <b>2PM KST / 12AM EST</b><span class="cd-sub-local" data-local-target></span></div>
               <div class="cd-timer" data-timer></div>
               <div class="cd-goal" id="ss-goal" style="display:none;">
                 <div class="cd-goal-top">
@@ -4430,7 +4442,17 @@
                 <div class="cd-goal-bar"><div class="cd-goal-fill" id="ss-goal-fill" style="width:0%"></div></div>
               </div>
               <div class="cd-links">
-                <a class="cd-btn" href="https://JISOO.lnk.to/SunShowers" target="_blank" rel="noopener" onclick="saveSunShowers()">Pre-save ↗</a>
+                <!-- Label SET BY SCRIPT (renderSsCta), the way the Steps card
+                     does it, and only possible now that an instant exists to
+                     read: ssLive() answered false forever while SS_RELEASE_AT
+                     was null, so a swap wired then would never have fired.
+                     ADDICTED, new trick and Fallen Angel each carry a
+                     hand-edited "Listen ↗" somebody had to remember on release
+                     morning, and this one lands in the small hours for most of
+                     Europe. Only the LABEL moves — the badge guard lives
+                     inside saveSunShowers(), which refuses new grants once
+                     ssLive(). -->
+                <a class="cd-btn" id="ss-cta" href="https://JISOO.lnk.to/SunShowers" target="_blank" rel="noopener" onclick="saveSunShowers()">Pre-save ↗</a>
                 <button class="cd-btn ss-btn-ghost" onclick="openSunShowersCard()">📸 Share</button>
               </div>
               <div class="ss-note">
@@ -4442,8 +4464,9 @@
                 <b>Shumon</b>, a character she first drew in middle school, years before
                 she debuted — and he is the badge you get for pre-saving.
                 <br><br>
-                Since no release time has been announced yet, the countdown ends at
-                <b>midnight your time</b> on <b>Nov 20</b>.
+                It arrives at one instant worldwide — <b>2PM KST</b> on <b>Nov 20</b>,
+                which is midnight Eastern the same night and <b>Thu Nov 19</b> evening
+                on the US west coast. The line under the title has it in your own clock.
                 <span class="ss-src">Reported by The Hollywood Reporter</span>
               </div>
             </div>
@@ -19626,20 +19649,28 @@ async function sthEarlySupporterEarned() {
 // Its own counter key, its own localStorage flags, its own badge — so it can
 // never open at ADDICTED's total or hand out ADDICTED's badge.
 //
-// NO RELEASE DATE. The distributor's own pre-save page carries
-// releaseDateInfo.date = null, so there is no instant to gate on and ssLive()
-// is false while SS_RELEASE_AT is null. That is the right answer for now:
-// everyone pre-saving an unreleased song IS early.
+// THE GATE IS LIVE. It sat at null from the day this card shipped, because
+// the distributor's pre-save page carried releaseDateInfo.date = null and
+// there was no instant to gate on — ssLive() was false and everyone
+// pre-saving an unreleased song genuinely WAS early. The note here said to
+// set SS_RELEASE_AT the day a date existed and the gate would start working
+// with no other change; this is that line, and that is all it took.
 //
-// THE DAY A DATE IS ANNOUNCED, set SS_RELEASE_AT and the gate starts working
-// with no other change. That gate is not optional — new trick shipped for six
-// weeks without one and ADDICTED had the same hole, so "Early Supporter" went
-// to anyone who tapped the link weeks AFTER release, which devalues it for
-// everyone who actually pre-saved.
+// It is not optional. new trick shipped for six weeks without one and
+// ADDICTED had the same hole, so "Early Supporter" went to anyone who tapped
+// the link weeks AFTER release, which devalues it for everyone who really did
+// pre-save. From 2PM KST on Nov 20, saveSunShowers() returns before it hands
+// out a badge and the pre-save goal bar hides itself.
+//
+// ONE INSTANT, WRITTEN ONCE. ssReleaseAt() reads this constant rather than
+// rebuilding the moment from a [y, m, d] triple of its own, so the share card
+// cannot drift away from the card it was made from.
 const SS_SAVE_LS    = 'bu_jisoo_sunshowers_saved';
 const SS_COUNTED_LS = 'bu_jisoo_sunshowers_counted';
 const SS_SAVE_GOAL  = 50;
-const SS_RELEASE_AT = null;
+// 2PM KST on Nov 20 = 05:00 UTC = 12AM EST. Same instant as the card's
+// data-target; the two are pinned together by test_sunshowers_claims.mjs.
+const SS_RELEASE_AT = '2026-11-20T05:00:00Z';
 
 function ssLive() {
   return SS_RELEASE_AT != null && Date.now() >= new Date(SS_RELEASE_AT).getTime();
@@ -19648,6 +19679,17 @@ function ssLive() {
 function renderSsBadge() {
   const el = document.getElementById('ss-badge');
   if (el) el.style.display = (_buSignedIn && localStorage.getItem(SS_SAVE_LS)) ? 'inline-flex' : 'none';
+}
+
+// The call to action, off the same instant the countdown and the pre-save bar
+// read. Worth having now and impossible before: ssLive() was false forever
+// while SS_RELEASE_AT was null, so there was no moment for a label to move at.
+// Only the LABEL moves — saveSunShowers() keeps its own guard, because
+// renaming a button without one is how "Early Supporter" gets handed to
+// somebody who tapped Listen.
+function renderSsCta() {
+  const btn = document.getElementById('ss-cta');
+  if (btn) btn.textContent = ssLive() ? 'Listen ↗' : 'Pre-save ↗';
 }
 
 function renderSsSaveCount(count) {
@@ -19700,6 +19742,7 @@ async function ssEarlySupporterEarned() {
 
 async function loadSsSaveCount() {
   renderSsBadge();
+  renderSsCta();
   try {
     const r = await fetch('/api/proxy-image?sunshowers_save=count');
     const d = await r.json();
@@ -23139,7 +23182,7 @@ async function shareCard() {
         : d.campaign === 'sunshowers'
         ? (d.earned
             ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n🐤 From The Angry Birds Movie 3 · out ${d.dateShort}\n👉 Pre-save it too on Blinks United — don't forget to share!\n`
-            : `\n🐤 ${d.act} — "${d.release}", from The Angry Birds Movie 3\n📅 Out ${d.dateShort} — no release time announced, so the clock runs to midnight where you are\n👉 ${d.verbCta} on Blinks United — every one counts. Share it!\n`)
+            : `\n🐤 ${d.act} — "${d.release}", from The Angry Birds Movie 3\n📅 Out ${d.dateShort} — ${d.timeShort}\n👉 ${d.verbCta} on Blinks United — every one counts. Share it!\n`)
         : d.earned
         ? `\n🏆 I'm an Early Supporter of ${d.act} — "${d.release}"\n⏰ ${d.dateShort}\n👉 Pre-save it too on Blinks United — don't forget to share!\n`
         : `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n👉 ${d.verbCta} on Blinks United — every one counts. Share it!\n`;
@@ -27247,11 +27290,13 @@ async function selectSunShowersCardArt(url, thumbEl) {
   _markCardReady(canvas);
 }
 
-// Her own midnight, the same instant the card on the page counts to — see
-// cardTargetAt. A share card that disagreed with the card it was made from
-// would be wrong by up to a day depending on who made it.
-const SS_DAY = [2026, 11, 20];
-const ssReleaseAt = () => new Date(SS_DAY[0], SS_DAY[1] - 1, SS_DAY[2], 0, 0, 0, 0).toISOString();
+// The same instant the card on the page counts to, and now literally the same
+// constant: SS_RELEASE_AT. It used to build the reader's OWN midnight from a
+// [2026, 11, 20] triple kept here, which was right while no hour had been
+// announced and was a second copy of the release the moment one was — a share
+// card that disagreed with the card it was made from would have been wrong by
+// up to a day depending only on who pressed the button.
+const ssReleaseAt = () => SS_RELEASE_AT;
 
 async function openSunShowersCard() {
   const overlay = document.getElementById('card-overlay');
@@ -27319,14 +27364,19 @@ async function openSunShowersCard() {
     // own all-caps face, and "I pre-saved" under "SUN SHOWERS" reads as two
     // different cards stacked.
     accent: '#ffd978', claim: 'I PRE-SAVED',
-    // There IS a date now (Nov 20), so drawPresaveCard gets one and prints a
-    // countdown instead of "RELEASE DATE NOT ANNOUNCED". Built from parts, not
-    // Date.parse('2026-11-20'): that would be UTC midnight, and the card on the
-    // page counts to the reader's OWN midnight — two different instants, up to
-    // most of a day apart, on the same release.
+    // There IS a date AND an hour now, so drawPresaveCard gets one instant and
+    // prints a countdown instead of "RELEASE DATE NOT ANNOUNCED". ssReleaseAt()
+    // returns SS_RELEASE_AT itself — it used to build the reader's OWN midnight
+    // from parts, which was the right answer while no hour had been announced
+    // and would now put the share card up to most of a day away from the card
+    // it was made from.
     releaseAt: ssReleaseAt(),
-    dateLine: 'Out Fri, Nov 20, 2026 \u00b7 midnight where you are',
+    dateLine: 'Out Fri, Nov 20, 2026 \u00b7 2PM KST / 12AM EST',
     dateShort: 'Nov 20, 2026',
+    // The hour the way the caption says it, read from here rather than typed
+    // into the caption \u2014 the rule dateShort already exists for. Two copies of
+    // a time is how one survives the edit that moves the other.
+    timeShort: '2PM KST / 12AM EST',
     cta: '\u25b6 PRE-SAVE \u00b7 JISOO.lnk.to/SunShowers',
     verb: 'is coming', verbCta: 'Pre-save it',
   };

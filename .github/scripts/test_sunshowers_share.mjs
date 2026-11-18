@@ -231,11 +231,21 @@ async function checkDate(what) {
     ? ok(`${what}: and no NaN reached the type`)
     : bad(`${what}: and no NaN reached the type`, JSON.stringify(nan));
 
-  // An HOUR is still forbidden: a date was announced, a time was not.
-  const houred = t.filter(s => /\b\d{1,2}\s*(?:AM|PM)\b|\b(?:KST|EST|EDT|PST|PDT)\b/i.test(s));
-  houred.length === 0
-    ? ok(`${what}: and names no release hour`)
-    : bad(`${what}: and names no release hour`, JSON.stringify(houred));
+  // THE HOUR IS NOW REQUIRED, and this check used to forbid it — 2PM KST on
+  // Nov 20 was announced, so the card that is read by people who never open
+  // the page must not be vaguer than the page. The old rule ("a date was
+  // announced, a time was not") held until it didn't, which is why the flip
+  // is written down rather than quietly deleted.
+  const houred = t.filter(s => /\b\d{1,2}\s*(?:AM|PM)\s*(?:KST|EST|EDT|PST|PDT)\b/i.test(s));
+  houred.length
+    ? ok(`${what}: and names the release hour`, houred[0])
+    : bad(`${what}: and names the release hour`, `no clock time in ${JSON.stringify(t.slice(0, 12))}`);
+  // And not the line it replaced, which would now contradict the instant the
+  // same card counts down to.
+  const midnight = t.filter(s => /midnight where you are|midnight your time/i.test(s));
+  midnight.length === 0
+    ? ok(`${what}: and not the old midnight-local line`)
+    : bad(`${what}: and not the old midnight-local line`, JSON.stringify(midnight));
 }
 
 console.log('\n--- the sleeve, which is the default');
