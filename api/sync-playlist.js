@@ -214,6 +214,54 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: false, error: 'No accounts configured in SPOTIFY_PLAYLIST_ACCOUNTS' });
   }
 
+  // ── ?list=<spotify user id> — READ ONLY. Every playlist that user has, with
+  //    its id, so a playlist can be put on a card without anybody retyping a
+  //    22-character base62 string by hand.
+  //
+  //    This exists because there is no other way in. open.spotify.com renders
+  //    the profile entirely in JavaScript — fetching the HTML returns the
+  //    account name and nothing else, and loading it in a real headless
+  //    browser returns an empty body, because the web player will not
+  //    bootstrap without a session it refuses to give one. The API is the only
+  //    route, and the token rules are the ones findCandidatePlaylists already
+  //    discovered: client-credentials blanket-403s /v1/users/{id}/playlists,
+  //    so an OAuth token from ANY connected account is used to read it, and
+  //    the target's own token is preferred when it has one.
+  //
+  //    Writes nothing. Paginates, because a fan account can easily hold more
+  //    than the 50 one page returns and a silently truncated list is how the
+  //    wrong playlist ends up on a card.
+  if (req.query.list) {
+    const target = String(req.query.list);
+    const userToken = await getUserAccessToken(target);
+    const browseToken = userToken ? null : await getAnyUserToken(accountIds);
+    const clientCredToken = (userToken || browseToken) ? null : await getClientCredentialsToken().catch(() => null);
+    const token = userToken || browseToken || clientCredToken;
+    const mode = userToken ? 'oauth-self' : browseToken ? 'oauth-browse' : 'client_credentials';
+    if (!token) return res.status(200).json({ ok: false, mode, error: 'no usable Spotify token' });
+    let next = userToken
+      ? 'https://api.spotify.com/v1/me/playlists?limit=50'
+      : `https://api.spotify.com/v1/users/${encodeURIComponent(target)}/playlists?limit=50`;
+    const playlists = [];
+    while (next && playlists.length < 300) {
+      const r = await fetch(next, { headers: { Authorization: `Bearer ${token}` } });
+      if (!r.ok) {
+        const body = await r.text().catch(() => '');
+        return res.status(200).json({ ok: false, mode, user: target, status: r.status,
+          error: body.slice(0, 300), partial: playlists });
+      }
+      const d = await r.json();
+      for (const pl of d.items || []) {
+        if (!pl) continue;
+        playlists.push({ id: pl.id, name: pl.name, url: pl.external_urls?.spotify || null,
+                         public: pl.public, tracks: pl.tracks?.total ?? null,
+                         owner: pl.owner?.id || null });
+      }
+      next = d.next || null;
+    }
+    return res.status(200).json({ ok: true, mode, user: target, count: playlists.length, playlists });
+  }
+
   try {
     const [clientCredToken, browseToken] = await Promise.all([
       getClientCredentialsToken(),

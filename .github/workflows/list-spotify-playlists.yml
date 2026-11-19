@@ -1,0 +1,62 @@
+name: List a Spotify user's playlists
+
+# READ ONLY. Prints every playlist a Spotify account has, with its id, so one
+# can be put on a countdown card without anybody retyping a 22-character
+# base62 string by hand — one wrong character is a dead link on a card
+# thousands of people tap.
+#
+# Why this needs the API at all: open.spotify.com renders a profile entirely
+# in JavaScript. Fetching the HTML returns the account name and nothing else,
+# and loading it in a real headless browser returns an empty body, because the
+# web player will not bootstrap without a session it will not grant. The API
+# is the only way in, and only an OAuth token can read
+# /v1/users/{id}/playlists — client credentials blanket-403 there. The
+# endpoint behind this handles that; see its note.
+#
+# Manual only. Nothing here writes.
+
+on:
+  workflow_dispatch:
+    inputs:
+      user:
+        description: 'Spotify user id (the part after /user/ in the profile URL)'
+        required: true
+      filter:
+        description: 'Optional: only show playlists whose name contains this (case-insensitive)'
+        required: false
+        default: ''
+
+jobs:
+  list:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask Vercel for the list
+        run: |
+          set -e
+          # The secret goes in the HEADER, never the URL: a query string ends up
+          # in logs and in Vercel's request records.
+          http_code=$(curl -s -L --location-trusted -o out.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.VERCEL_URL }}/api/sync-playlist?list=$(printf '%s' '${{ inputs.user }}' | jq -sRr @uri)")
+          echo "HTTP $http_code"
+          if [ "$http_code" -ge 400 ]; then cat out.json; exit 1; fi
+
+          ok=$(jq -r '.ok' out.json)
+          echo "token mode : $(jq -r '.mode // "?"' out.json)"
+          echo "playlists  : $(jq -r '.count // 0' out.json)"
+          if [ "$ok" != "true" ]; then
+            echo "::error title=Could not list playlists::$(jq -r '.status // ""' out.json) $(jq -r '.error // ""' out.json)"
+            cat out.json
+            exit 1
+          fi
+
+          echo ""
+          echo "--- name · id · tracks · public ---"
+          F='${{ inputs.filter }}'
+          if [ -n "$F" ]; then
+            jq -r --arg f "$F" '.playlists[] | select(.name | ascii_downcase | contains($f | ascii_downcase))
+              | "\(.name)\n    https://open.spotify.com/playlist/\(.id)   (\(.tracks) tracks, public=\(.public))"' out.json
+          else
+            jq -r '.playlists[]
+              | "\(.name)\n    https://open.spotify.com/playlist/\(.id)   (\(.tracks) tracks, public=\(.public))"' out.json
+          fi
