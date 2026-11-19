@@ -4342,6 +4342,7 @@
               <!-- Named for what it actually opens. "Pre-save" alone would read
                    as the song. -->
               <a class="cd-btn" href="https://open.spotify.com/album/5BYKG4MHfySZthe2W6r7n4" target="_blank" rel="noopener">Pre-save the album ↗</a>
+              <button class="cd-btn" onclick="openPowerTripCard()">📸 Share</button>
             </div>
             <div class="pt-note">
               <b>“Power Trip”</b> is JENNIE's song on <b>GTA VI: The Album</b>, the
@@ -22399,6 +22400,7 @@ const PRESAVE_CARD_LINKS = {
   sunshowers:  'https://www.blinksunited.com/countdowns/sunshowers',
   sth:         'https://www.blinksunited.com/countdowns/steps',
   leavewithme: 'https://www.blinksunited.com/countdowns/leavewithme',
+  powertrip:   'https://www.blinksunited.com/countdowns/powertrip',
 };
 let _msShareBlob   = null; // pre-generated blob for shareMilestoneCard
 let _goalCardPhoto = null; // pre-loaded BLACKPINK photo for goal hit card
@@ -23345,7 +23347,9 @@ async function shareCard() {
       // lalisaofficial.com) may still lead, which is fine — it is a real
       // destination for that release. Ours must be the full deep link or
       // nothing. test_share_links.mjs reads the FIRST url now, not the last.
-      statsText = d.campaign === 'leavewithme'
+      statsText = d.campaign === 'powertrip'
+        ? `\n🚗 ${d.act} — "${d.release}", her song on GTA VI: The Album\n📅 ${d.verb} ${d.dateShort} — at midnight wherever you are\n👉 ${d.verbCta} on Blinks United — share it!\n`
+        : d.campaign === 'leavewithme'
         ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n🎬 Her song for the documentary ALWAYS LALISA\n🎧 Out on every platform: https://LISA.lnk.to/leavewithme\n👉 Count it down on Blinks United — share it!\n`
         : d.campaign === 'sunshowers'
         ? (d.earned
@@ -27640,6 +27644,83 @@ async function openLeaveWithMeCard() {
     verbCta: 'Count it down',
   };
   label.textContent = 'LEAVE WITH ME · COUNTDOWN';
+  drawPresaveCard(canvas, _presaveCardData);
+  _markCardReady(canvas);
+}
+
+// JENNIE — "Power Trip", on GTA VI: The Album.
+//
+// MIDNIGHT LOCAL, so the instant is built from PARTS the way the page's own
+// cardTargetAt does. Date.parse('2026-11-20') is UTC midnight, which is most
+// of a day early in the Americas — a share card that counted to a different
+// moment than the card it was made from would be wrong by up to a day
+// depending only on who pressed the button.
+const PT_DAY   = [2026, 11, 20];
+const PT_PHOTO = '/powertrip/jennie-powertrip.webp';
+const ptReleaseAt = () => new Date(PT_DAY[0], PT_DAY[1] - 1, PT_DAY[2], 0, 0, 0, 0).toISOString();
+const ptLive = () => Date.now() >= new Date(ptReleaseAt()).getTime();
+let _ptPhotoImg = null;
+
+async function openPowerTripCard() {
+  const overlay = document.getElementById('card-overlay');
+  const label   = document.getElementById('card-box-label');
+  overlay.style.display = 'flex';
+  label.textContent = 'GENERATING…';
+  document.getElementById('lb-card-range-toggle').style.display = 'none';
+  // One picture, so no picker — and the null stops the format toggle
+  // rebuilding this card around whatever the previous card had picked.
+  document.getElementById('release-pic-picker').style.display = 'none';
+  _presaveCardArtUrl = null;
+  _cardType = 'presave';
+  _cardTrackId = null;
+  _cardFormat = 'landscape';
+  document.getElementById('fmt-landscape')?.classList.add('active');
+  document.getElementById('fmt-square')?.classList.remove('active');
+  const canvas = document.getElementById('card-canvas');
+  canvas.width = 1200; canvas.height = 675;
+
+  // Loaded up front: the draw is synchronous, so anything fetched at draw
+  // time arrives after the frame it was wanted for, and the first card comes
+  // out missing it while the second is right.
+  const photo = _ptPhotoImg
+    ? _ptPhotoImg
+    : await loadImg(PT_PHOTO).then(i => (_ptPhotoImg = i)).catch(() => null);
+  await document.fonts.ready;
+
+  const out = ptLive();
+  _presaveCardData = {
+    campaign: 'powertrip', earned: false,
+    act: 'JENNIE', release: 'Power Trip',
+    // The photograph WHOLE, not cropped: it is portrait and the card is
+    // landscape, so a cover-crop takes a horizontal slice of her waist and
+    // nothing else. Same reason the Leave With Me poster is drawn contained.
+    // NO logoImg, though the file is right there and loaded. That slot is
+    // sized by drawPresaveCard at a fixed H * 0.062 — about 42px tall — which
+    // is built for a WIDE wordmark like SaWaDiKa's lettering. The GTA lockup
+    // is nearly square, so it came out ~55px across and read as a smudge above
+    // the title rather than a logo. Widening the slot would change every other
+    // card that uses it. The album is named in the CTA line instead, in the
+    // accent, where it is actually legible at thumbnail size.
+    photo, photoWide: null, titleImg: null, logoImg: null, emblemImg: null,
+    titleText: 'Power Trip',
+    fitWhole: true,
+    base: '#0b0510',
+    accent: '#ff6ea8',
+    releaseAt: ptReleaseAt(),
+    // NO HOUR, because there is no one hour — it lands at midnight in each
+    // country. "your time" is the only honest way to put that on a picture
+    // that will be read in every timezone there is.
+    dateLine: out ? 'Out now · Nov 20, 2026'
+                  : 'Out midnight your time · Fri, Nov 20, 2026',
+    dateShort: 'Nov 20, 2026',
+    // The CTA slot names the ALBUM, not a link: the only thing published is
+    // the album pre-save, and a card that read like a song link would send
+    // people somewhere 34 tracks wide without saying so.
+    cta: 'On GTA VI: The Album',
+    verb: out ? 'is out' : 'drops',
+    verbCta: 'Count it down',
+  };
+  label.textContent = 'POWER TRIP · COUNTDOWN';
   drawPresaveCard(canvas, _presaveCardData);
   _markCardReady(canvas);
 }

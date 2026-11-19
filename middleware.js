@@ -40,6 +40,10 @@ const COUNTDOWNS = {
   powertrip: {
     title: 'JENNIE — Power Trip, Nov 20, 2026 | Countdown · BLINKS UNITED',
     description: "JENNIE's \u201cPower Trip\u201d is on GTA VI: The Album, out at midnight where you are on Nov 20, 2026. Pre-save the album.",
+    // Without this the slug is wired everywhere else and a shared link still
+    // comes up bare — a title and a line of text, no picture. Her own photo
+    // cropped to 1200x630, not the album sleeve: the sleeve is the game's.
+    image: '/og-countdown-powertrip.jpg',
   },
   sunshowers: {
     title: 'JISOO — Sun Showers, Nov 20, 2026 | Countdown · BLINKS UNITED',
