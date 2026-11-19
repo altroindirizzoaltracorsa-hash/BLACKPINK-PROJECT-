@@ -4349,7 +4349,7 @@
               </div>
             </div>
             <div class="pt-body">
-            <div class="cd-eyebrow">JENNIE · New Song<div class="cd-badge-chip pt-chip" id="pt-badge" style="display:none;"><img src="/powertrip/gta-vi-logo.webp" alt="" aria-hidden="true">Day One</div></div>
+            <div class="cd-eyebrow">JENNIE · New Song<div class="cd-badge-chip pt-chip" id="pt-badge" style="display:none;"><img src="/powertrip/gta-vi-logo.webp" alt="" aria-hidden="true">JENNIE · Day One</div></div>
             <div class="cd-sub">Out <b>midnight your time</b> · Fri, Nov 20, 2026<span class="cd-sub-local" data-local-target></span></div>
             <div class="cd-timer cd-timer-plain" data-timer></div>
             <div class="cd-links">
@@ -16229,7 +16229,7 @@ const SPECIAL_BADGES = [
   {
     id: 'jennie-powertrip-dayone',
     icon: '<img src="/powertrip/gta-vi-logo.webp" alt="" style="height:20px;width:auto;max-width:96px;object-fit:contain;vertical-align:middle;">',
-    label: 'DAY ONE',
+    label: 'JENNIE \u00b7 DAY ONE',
     song: 'Power Trip \u2014 JENNIE',
     desc: 'Was there on release day',
     check: () => ptDayOneEarned(),
@@ -27711,7 +27711,7 @@ function savePowerTrip() {
   if (!ptBadgeOpen()) return;
   if (!localStorage.getItem(PT_SAVE_LS)) {
     localStorage.setItem(PT_SAVE_LS, '1');
-    _showShareToast(_buSignedIn ? '🏆 Badge unlocked: Day One!' : '✅ Counted! Sign in on My Badges to claim your Day One badge.');
+    _showShareToast(_buSignedIn ? '🏆 Badge unlocked: JENNIE · Day One!' : '✅ Counted! Sign in on My Badges to claim your JENNIE · Day One badge.');
     try { sb?.auth.updateUser({ data: { pt_day_one: true } }); } catch {}
     refreshSupporterChips();
   }
