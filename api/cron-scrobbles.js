@@ -491,7 +491,39 @@ async function extensionCountsForUsers(sb, appUserIds, dayFrom, dayTo, weekFrom,
 // ── Refresh one user's scores ─────────────────────────────────
 // linkedMap: Map(source_username.toLowerCase() -> app_user_id), used to attach
 // this profile's extension_scrobbles rows to the right account.
-async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
+// ── Stats.fm, fetched HERE rather than waited for ───────────────────────────
+//
+// Through our own /api/statsfm, on this same deployment, for three reasons:
+// that endpoint already holds the only Stats.fm title matcher (prefix + artist,
+// which tolerates the "(Featured in Always Lalisa)" soundtrack suffixes that
+// trackKey does not), it already holds the stale-while-error cache that keeps a
+// throttled scrape from zeroing a fan, and copying either one here would make a
+// third place to edit on every release. Same self-call shape api/streams.js
+// uses for its catalog refresh.
+//
+// Returns null on ANY failure, and null means "not answered" — never 0. The
+// caller leaves the fan's stored numbers alone on null, because a confident
+// zero written over a real figure is exactly how this provider erased people
+// before.
+async function fetchStatsfmDay(host, username, weekFromSec, dayKey = null) {
+  if (!host) return null;
+  const qs = new URLSearchParams({ user: username });
+  if (dayKey) qs.set('day', dayKey);
+  if (weekFromSec) qs.set('weekFrom', String(weekFromSec));
+  try {
+    const r = await fetch(`https://${host}/api/statsfm?${qs}`, { headers: { Accept: 'application/json' } });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d || d.error || !d.tracks) return null;
+    // The endpoint echoes the window it actually answered for. A backfill that
+    // silently received today's numbers for every date would look like it
+    // worked, so the day asked for is checked rather than assumed.
+    if (dayKey && d.day !== dayKey) return null;
+    return d;
+  } catch { return null; }
+}
+
+async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host = null) {
   const linkedAccounts = entry.linkedAccounts || [{ type: 'lastfm', username: entry.username }];
 
   // Resolve the stable owner id. It's often missing on the in-Redis entry — a
@@ -561,6 +593,10 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
   // → {jump,shutdown,ddududu,ltal,go}. Frozen into the day's row at the 2am reset.
   const todayBySource = {};
   const srcZero = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0 });
+  // Stats.fm handles this run actually fetched and counted server-side, with
+  // the payload kept so the providerScores block at the bottom can roll them
+  // back out if it turns out to be holding a combined figure it cannot split.
+  const statsfmFetched = new Map();
 
   // Primary Last.fm account (first one, for stamps)
   const lfmAccount = linkedAccounts.find(a => a.type === 'lastfm');
@@ -869,8 +905,47 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
       } catch (e) {
         console.warn(`LB fetch failed for ${u}:`, e.message);
       }
+    } else if (acct.type === 'statsfm') {
+      // STATS.FM IS FETCHED HERE NOW. It used to be left entirely to
+      // providerScores — whatever the badges page last submitted — on the
+      // stated grounds that "these providers expose no per-day history to
+      // re-derive it, so on a later day it's simply 0 until the fan opens
+      // their badges again". The second half was the real consequence and the
+      // first half was never true: /api/statsfm asks Stats.fm for an explicit
+      // window, and has since it replaced the broken streams/recent pager. It
+      // had simply never been asked for any window but today's.
+      //
+      // Cost: ONE request from here. The throttling that made this provider
+      // "unfetchable" was a ~40-profile burst against the old per-fan scrape;
+      // the endpoint behind this call also caches, so a run that reaches the
+      // same fan twice spends nothing the second time.
+      const u = acct.username;
+      const sfm = await fetchStatsfmDay(host, u, weekFrom);
+      if (sfm) {
+        statsfmFetched.set(u.toLowerCase(), { ...sfm, handle: u });
+        const sfmDay = sfm.today || {};
+        for (const t of TRACKS) {
+          totalPlays[t.id]  += sfm.tracks?.[t.id] || 0;
+          todayCounts[t.id] += sfmDay[t.id] || 0;
+          // The WEEK, properly, when the endpoint answered for it. Falling back
+          // to the day is what the provider path always did — a fan's Stats.fm
+          // week was one day deep — and it is still the right fallback, because
+          // the alternative on a throttled week call is to drop six days of
+          // their plays rather than five.
+          weekCounts[t.id]  += (sfm.week ? (sfm.week[t.id] || 0) : (sfmDay[t.id] || 0));
+        }
+        const row = srcZero();
+        for (const k of Object.keys(row)) row[k] = sfmDay[k] || 0;
+        todayBySource[`Stats.fm · ${u}`] = row;
+      }
+      // sfm === null means Stats.fm did not answer. Nothing is added, and this
+      // handle is deliberately NOT marked done — so the providerScores block
+      // below still contributes whatever the fan last submitted, instead of
+      // this run quietly dropping them to zero.
     }
-    // Musicat / Stats.fm are NOT scraped here — see the providerScores block below.
+    // Musicat is NOT scraped here — see the providerScores block below. Its
+    // per-fan cost is ~41 requests (5 artists + 18 all-time + 18 day), which is
+    // the burst that genuinely does get throttled; Stats.fm's is one.
   }
 
   // Add this profile's extension (blinksunited-direct) plays on top.
@@ -907,6 +982,42 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
   if (provScores && provScores.overall) {
     const provTodayFresh = provScores.dailyDate === ddmm(new Date(dayFrom * 1000));
     const provToday = srcZero();
+    // ── NOT TWICE. ───────────────────────────────────────────────────────
+    //
+    // `provScores.overall` and `.today` are Musicat and Stats.fm ADDED
+    // TOGETHER, so once this run has fetched a fan's Stats.fm itself there is
+    // no way to subtract just that half back out of a combined figure. Two
+    // payload shapes have to be handled, because a fan's last submit may
+    // predate the client that carries the newer one:
+    //
+    //   NEW — breakdown entries carry their own `overall`. Per-source, so the
+    //   Stats.fm half is simply skipped and Musicat still counts in full.
+    //
+    //   OLD — only the combined `overall`. Then the combined figure is kept
+    //   (it is the only thing that knows about Musicat) and OUR Stats.fm
+    //   all-time is dropped instead. That loses nothing a fan had before:
+    //   the combined overall already contains their Stats.fm total as of
+    //   their last visit. Their DAY and WEEK still come from this run, which
+    //   is the half that was broken — `provTodayFresh` is false on exactly
+    //   the days they did not open their badges.
+    const bdAll = Array.isArray(provScores.breakdown) ? provScores.breakdown : null;
+    const perSource = bdAll && bdAll.length && bdAll.some(b => b && b.overall);
+    const sfmCountedHere = statsfmFetched.size > 0;
+    if (perSource) {
+      for (const b of bdAll) {
+        if (!b) continue;
+        if (b.source === 'statsfm' && statsfmFetched.has(String(b.username || '').toLowerCase())) continue;
+        for (const t of TRACKS) {
+          totalPlays[t.id] += b.overall?.[t.id] || 0;
+          if (provTodayFresh) {
+            const n = b.today?.[t.id] || 0;
+            todayCounts[t.id] += n;
+            weekCounts[t.id]  += n;
+            if (t.id in provToday) provToday[t.id] += n;
+          }
+        }
+      }
+    } else {
     for (const t of TRACKS) {
       totalPlays[t.id] += provScores.overall[t.id] || 0;
       if (provTodayFresh) {
@@ -915,6 +1026,33 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
         weekCounts[t.id]  += n;
         provToday[t.id]    = n;
       }
+    }
+    // An old-shape payload cannot be split, so the Stats.fm figures this run
+    // fetched are rolled back out of the totals rather than counted twice.
+    // Only where the combined payload actually covers them: `overall` always,
+    // the day and week only when the submit is from today.
+    if (sfmCountedHere) {
+      // ONLY THE KEYS THE OLD PAYLOAD ACTUALLY CARRIES, which is why this reads
+      // them off the payload instead of walking TRACKS. `overall`/`today` in
+      // the old shape are the campaign FIVE and nothing else — every release
+      // since Less Than a Lover was submitted as a zero it had no key for. So
+      // subtracting the whole track set here would cancel our own Leave With
+      // Me, ADDICTED and Someone to Hold figures against a payload that never
+      // mentioned them, and the fan would be left on 0 for the current
+      // releases: the original bug, reintroduced by its own fix.
+      const covOverall = new Set(Object.keys(provScores.overall || {}));
+      const covToday   = new Set(Object.keys(provScores.today   || {}));
+      for (const [, sfm] of statsfmFetched) {
+        for (const t of TRACKS) {
+          if (covOverall.has(t.id)) totalPlays[t.id] -= sfm.tracks?.[t.id] || 0;
+          if (provTodayFresh && covToday.has(t.id)) {
+            todayCounts[t.id] -= sfm.today?.[t.id] || 0;
+            weekCounts[t.id]  -= (sfm.week ? (sfm.week[t.id] || 0) : (sfm.today?.[t.id] || 0));
+          }
+        }
+        if (provTodayFresh) delete todayBySource[`Stats.fm · ${sfm.handle}`];
+      }
+    }
     }
     if (provTodayFresh) {
       // Prefer the client's per-account split (Musicat and Stats.fm kept SEPARATE,
@@ -1068,6 +1206,12 @@ export default async function handler(req, res) {
   if (secret && req.headers['authorization'] !== `Bearer ${secret}`) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
+  // Our own hostname, for the /api/statsfm self-call in refreshUser. Same shape
+  // api/streams.js uses to fire its catalog refresh: the forwarded host first,
+  // because on Vercel `host` can be the internal deployment name, and a literal
+  // fallback so a context without either still reaches a real deployment rather
+  // than fetching "https://undefined".
+  const selfHost = req.headers['x-forwarded-host'] || req.headers.host || 'blinksunited.com';
 
   // ONE RUN AT A TIME. Two overlapping runs each read the whole board, refresh
   // a different slice of it, and write the whole thing back — so the one that
@@ -1369,7 +1513,7 @@ export default async function handler(req, res) {
       // blink further down the board.
       if (isDead(entry.username)) { dead.push(entry.username); return; }
       try {
-        const refreshed = await refreshUser(entry, sb, linkedMap, nameInfo, lfmCache);
+        const refreshed = await refreshUser(entry, sb, linkedMap, nameInfo, lfmCache, selfHost);
         markAlive(entry.username);
         // Key by displayName (lowercased) so linked-account rows consolidate
         data.users[refreshed.displayName.toLowerCase()] = refreshed;

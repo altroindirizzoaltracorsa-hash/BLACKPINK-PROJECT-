@@ -68,6 +68,41 @@ function siteDayStartISO() {
   return new Date(Date.UTC(n.getUTCFullYear(), n.getUTCMonth(), n.getUTCDate())).toISOString();
 }
 
+// ── ?day=YYYY-MM-DD — ANY day, not just today. ───────────────────────────────
+//
+// This endpoint always had the capability and only ever asked for today. The
+// windowed call below (`top/tracks?after=&before=`) takes two arbitrary Unix-ms
+// bounds and returns an accurate per-track total for exactly that span — which
+// is why it replaced the broken streams/recent pager in the first place. Only
+// the arguments were pinned to the current day.
+//
+// That mattered because api/cron-scrobbles.js carried the note "these providers
+// expose no per-day history to re-derive it, so on a later day it's simply 0
+// until the fan opens their badges again". The first half of that was never
+// true for Stats.fm, and the consequence was: a fan's Stats.fm plays counted
+// for nothing on any day they did not personally open /badges, and the days
+// already lost could not be recovered. With a day parameter both stop being
+// true — the cron can pull any fan's day itself, and a missed one can be
+// backfilled afterwards.
+//
+// UTC, like every other boundary here. The day runs [00:00 UTC, next 00:00 UTC).
+function dayWindow(dayParam) {
+  if (!dayParam) {
+    const after = new Date(siteDayStartISO()).getTime();
+    return { afterMs: after, beforeMs: Date.now(), dayKey: null, final: false };
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dayParam)) return { error: 'day must be YYYY-MM-DD' };
+  const [y, m, d] = dayParam.split('-').map(Number);
+  const afterMs = Date.UTC(y, m - 1, d);
+  if (!Number.isFinite(afterMs)) return { error: 'day is not a real date' };
+  const todayStart = new Date(siteDayStartISO()).getTime();
+  if (afterMs > todayStart) return { error: 'day is in the future' };
+  const beforeMs = afterMs + 86400000;
+  // A finished day never changes again, so it is cacheable for as long as we
+  // keep it. Today's window is still moving and keeps the short freshness.
+  return { afterMs, beforeMs: Math.min(beforeMs, Date.now()), dayKey: dayParam, final: afterMs < todayStart };
+}
+
 export default async function handler(request) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET', 'Access-Control-Allow-Headers': '*' } });
@@ -78,10 +113,23 @@ export default async function handler(request) {
   const debug = searchParams.get('debug');
   if (!username) return json({ error: 'user required' }, 400);
 
-  // v2: bumped to flush caches that hold the old inflated (streams/recent) "today".
-  const cacheKey = `sfmcache:v2:${username.toLowerCase()}`;
+  const win = dayWindow(searchParams.get('day'));
+  if (win.error) return json({ error: win.error }, 400);
+
+  // v3: the key carries the day, because v2 held one payload per user and a
+  // backfill asking for three different days would have been served the first
+  // one three times.
+  // The week window is part of the identity of the payload: without it here, a
+  // cached day-only entry (week: null) would be served to a caller that asked
+  // for the week, and the weekly board would read 0 for that fan for 20
+  // minutes at a time with nothing to show for it.
+  const weekTag = searchParams.get('weekFrom') || '0';
+  const cacheKey = `sfmcache:v3:${username.toLowerCase()}:${win.dayKey || 'today'}:w${weekTag}`;
   const cached = debug ? null : await cacheGet(cacheKey);
-  if (cached?.payload && cached.at && (Date.now() - cached.at) < CACHE_FRESH_MS) {
+  // A finished day is final — serve it from cache for as long as we hold it.
+  // Today is still moving, so it keeps the 20-minute freshness.
+  const freshFor = win.final ? CACHE_TTL_S * 1000 : CACHE_FRESH_MS;
+  if (cached?.payload && cached.at && (Date.now() - cached.at) < freshFor) {
     return json(cached.payload);
   }
   // On any upstream failure below, prefer serving the last good payload over an
@@ -106,9 +154,10 @@ export default async function handler(request) {
 
     if (debug === '1') return json({ step: 'user_ok', customId, displayName, raw: ud });
 
-    // Same boundary as the main leaderboard: 00:00 UTC.
-    const localMidnight = siteDayStartISO();
-    const afterMs = new Date(localMidnight).getTime(); // Unix ms for the API
+    // Same boundary as the main leaderboard: 00:00 UTC. `win` is today unless
+    // ?day= asked for another one — see dayWindow.
+    const localMidnight = new Date(win.afterMs).toISOString();
+    const afterMs = win.afterMs; // Unix ms for the API
 
     // "today" = per-track streams since the site's 00:00 UTC boundary. stats.fm's
     // streams/recent endpoint has NO working pagination — every page returns the
@@ -116,11 +165,30 @@ export default async function handler(request) {
     // pager re-counted that one page ~10x and massively inflated "today" (e.g. a
     // real 19 showed as 110). top/tracks with after/before (Unix MS) returns an
     // accurate per-track total for the exact window in a single call.
-    const nowMs = Date.now();
-    const [tr, ar, ttr] = await Promise.all([
+    // The window's upper bound: now for today, the day's own end for a past one.
+    // Leaving this as Date.now() was the bug a ?day= would otherwise ship with —
+    // every requested day would have returned everything from that day UNTIL NOW.
+    const nowMs = win.beforeMs;
+    // ?weekFrom=<unix seconds> — one MORE window, in the same round trip.
+    //
+    // The leaderboard's weekly board needs the week, and the provider path in
+    // api/cron-scrobbles.js has only ever been able to add TODAY's number to it
+    // (the client submits one day and there was no way to ask for more), so a
+    // fan's Stats.fm week has always been one day deep. Since the window is
+    // arbitrary, the week is the same call with a wider span — asked for here
+    // rather than by a second HTTP round trip, which would re-fetch the
+    // lifetime and artist lists for nothing.
+    const weekFromParam = parseInt(searchParams.get('weekFrom') || '', 10);
+    const weekFromMs = Number.isFinite(weekFromParam) && weekFromParam > 0
+      ? weekFromParam * 1000
+      : null;
+    const [tr, ar, ttr, wkr] = await Promise.all([
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?range=lifetime&limit=100`, { headers: SFM_H }),
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/artists?range=lifetime&limit=50`, { headers: SFM_H }),
       fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?after=${afterMs}&before=${nowMs}&limit=100`, { headers: SFM_H }),
+      weekFromMs
+        ? fetch(`${SFM}/users/${encodeURIComponent(customId)}/top/tracks?after=${weekFromMs}&before=${Date.now()}&limit=100`, { headers: SFM_H })
+        : Promise.resolve(null),
     ]);
 
     if (!tr.ok) return stale({ error: `Stats.fm tracks blocked (HTTP ${tr.status}) — try visiting https://stats.fm/${username}` }, 502);
@@ -131,6 +199,12 @@ export default async function handler(request) {
     // If the today-window call is throttled, fall back to an empty window (0 today)
     // rather than failing — all-time still updates.
     const todayItems = ttr.ok ? ((await ttr.json()).items ?? []) : [];
+    // Same fallback as the day window: a throttled week call leaves the week
+    // absent rather than failing the whole payload. Absent, not zero — the
+    // caller must be able to tell "Stats.fm did not answer" from "no plays",
+    // because writing a confident 0 over a real number is how this provider
+    // silently erased people in the first place.
+    const weekItems = wkr && wkr.ok ? ((await wkr.json()).items ?? []) : null;
 
     const items = td.items ?? [];
     const adItems = ad.items ?? [];
@@ -207,7 +281,17 @@ export default async function handler(request) {
       customId, displayName,
       playcount: artistPlays || Object.values(tracks).reduce((s, v) => s + v, 0),
       artistPlays, bpGroupPlays, memberPlays, tracks,
+      // `today` keeps its name whatever window was asked for, so every existing
+      // caller reads the same field. `day` says which window it actually is:
+      // null for today, the YYYY-MM-DD asked for otherwise. A backfill that
+      // silently got today's numbers for every date would look like it worked.
       today: tracksToday,
+      day: win.dayKey,
+      windowFrom: new Date(win.afterMs).toISOString(),
+      windowTo:   new Date(win.beforeMs).toISOString(),
+      // null unless ?weekFrom= was given, and null if Stats.fm throttled that
+      // one call. Never {} — see the note where weekItems is read.
+      week: weekItems ? countTracks(weekItems) : null,
     };
     if (!debug) await cacheSet(cacheKey, { payload, at: Date.now() });
     return json(payload);

@@ -15351,6 +15351,25 @@ async function loadMultiAccountProfile(accounts) {
                         // its own row exactly like the badges breakdown — the cron
                         // can't fetch these providers itself to split them.
                         breakdown: [] };
+  // THE FIVE KEYS BELOW ARE THE COMBINED FIGURE, AND THEY STAY FIVE. The server
+  // has read `overall`/`today` as "Musicat + Stats.fm, campaign five" since it
+  // was written, and a submit from an old cached page still looks like that, so
+  // widening it here would change what an existing reader is handed.
+  //
+  // THE BREAKDOWN IS WHERE THE REST GOES, and it now carries two things it did
+  // not:
+  //   · `overall` per source, so the server can count Musicat while skipping a
+  //     Stats.fm handle it fetched itself. Combined, those two could never be
+  //     told apart, which is the whole reason Stats.fm could not be fetched
+  //     server-side without double counting.
+  //   · EVERY track, not the campaign five. The five-key loop meant a fan's
+  //     Musicat/Stats.fm plays of every release since Less Than a Lover —
+  //     SaWaDiKa, CLICK, Fallen Angel, Heaven, new trick, the PRESS PLAY five,
+  //     ADDICTED, Someone to Hold, Leave With Me — reached the leaderboard as
+  //     zero whether or not the fan ever opened this page. Driven off
+  //     SCROBBLE_TRACK_IDS so the next release is not a sixteenth edit.
+  const _provAll = SCROBBLE_TRACK_IDS;
+  const _pick = (src) => Object.fromEntries(_provAll.map(k => [k, src?.[k] || 0]));
   for (const stats of _breakdown) {
     if (!stats || (stats.source !== 'musicat' && stats.source !== 'statsfm')) continue;
     for (const k of ['jump','shutdown','ddududu','ltal','go']) {
@@ -15360,7 +15379,8 @@ async function loadMultiAccountProfile(accounts) {
     _provScores.breakdown.push({
       source: stats.source,
       username: stats.username,
-      today: { jump: stats.todayCounts.jump||0, shutdown: stats.todayCounts.shutdown||0, ddududu: stats.todayCounts.ddududu||0, ltal: stats.todayCounts.ltal||0, go: stats.todayCounts.go||0 },
+      overall: _pick(stats.totalPlays),
+      today:   _pick(stats.todayCounts),
     });
   }
   combined.providerScores = _provScores;

@@ -417,6 +417,20 @@ jobs:
         if: always()
         run: node .github/scripts/test_scrobble_rate.mjs
 
+      # /api/statsfm can be asked for ANY day. It always could — the windowed
+      # call takes two arbitrary bounds — but it was only ever asked for today,
+      # which is why a fan's Stats.fm plays counted for nothing on days they
+      # did not open their badges. These two pin the window arithmetic and the
+      # thing that makes server-side fetching safe: not counting it twice
+      # against what the badges page already submitted.
+      - name: Stats.fm answers for the day it was asked for
+        if: always()
+        run: node .github/scripts/test_statsfm_day.mjs
+
+      - name: Stats.fm plays count while the fan is away, and never twice
+        if: always()
+        run: node .github/scripts/test_statsfm_sync.mjs
+
       # The refresh reads the whole board and writes the whole board, so two
       # overlapping runs mean the second silently discards the first — with
       # both reporting success. Two schedulers can now reach it (the hourly
