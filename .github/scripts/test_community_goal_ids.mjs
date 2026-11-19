@@ -60,6 +60,31 @@ for (const [name, src, re] of SUMS) {
           : `${got.length} tracks`);
 }
 
+console.log('\n--- and the 1k-a-day / 10k-a-week banner counts the same ones');
+// THIS IS THE ONE THAT DRIFTED, and nothing here was watching it. The three
+// sums above all counted 19 tracks while MILESTONE_TRACK_IDS — the list behind
+// the 💎 "1,000 in a day" banner — counted 10, because it was hand-written as
+// CAMPAIGN_TRACK_IDS + EP_TRACK_IDS + a literal and every release after PRESS
+// PLAY was added to CAMPAIGN_TOTAL_IDS and not to it.
+//
+// A fan with 1,900 scrobbles on the board read 988 on the banner. Both say
+// "today"; they were counting different songs, and nothing said so.
+{
+  const src = site;
+  const m = src.match(/const MILESTONE_TRACK_IDS\s*=\s*([^;]+);/);
+  check(!!m, 'MILESTONE_TRACK_IDS is declared');
+  const expr = m ? m[1].trim() : '';
+  // Derived, not listed. A literal array here is the bug returning — it would
+  // pass a value check on the day it was written and rot from the next
+  // release onward, which is exactly what happened.
+  check(/^\[\s*\.\.\.CAMPAIGN_TOTAL_IDS\s*\]$|^CAMPAIGN_TOTAL_IDS$/.test(expr),
+        '  and derived from CAMPAIGN_TOTAL_IDS rather than typed out',
+        expr.length > 70 ? expr.slice(0, 70) + '…' : expr);
+  // And the banner really reads that list.
+  check(/function milestoneTotalOf\([^)]*\)\s*\{\s*return MILESTONE_TRACK_IDS\.reduce/.test(src),
+        '  and milestoneTotalOf sums it');
+}
+
 console.log('\n--- and the heading over the bar names them all');
 // THE FOURTH COPY, and the only one a reader sees. The three sums above can
 // agree perfectly while the sentence over the bar lists eight other things,

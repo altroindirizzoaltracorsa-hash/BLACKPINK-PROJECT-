@@ -10847,16 +10847,26 @@ const EP_TRACK_IDS = ['ltal', 'fallenangel', 'heaven'];
 const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'sawadika', 'click', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted', 'sth', 'lwm', 'powertrip'];
 function campaignTotalOf(tp) { return CAMPAIGN_TOTAL_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
 
-// ── MOMENTARY: Fallen Angel EP push ──────────────────────────
-// The fandom is focused on the Fallen Angel EP right now, so its tracks count
-// toward the daily 1k / weekly 10k milestone totals alongside the 4 campaign
-// tracks. Flip EP_IN_MILESTONES back to false to snap the milestones back to
-// campaign-only. NOTE: this only affects the 1k/10k combined totals — the daily
-// STAMP stays campaign-only (see CAMPAIGN_TRACK_IDS / the stamp block).
-const EP_IN_MILESTONES = true;
-const MILESTONE_TRACK_IDS = (EP_IN_MILESTONES
-  ? [...CAMPAIGN_TRACK_IDS, ...EP_TRACK_IDS]
-  : [...CAMPAIGN_TRACK_IDS]).concat('sawadika', 'click', 'newtrick');
+// ── The 1k-a-day / 10k-a-week prestige totals ────────────────
+// THE SAME TRACKS THE BOARD COUNTS, derived rather than listed, because the
+// hand-written version drifted for four releases straight.
+//
+// It used to be built as CAMPAIGN_TRACK_IDS + EP_TRACK_IDS + a literal
+// ('sawadika','click','newtrick'), which came to TEN songs while the board and
+// the community goal counted NINETEEN. Every release after PRESS PLAY was
+// added to CAMPAIGN_TOTAL_IDS and to no list here: the five PRESS PLAY tracks,
+// ADDICTED, Someone to Hold, Leave With Me, and Power Trip on the night it
+// came out. A fan with 1,900 scrobbles on the board read 988 on this banner
+// and had no way to tell why — the two numbers are both "today" and they
+// counted different songs.
+//
+// Deriving it means a release can never again join one and miss the other:
+// there is one list now, and this is a view of it.
+//
+// The daily STAMP is still campaign-only (CAMPAIGN_TRACK_IDS, four tracks) and
+// deliberately so — that is a different thing from these totals and is not
+// what drifted.
+const MILESTONE_TRACK_IDS = [...CAMPAIGN_TOTAL_IDS];
 function milestoneTotalOf(tp) { return MILESTONE_TRACK_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
 
 // ── MAMA's two rounds, in one place ─────────────────────────────────────────
