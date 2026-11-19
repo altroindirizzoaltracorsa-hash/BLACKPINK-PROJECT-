@@ -16572,14 +16572,33 @@ async function fetchOgUsers() {
   } catch {}
 }
 let lbCacheTime = null;
+// Set after our OWN submit lands. THE SUBMITTER IS THE ONE PERSON THE SHARED
+// CACHE CANNOT SERVE. /api/leaderboard answers with s-maxage=60 +
+// stale-while-revalidate, which is right for 200 readers of a board that is a
+// snapshot anyway — but the submit returns only {ok, displayName}, never the
+// rebuilt board, so the one person who just changed it has to re-read it
+// through the very cache that still holds the version without their change.
+// `force` was never enough: it clears this file's in-memory memo and the fetch
+// still goes out to the same cacheable URL, so the edge answers it from the
+// copy it already has. This flag makes exactly ONE read bypass it, on a
+// one-off URL the edge has no entry for. Cost: a single origin read per
+// submit, not per view — the 60s window that keeps the board's 235 KB off the
+// bandwidth bill is untouched for everybody else.
+let _lbBustOnce = false;
 let lbHistorySnapshot = null; // { period, key, label, archivedAt, users } when viewing a past archived leaderboard
 
 // ── Read leaderboard data ─────────────────────────────────────
 async function fetchLbData(force = false) {
-  if (!force && lbData && lbCacheTime && (Date.now() - lbCacheTime) < 60 * 60 * 1000) {
+  if (!force && !_lbBustOnce && lbData && lbCacheTime && (Date.now() - lbCacheTime) < 60 * 60 * 1000) {
     return lbData;
   }
-  const res = await fetch('/api/leaderboard');
+  // A query string the edge has never seen is a guaranteed miss; `no-store` on
+  // its own is a REQUEST directive the CDN is free to ignore, and does.
+  const bust = _lbBustOnce;
+  _lbBustOnce = false;
+  const res = bust
+    ? await fetch(`/api/leaderboard?fresh=${Date.now()}`, { cache: 'no-store' })
+    : await fetch('/api/leaderboard');
   if (!res.ok) throw new Error(`Leaderboard API error ${res.status}`);
   const d   = await res.json();
   lbData      = (d && d.users) ? d : { users: {}, lastUpdated: new Date().toISOString() };
@@ -16860,8 +16879,13 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
     }
     showLbSubmitWarning(null); // success — clear any prior warning
 
-    // Invalidate cache so next leaderboard view fetches fresh data from server
+    // Invalidate cache so next leaderboard view fetches fresh data from server.
+    // Both halves are needed: lbCacheTime drops this file's in-memory copy, and
+    // _lbBustOnce gets the next read PAST the shared edge cache, which is still
+    // holding the board as it was a moment ago — without our submit in it. See
+    // the note on _lbBustOnce.
     lbCacheTime = null;
+    _lbBustOnce = true;
     let resBody = null;
     try { resBody = await res.json(); } catch {}
     return resBody?.displayName || null;

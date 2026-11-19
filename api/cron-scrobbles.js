@@ -584,7 +584,16 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
       //   · the week's scrobble list cannot have gained a row.
       // The day and week COUNTS can still change without a new scrobble, by one
       // falling out of the window, so they are only reused while the windows
-      // themselves are unchanged. Three cases, 1 / ~2 / ~18 requests:
+      // themselves are unchanged.
+      //
+      // FOUR cases now — 1 / ~2 / ~4 / ~32 requests. The third is the one that
+      // was missing, and it is the one almost every active account hits on an
+      // hourly run: scrobbled since last time, but still inside the same day
+      // and week. It used to fall into the fourth and re-read the entire week
+      // plus all 18 all-time totals; it now reads forward from a watermark and
+      // refreshes only the totals the delta proves could have moved. See the
+      // note on `canDelta` below for the measurement that prompted it and for
+      // what bounds the risk.
       const ukey   = u.toLowerCase();
       const cached = lfmCache ? lfmCache[ukey] : null;
       const pc     = await fetchUserPlaycount(u, fetchFn);
@@ -596,13 +605,104 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
       const covered = !!cached && !!cached.t && !!cached.d && !!cached.w
         && TRACKS.every(t => Number.isFinite(cached.t[t.id]));
       const idle    = pc !== null && covered && cached.pc === pc;
-      const sameWin = idle && cached.dk === dayWindowKey && cached.wk === weekWindowKey;
+      // Asked SEPARATELY from `idle` now, because the delta path below needs it
+      // for an account that has scrobbled.
+      const winSame = !!cached && cached.dk === dayWindowKey && cached.wk === weekWindowKey;
+      const sameWin = idle && winSame;
+      // ── THE FOURTH CASE: SCROBBLED, SAME WINDOWS. ───────────────────────
+      //
+      // This is the common one on an hourly cron and it was being served by
+      // the most expensive path in the file. Measured on the 19:03 UTC run of
+      // 2026-11-18, a release day: 715 Last.fm calls bought TWENTY-TWO users
+      // and the run stopped at its time budget with most of the board
+      // untouched. 32 calls each, against a ceiling of 4/sec × 180s = 720 —
+      // the run was spending every call it had.
+      //
+      // The 32 is not the 18 per-track reads. It is `fetchRecentScrobbles`
+      // re-pulling THE WHOLE WEEK, 200 scrobbles to a page, every single run:
+      // ~12 pages for a fan mid-comeback. An hour apart, only the last hour is
+      // new. So read forward from the newest scrobble already counted and ADD,
+      // which is one page instead of twelve.
+      //
+      // `ts` is that watermark. An entry written before this existed has none
+      // and falls through to the full read, which writes one.
+      //
+      // `tFull` BOUNDS THE DRIFT, and is the part that makes this safe rather
+      // than merely cheap. The all-time totals below are refreshed only for
+      // tracks seen in the delta, and "seen" is OUR matcher (trackKey, which
+      // strips parentheticals) while fetchTrackPlays is Last.fm's exact-title
+      // lookup. The two can disagree on a stylized scrobble, and then a total
+      // would sit stale indefinitely. So a cache entry is only deltable while
+      // its last COMPLETE 18-track read is under a day old; after that the
+      // next run does a full one whatever the windows say.
+      const ALLTIME_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+      const canDelta = !idle && covered && winSame
+        && Number.isFinite(cached.ts)
+        && Number.isFinite(cached.tFull)
+        && (Date.now() - cached.tFull) < ALLTIME_MAX_AGE_MS;
 
       let ap, allTime, dayBy, weekBy, newestBp = null;
+      // The newest scrobble already folded into dayBy/weekBy, and when the
+      // 18 all-time totals were last read in full. Both are written back below.
+      let seenTs = Number.isFinite(cached?.ts) ? cached.ts : (weekFrom - 1);
+      let fullAt = Number.isFinite(cached?.tFull) ? cached.tFull : null;
       if (sameWin) {
         // Nothing scrobbled, windows unchanged: every figure this account
         // contributes is one we already hold. Cost: the gate call alone.
         ap = cached.ap; allTime = cached.t; dayBy = cached.d; weekBy = cached.w;
+      } else if (canDelta) {
+        // Scrobbled, same windows. Read only what is new and add it on.
+        const since = await fetchRecentScrobbles(u, seenTs, dayTo, 50, fetchFn);
+        // Last.fm documents `from` as "only display scrobbles AFTER this time",
+        // but the boundary row is filtered here anyway so the watermark scrobble
+        // cannot be counted twice under either reading of that sentence.
+        const fresh = since.filter(s => parseInt(s.date?.uts || '0', 10) > seenTs);
+        const addWeek = countByTrack(fresh);
+        const addDay  = countByTrack(fresh.filter(s => {
+          const ts = parseInt(s.date?.uts || '0', 10);
+          return ts >= dayFrom && ts < dayTo;
+        }));
+        dayBy = {}; weekBy = {};
+        for (const t of TRACKS) {
+          dayBy[t.id]  = (cached.d[t.id] || 0) + (addDay[t.id]  || 0);
+          weekBy[t.id] = (cached.w[t.id] || 0) + (addWeek[t.id] || 0);
+        }
+        // WHICH all-time totals can possibly have moved? Only the tracks that
+        // appear in the delta — a Last.fm track playcount rises when you
+        // scrobble that track and at no other time. So a fan who spent the
+        // hour on one song costs one track read, not eighteen. If the delta
+        // holds no campaign track at all, none of them moved and the artist
+        // total cannot have either.
+        const touched = TRACKS.filter(t => (addWeek[t.id] || 0) > 0);
+        // artistPlays is EVERY BLACKPINK-credited play, not just the tracked
+        // ones — "Pink Venom" moves it while touching no campaign title — so it
+        // is gated on the artist appearing in the delta rather than on
+        // `touched`. deAccent because ROSÉ scrobbles both ways, same reason the
+        // matcher below does it.
+        const bpPlayed = fresh.some(s => deAccent(s.artist?.['#text'] || '').includes('blackpink'));
+        allTime = { ...cached.t };
+        const [apV, perTrack] = await Promise.all([
+          bpPlayed
+            ? fetchArtistPlays(u, 'BLACKPINK', fetchFn)
+            : Promise.resolve(cached.ap),
+          touched.length
+            ? Promise.all(touched.map(t => fetchTrackPlays(u, t.artist, t.track, fetchFn)))
+            : Promise.resolve([]),
+        ]);
+        ap = apV;
+        touched.forEach((t, i) => { allTime[t.id] = perTrack[i]; });
+        for (const s of fresh) {
+          const ts = parseInt(s.date?.uts || '0', 10);
+          if (ts > seenTs) seenTs = ts;
+        }
+        // Left null when the delta holds no BLACKPINK play: lastScrobbleAt only
+        // ever climbs and entry.lastScrobbleAt already carries the old one, so
+        // there is nothing to carry forward by hand.
+        const bpEntry = fresh.find(s => {
+          const a = (s.artist?.['#text'] || '').toLowerCase();
+          return (a.includes('blackpink') || a.includes('jennie')) && s.date?.uts;
+        });
+        if (bpEntry) newestBp = new Date(parseInt(bpEntry.date.uts) * 1000).toISOString();
       } else {
         if (idle) {
           // Nothing scrobbled, but the day (or week) has rolled over, so the
@@ -621,6 +721,10 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
           ]);
           ap = apV;
           allTime = Object.fromEntries(TRACKS.map((t, i) => [t.id, perTrack[i]]));
+          // A COMPLETE read of all 18. This stamp is what lets the delta path
+          // above trust the cached totals, and what expires that trust a day
+          // later — see ALLTIME_MAX_AGE_MS.
+          fullAt = Date.now();
         }
         // Single fetch spanning the whole week through today -- Last.fm/Libre.fm
         // return scrobbles newest-first, so today's counts, the weekly counts,
@@ -633,6 +737,15 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
         });
         dayBy  = countByTrack(todaySc);
         weekBy = countByTrack(weekSc);
+        // The watermark the next delta reads forward from. Rebuilt from this
+        // window rather than carried over: the windows may have just rolled,
+        // and a stale `ts` from the previous week would make the next delta
+        // skip everything before it.
+        seenTs = weekFrom - 1;
+        for (const s of weekSc) {
+          const ts = parseInt(s.date?.uts || '0', 10);
+          if (ts > seenTs) seenTs = ts;
+        }
         // "blackpink" alone misses activity on Jennie's solo campaign track
         // (Less Than a Lover), which would otherwise wrongly flag an actively-
         // streaming fan as inactive just because their recent plays are all solo.
@@ -647,7 +760,13 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null) {
       // question is unanswerable for this account, and an entry we can never
       // trust is worse than none.
       if (pc !== null && lfmCache) {
-        lfmCache[ukey] = { pc, ap, t: allTime, dk: dayWindowKey, wk: weekWindowKey, d: dayBy, w: weekBy };
+        lfmCache[ukey] = {
+          pc, ap, t: allTime, dk: dayWindowKey, wk: weekWindowKey, d: dayBy, w: weekBy,
+          // ts: read forward from here next time. tFull: when all 18 all-time
+          // totals were last read together, which is what expires the delta
+          // path's trust in them after a day.
+          ts: seenTs, tFull: fullAt,
+        };
       }
 
       artistPlays += ap;
@@ -1199,7 +1318,20 @@ export default async function handler(req, res) {
 
   // Stop cleanly rather than being killed mid-write. Whatever is left becomes
   // the next run's starting point, which is the whole point of the rotation.
-  const RUN_BUDGET_MS = Number(process.env.SCROBBLE_RUN_BUDGET_MS || 180000);
+  // 240s, raised from 180s. At LASTFM_RATE_PER_SEC=4 the budget IS the call
+  // ceiling — 180s bought 720 calls and the two runs measured on 2026-11-18
+  // spent 715 and 642 of them, i.e. the run was stopping on its clock, not on
+  // anything to do with Last.fm. The delta path in refreshUser is the real fix
+  // (it cuts an active account from ~32 calls to ~4); this is headroom on top.
+  //
+  // The ceiling is the platform's function timeout, not this number: the budget
+  // is checked BETWEEN batches, so a batch already in flight can overshoot it by
+  // its own length. 180s has been overshooting to ~192s, and 240s should land
+  // near ~265s. Observed runs prove the limit is above 192s, which on Vercel
+  // means the 300s tier. If a run is ever killed mid-write, set
+  // SCROBBLE_RUN_BUDGET_MS in the Vercel env to put it back — no deploy needed,
+  // which is why this is a default and not a constant.
+  const RUN_BUDGET_MS = Number(process.env.SCROBBLE_RUN_BUDGET_MS || 240000);
   const runStartedAt  = Date.now();
   // Module-level, so it carries over on a warm instance. Zero it per run or the
   // reported figure is "every call this container ever made".

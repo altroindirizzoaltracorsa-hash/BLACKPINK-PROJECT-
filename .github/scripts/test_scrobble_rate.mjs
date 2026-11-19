@@ -93,6 +93,7 @@ check(mod.LFM_RATE_PER_SEC === RATE, 'the rate is configurable', `${mod.LFM_RATE
 // ── A counting, scriptable Last.fm ───────────────────────────────────────────
 let calls = [];           // { method, at }
 let playcount = 1000;
+let artistPlays = 500;
 let rateLimitOnce = null; // a method name to answer once with error 29
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (url) => {
@@ -105,12 +106,31 @@ globalThis.fetch = async (url) => {
   }
   const body =
     method === 'user.getInfo'       ? { user: { playcount: String(playcount) } } :
-    method === 'artist.getInfo'     ? { artist: { stats: { userplaycount: '500' } } } :
+    // Mutable, like the playcount. A constant here would make the artist-total
+    // check below pass whether the code re-read it or served a stale copy —
+    // the two values would simply be equal. See section 3b.
+    method === 'artist.getInfo'     ? { artist: { stats: { userplaycount: String(artistPlays) } } } :
     method === 'track.getInfo'      ? { track: { userplaycount: '7' } } :
-    method === 'user.getRecentTracks' ? { recenttracks: { track: [], '@attr': { totalPages: '1' } } } :
+    method === 'user.getRecentTracks' ? recentTracksBody(q) :
     {};
   return { ok: true, json: async () => body };
 };
+// A scriptable scrobble history. `from` is served INCLUSIVELY on purpose: the
+// delta path passes its watermark as `from`, and Last.fm documents that
+// parameter as "after this time" — so serving the boundary row here is what
+// proves refreshUser filters it out itself rather than trusting the wording.
+let feed = [];   // { name, artistName, uts }
+const scrobble = (name, artistName, uts) => ({ name, artistName, uts });
+function recentTracksBody(q) {
+  const from = parseInt(q.get('from') || '0', 10);
+  const to   = parseInt(q.get('to')   || '9999999999', 10);
+  const sel  = feed.filter(s => s.uts >= from && s.uts < to)
+                   .sort((a, b) => b.uts - a.uts);
+  return { recenttracks: {
+    track: sel.map(s => ({ name: s.name, artist: { '#text': s.artistName }, date: { uts: String(s.uts) } })),
+    '@attr': { totalPages: '1' },
+  } };
+}
 const reset = () => { calls = []; };
 const of = m => calls.filter(c => c.method === m).length;
 
@@ -158,17 +178,132 @@ console.log('--- an account that has not scrobbled costs one request');
 
 // ── 3. ...but a scrobble is never missed ─────────────────────────────────────
 // The gate has to be a gate, not an off switch.
-console.log('--- an account that HAS scrobbled is fully re-read');
+//
+// THIS CHECK WAS INVERTED ON 2026-11-19 and the old rule is written down here
+// because a silently-flipped assertion is worse than none. It used to require
+// that ANY scrobble re-read all 18 titles. That is what made an active account
+// cost ~32 requests, and on the release day measured in the delta note in
+// api/cron-scrobbles.js one run bought 22 users out of ~210 before its clock
+// ran out — so a fan's row could go most of a day without the cron reaching
+// it. The rule now is narrower and strictly more accurate: re-read the titles
+// the account ACTUALLY PLAYED. A Last.fm track playcount moves when you
+// scrobble that track and at no other time, so the other seventeen reads were
+// re-fetching numbers that could not have changed.
+console.log('--- an account that HAS scrobbled re-reads what it played, and only that');
 {
+  const now = Math.floor(Date.now() / 1000);
+  feed = [];
   const cache = {};
   reset(); await mod.refreshUser(entry('bob'), null, null, null, cache);
+  check(Number.isFinite(cache.bob?.ts) && Number.isFinite(cache.bob?.tFull),
+        'the first read leaves a watermark and an all-time stamp',
+        `ts=${cache.bob?.ts} tFull=${!!cache.bob?.tFull}`);
+
+  feed = [scrobble('JUMP', 'BLACKPINK', now - 120)];
   playcount += 1;                       // bob played something
   reset();
   const out = await mod.refreshUser(entry('bob'), null, null, null, cache);
-  check(of('track.getInfo') === mod.TRACKS.length,
-        'every tracked title is re-read after a scrobble', `${of('track.getInfo')}`);
+  check(of('track.getInfo') === 1,
+        'one title played, one title re-read', `${of('track.getInfo')} of ${mod.TRACKS.length}`);
+  check(of('user.getRecentTracks') === 1,
+        'and the week is read forward from the watermark, not from scratch',
+        `${of('user.getRecentTracks')} page(s)`);
   check(out.scores.overall_jump === 7, 'and the fresh figure is the one stored',
         `overall_jump=${out.scores.overall_jump}`);
+  check(out.scores.daily_jump === 1 && out.scores.weekly_jump === 1,
+        'the new play lands in the day and week counts', `daily=${out.scores.daily_jump}`);
+
+  // THE WATERMARK ROW IS NOT COUNTED TWICE. The mock serves `from` inclusively
+  // (see recentTracksBody), so this run is handed the same JUMP scrobble again.
+  playcount += 1;
+  reset();
+  const again = await mod.refreshUser(entry('bob'), null, null, null, cache);
+  check(again.scores.daily_jump === 1,
+        'the boundary scrobble is not added a second time', `daily=${again.scores.daily_jump}`);
+}
+
+// ── 3b. THE DELTA MUST AGREE WITH A FULL READ ────────────────────────────────
+// The whole risk of accumulating instead of re-deriving is that the running
+// total drifts away from the truth and nothing ever says so. So: feed the same
+// scrobbles to one account an hour at a time and to another all at once, and
+// require the two to come out identical.
+console.log('--- an account counted incrementally matches one counted from scratch');
+{
+  const now  = Math.floor(Date.now() / 1000);
+  // "Pink Venom" is LAST on purpose. It is BLACKPINK-credited but not in
+  // TRACKS, so the final incremental run touches no tracked title at all — and
+  // a delta that decided whether to re-read the artist total from `touched`
+  // alone would end on a stale one. Put it anywhere earlier and a later
+  // campaign track refreshes the figure by accident, and the check passes
+  // while the bug is present.
+  const plan = [
+    scrobble('JUMP', 'BLACKPINK', now - 500),
+    scrobble('Shut Down', 'BLACKPINK', now - 400),
+    scrobble('JUMP', 'BLACKPINK', now - 300),
+    scrobble('GO', 'BLACKPINK', now - 250),
+    scrobble('Pink Venom', 'BLACKPINK', now - 200),   // not a campaign track
+  ];
+
+  // Incrementally: one scrobble at a time, a fresh run for each.
+  const incCache = {};
+  feed = []; await mod.refreshUser(entry('inc'), null, null, null, incCache);
+  let incOut = null;
+  for (const s of plan) {
+    feed = [...feed, s];
+    playcount  += 1;
+    artistPlays += 1;      // every row in the plan is BLACKPINK-credited
+    incOut = await mod.refreshUser(entry('inc'), null, null, null, incCache);
+  }
+
+  // From scratch: no cache at all, every scrobble present.
+  feed = [...plan];
+  const fullOut = await mod.refreshUser(entry('full'), null, null, null, {});
+
+  // EVERY figure, not just the per-track ones. The "Pink Venom" row above is in
+  // the plan for this: it is BLACKPINK-credited but not a campaign track, so it
+  // moves the artist total while touching nothing in TRACKS — and a delta that
+  // decided what to re-read from `touched` alone would leave artistPlays stale
+  // and no per-track check would notice.
+  const keys = [
+    ...mod.TRACKS.flatMap(t => [`daily_${t.id}`, `weekly_${t.id}`, `overall_${t.id}`]),
+    ...Object.keys(fullOut.scores).filter(k => /artist|blackpink/i.test(k)),
+  ];
+  const diff = keys.filter(k => (incOut.scores[k] || 0) !== (fullOut.scores[k] || 0));
+  check(diff.length === 0, 'every per-track and artist figure matches',
+        diff.length ? diff.map(k => `${k}: ${incOut.scores[k]} vs ${fullOut.scores[k]}`).join(', ')
+                    : `${keys.length} figures`);
+  check(incOut.scores.overall_artist === fullOut.scores.overall_artist,
+        '  including the BLACKPINK artist total, which no tracked title moves',
+        `${incOut.scores.overall_artist} vs ${fullOut.scores.overall_artist}`);
+  check(Number.isFinite(fullOut.scores.overall_artist) && fullOut.scores.overall_artist === artistPlays,
+        '  and that figure really did move during the run, so the check is not vacuous',
+        `${fullOut.scores.overall_artist} === ${artistPlays}`);
+  check(incOut.scores.daily_jump === 2 && incOut.scores.daily_shutdown === 1 && incOut.scores.daily_go === 1,
+        'and they are the real counts, not matching zeroes',
+        `jump=${incOut.scores.daily_jump} shutdown=${incOut.scores.daily_shutdown} go=${incOut.scores.daily_go}`);
+}
+
+// ── 3c. THE DRIFT IS BOUNDED ─────────────────────────────────────────────────
+// Which titles get re-read is decided by OUR matcher (trackKey, which strips
+// parentheticals) while the total itself comes from Last.fm's exact-title
+// lookup. The two can disagree on a stylized scrobble, and a total skipped on
+// that basis would sit stale forever. tFull is what stops forever being the
+// answer: once the last COMPLETE read is a day old, the next run does another.
+console.log('--- a day-old set of all-time totals is re-read in full');
+{
+  const now = Math.floor(Date.now() / 1000);
+  feed = [];
+  const cache = {};
+  await mod.refreshUser(entry('gail'), null, null, null, cache);
+  cache.gail.tFull = Date.now() - 25 * 60 * 60 * 1000;   // yesterday's full read
+  feed = [scrobble('JUMP', 'BLACKPINK', now - 100)];
+  playcount += 1;
+  reset();
+  await mod.refreshUser(entry('gail'), null, null, null, cache);
+  check(of('track.getInfo') === mod.TRACKS.length,
+        'every title is re-read once the stamp ages out', `${of('track.getInfo')}`);
+  check(Date.now() - cache.gail.tFull < 60000, 'and the stamp is renewed',
+        `age ${Math.round((Date.now() - cache.gail.tFull) / 1000)}s`);
 }
 
 // ── 4. A release added to TRACKS is never served as a cached zero ────────────
