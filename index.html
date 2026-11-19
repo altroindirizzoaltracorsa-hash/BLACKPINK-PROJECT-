@@ -2085,6 +2085,23 @@
     color: var(--muted); margin-top: 1rem; }
   .cd-card-powertrip .pt-note b { color: var(--white); font-weight: 600; }
   .cd-card-powertrip .cd-btn { border-radius: 99px; }
+  /* The premiere row. .cd-mv-note's ONLY other use is scoped to .cd-card-lisa,
+     so reusing the class without a rule here left it as a bare <a> — a blue
+     underlined browser-default link sitting between the buttons and the note.
+     Styled in this card's gold, like its chip and its "The Album" line.
+     :empty on the time matters: that span is blank until the script fills it
+     in the reader's own clock, and an empty flex child still takes its gap. */
+  .cd-card-powertrip .cd-mv-note { display: flex; flex-direction: column; align-items: center;
+    gap: 0.12rem; margin-top: 0.85rem; padding: 0.55rem 0.7rem; border-radius: 12px;
+    font-family: var(--mono); font-size: 0.56rem; letter-spacing: 0.1em;
+    text-transform: uppercase; text-decoration: none; color: #ffd34d;
+    background: rgba(255,211,77,0.08); border: 1px solid rgba(255,211,77,0.26);
+    transition: background .15s, border-color .15s; }
+  .cd-card-powertrip .cd-mv-note:hover { background: rgba(255,211,77,0.16);
+    border-color: rgba(255,211,77,0.45); }
+  .cd-card-powertrip .cd-mv-when { text-transform: none; letter-spacing: 0.02em;
+    font-size: 0.62rem; color: rgba(245,240,240,0.62); }
+  .cd-card-powertrip .cd-mv-when:empty { display: none; }
   /* Says plainly what is not announced yet, so the missing buttons read as
      "not out" rather than as a broken card. */
   .st-pending { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.08em; line-height: 1.7; color: rgba(245,240,240,0.42); border-left: 2px solid rgba(255,0,102,0.35); padding-left: 0.7rem; margin-bottom: 1.1rem; }
@@ -2598,6 +2615,18 @@
      the real green on hover, where the pill is dark brown and it reads. */
   .cd-card-sunshowers .cd-pl-pill svg { fill: #0b6b2e; }
   .cd-card-sunshowers .cd-pl-pill:hover svg { fill: #1DB954; }
+  /* THE NOTE AND THE SHARE BUTTON ARE NOT TOKENISED — they hardcode
+     rgba(255,255,255,…) while the pills read --pl-*, so inverting the
+     variables fixed the pills and left these two near-white on yellow, which
+     is how they shipped for the length of one screenshot. Overridden here the
+     same way this card already overrides .cd-unit, .cd-num and .cd-lbl, rather
+     than by adding five more variables to a component used by four cards.
+     A future card on a bright ground needs these three rules too. */
+  .cd-card-sunshowers .cd-pl-note { color: rgba(35,23,3,0.72); }
+  .cd-card-sunshowers .cd-pl-share { color: #231703; background: rgba(35,23,3,0.07);
+    border-color: rgba(35,23,3,0.30); }
+  .cd-card-sunshowers .cd-pl-share:hover { background: rgba(35,23,3,0.14);
+    border-color: rgba(35,23,3,0.45); }
   .cd-card-jisoo .js-park { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; height: auto; opacity: 0.9; mix-blend-mode: multiply; pointer-events: none; z-index: 2; }
   .cd-badge-chip.js-locket { color: var(--js-ink); background: rgba(255,251,250,0.28);
@@ -4382,6 +4411,29 @@
               <a class="cd-btn" href="https://open.spotify.com/album/5BYKG4MHfySZthe2W6r7n4" target="_blank" rel="noopener" onclick="savePowerTrip()">Pre-save the album ↗</a>
               <button class="cd-btn" onclick="openPowerTripCard()">📸 Share</button>
             </div>
+            <!-- THE VIDEO IS A DIFFERENT CLOCK FROM THE SONG, which is the
+                 whole reason this row carries its own instant instead of
+                 borrowing the card's. The song lands at midnight wherever you
+                 are; the YouTube premiere is ONE worldwide instant, 05:00 UTC
+                 on Nov 20 — read off the watch page itself (scheduledStartTime)
+                 rather than assumed, because "it drops with the song" is the
+                 obvious guess and it is wrong almost everywhere. Borrowing the
+                 card's target would make this read "is on YouTube" at a
+                 reader's local midnight, hours before it has premiered for
+                 them — exactly the failure the Tarantino row on the PRESS PLAY
+                 card carries the same warning about.
+                 WHAT IT DOES NOT CLAIM: not "MV", not "visualizer". The video
+                 is titled "JENNIE - Power Trip (From Grand Theft Auto VI: The
+                 Album)" on Atlantic Records' channel, with no format marker in
+                 the title and no duration published yet, so the card says
+                 "premiere" — which is true either way — and stops. Relabel it
+                 once the thing is actually out and visible. -->
+            <a class="cd-mv-note" href="https://www.youtube.com/watch?v=aCRr5rASMGY" target="_blank" rel="noopener">
+              <span data-pre-at="2026-11-20T05:00:00Z"
+                    data-pre="“Power Trip” on YouTube · premiere"
+                    data-post="“Power Trip” is on YouTube">“Power Trip” on YouTube · premiere</span>
+              <span class="cd-mv-when" data-local-target="2026-11-20T05:00:00Z"></span>
+            </a>
             <div class="pt-note">
               <b>“Power Trip”</b> is JENNIE's song on <b>Grand Theft Auto VI: The Album</b>, the
               official soundtrack to Grand Theft Auto VI.
@@ -4392,6 +4444,13 @@
               <br><br>
               It arrives at <b>midnight where you are</b>, so the clock above is counting
               to your own, not to one hour somewhere else.
+              <br><br>
+              The <b>YouTube premiere</b> runs on a different clock: one worldwide
+              instant, <b>2PM KST on Nov 20</b> — the same moment JISOO's “Sun Showers”
+              lands. Since the song itself arrives at your own midnight, the two only
+              coincide on the <b>US east coast</b>, where midnight is that instant.
+              Everywhere else one comes first, and the line on the premiere has it in
+              your own time.
             </div>
             <!-- Our playlists, open on the card rather than behind a <summary>:
                  these are something to go and do, and a collapsed row reads as

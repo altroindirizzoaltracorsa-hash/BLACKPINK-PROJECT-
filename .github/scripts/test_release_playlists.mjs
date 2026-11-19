@@ -171,6 +171,52 @@ for (const [name, id] of ALL) {
   check(!elsewhere, `    and nowhere else on the page`);
 }
 
+// ── the YouTube premiere row, which is NOT the card's own instant ───────────
+console.log('\n--- the Power Trip premiere row keeps its own clock');
+{
+  const html = cardSrc('cd-card-powertrip');
+  const PREMIERE = '2026-11-20T05:00:00Z';   // read off the watch page's scheduledStartTime
+  const VIDEO    = 'aCRr5rASMGY';
+  const row = html.match(/<a class="cd-mv-note"[\s\S]*?<\/a>/);
+  check(!!row, 'the card carries a premiere row');
+  const r = row ? row[0] : '';
+  check(r.includes(`youtube.com/watch?v=${VIDEO}`), '  pointing at the right video', VIDEO);
+  // ?is= is YouTube's share token — it identifies whoever copied the link and
+  // would be handed to every visitor alike, same rule as ?si= on Spotify.
+  check(!/[?&](is|si|feature|t)=/.test(r), '  with no share-tracking parameter on it',
+        (r.match(/https:\/\/[^"]*/) || [''])[0]);
+
+  // THE CHECK THAT MATTERS. The song lands at midnight LOCAL; the premiere is
+  // one worldwide instant. If this row ever borrows the card's target it will
+  // say "is on YouTube" at a reader's own midnight — up to 14 hours early in
+  // Kiritimati, and still 6 hours early in Rome. Pinning the literal instant
+  // is not enough on its own: it also has to DIFFER from the card's.
+  const preAt = (r.match(/data-pre-at="([^"]+)"/) || [])[1];
+  const whenAt = (r.match(/data-local-target="([^"]+)"/) || [])[1];
+  check(preAt === PREMIERE, '  its label flips on the premiere instant', `${preAt}`);
+  check(whenAt === PREMIERE, '  and the time it prints is that same instant', `${whenAt}`);
+  const cardTarget = (html.match(/data-target="([^"]+)"/) || [])[1];
+  check(preAt && cardTarget && preAt !== cardTarget,
+        '  which is NOT the card\'s own target', `premiere ${preAt} vs song ${cardTarget}`);
+  // 05:00 UTC is midnight on the US east coast, which is the one place the two
+  // do coincide — and the note says so, so it is worth pinning that it stays
+  // true if either instant is ever edited.
+  const etMidnight = new Date(Date.UTC(2026, 10, 20, 0, 0, 0) + 5 * 3600000).toISOString();
+  check(new Date(PREMIERE).toISOString() === etMidnight,
+        '  and it really is midnight US east coast, as the note claims', etMidnight);
+
+  // It must not claim a format nobody has confirmed. The video is titled with
+  // no "Official Music Video" / "Official Audio" marker and has no published
+  // duration, so the card says "premiere" and stops.
+  // The VISIBLE text only. Matching the raw markup catches the row's own
+  // `cd-mv-note` / `cd-mv-when` class names and fails on the component it is
+  // built from rather than on anything the card says.
+  const words = [r.replace(/<[^>]*>/g, ' '),
+                 ...(r.match(/data-(?:pre|post)="([^"]*)"/g) || [])].join(' ');
+  check(!/\bMV\b|Music Video|Official Audio|Visualizer|Lyric Video/i.test(words),
+        '  and claims no format the title does not state', words.replace(/\s+/g, ' ').trim());
+}
+
 // ── rendered, in a real browser, on both sides of each release ──────────────
 const SPA = /^\/(countdowns|voting|vote|streams|badges|leaderboard|account|feedback)(\/|$)/;
 const server = createServer((req, res) => {
@@ -261,8 +307,23 @@ const at = async (card, iso) => {
       // is perfectly legible. What the reader sees is the wash composited over
       // the CARD, so the card's own opaque ground is read too and the
       // compositing is done in the test.
-      ink:   pills[0] ? getComputedStyle(pills[0]).color : '',
-      bg:    pills[0] ? getComputedStyle(pills[0]).backgroundColor : '',
+      // ALL THREE ELEMENTS, not just the pill. Only the pills read the --pl-*
+      // variables; .cd-pl-note and .cd-pl-share hardcode rgba(255,255,255,…).
+      // So inverting the palette for a bright card fixes the pills and leaves
+      // the note and the button near-white on yellow — which is exactly what
+      // happened, and a check that measured one of the three said it was fine.
+      parts: [
+        ['pill',  pills[0]],
+        ['note',  document.getElementById(c.noteId)],
+        ['share', document.querySelector(`.${c.cls} .cd-pl-share`)],
+        // The premiere row reuses .cd-mv-note, whose only other rule is scoped
+        // to .cd-card-lisa — so on any other card it falls back to a browser
+        // default and renders as a blue underlined link. That is how it first
+        // shipped here, and a contrast reading is what catches it.
+        ['premiere', document.querySelector(`.${c.cls} .cd-mv-note`)],
+      ].filter(([, el]) => el).map(([name, el]) => ({
+        name, ink: getComputedStyle(el).color, bg: getComputedStyle(el).backgroundColor,
+      })),
       ground: (() => {
         for (let n = document.querySelector('.' + c.cls); n; n = n.parentElement) {
           const col = getComputedStyle(n).backgroundColor;
@@ -280,7 +341,9 @@ const at = async (card, iso) => {
 
 // Relative luminance, so "is this readable on its own card" is measured rather
 // than eyeballed. The 4.5:1 line is WCAG AA for body text.
-const parse = (c) => (c.match(/[\d.]+/g) || ['0', '0', '0']).map(Number);
+// Takes a CSS colour string or an already-parsed [r,g,b] — `over` returns the
+// latter and is composited twice (wash onto card, then ink onto that).
+const parse = (c) => Array.isArray(c) ? c : (c.match(/[\d.]+/g) || ['0', '0', '0']).map(Number);
 // Source-over: the pill's translucent wash onto the card's opaque ground.
 const over = (fg, bg) => {
   const f = parse(fg), b = parse(bg);
@@ -318,18 +381,26 @@ for (const card of CARDS) {
           '  and on both sides it says whose they also are', before.note);
   }
 
-  // What a reader actually sees: the pill's wash composited over the card's
-  // own ground, with the pill's ink on top. AA for body text is 4.5:1, and
-  // these are 0.64rem uppercase with wide tracking, so the bar is the body
-  // one rather than the large-text 3:1.
+  // What a reader actually sees: each element's own wash composited over the
+  // card's opaque ground, with its ink on top. AA for body text is 4.5:1, and
+  // this is 0.62-0.64rem type, so the bar is the body one rather than the
+  // large-text 3:1.
   //
   // This is the check that catches a bright card inheriting the component's
   // light-on-dark defaults, which is the single most likely way this block
-  // breaks when it is dropped onto the next release.
-  const seen = over(before.bg, before.ground);
-  const ratio = contrast(parse(before.ink), seen);
-  check(ratio >= 4.5, '  the pill ink reads on the card it is actually on',
-        `${ratio.toFixed(1)}:1 — ${before.ink} over ${before.bg} on ${before.ground}`);
+  // breaks when it is dropped onto the next release — and it has to cover all
+  // three elements, because only the pills read the palette variables.
+  for (const p of before.parts) {
+    // The INK has an alpha too — the note's is rgba(…,0.6) and the Sun Showers
+    // override is rgba(…,0.72). Measuring the raw rgb ignores that and reports
+    // the ratio of a colour nobody sees: it returned 18.9:1 for the note on a
+    // near-black card, which is the theoretical maximum for white on black and
+    // not what 60%-opacity white does. So both layers are composited.
+    const seen = over(p.bg, before.ground);
+    const ratio = contrast(over(p.ink, seen), seen);
+    check(ratio >= 4.5, `  the ${p.name} reads on the card it is actually on`,
+          `${ratio.toFixed(1)}:1 — ${p.ink} over ${p.bg} on ${before.ground}`);
+  }
 
   console.log(`--- ${card.song}: the shared post carries them, read off the card`);
   const missing = card.want.filter(([, id]) => !(before.post || '').includes(id));
