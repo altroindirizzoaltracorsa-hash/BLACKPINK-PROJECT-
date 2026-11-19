@@ -77,7 +77,26 @@ const base = 'http://127.0.0.1:' + server.address().port;
 const browser = await chromium.launch();
 
 const at = async (iso, label) => {
-  const ctx = await browser.newContext({ viewport: { width: 430, height: 950 } });
+  // SERVICE WORKERS BLOCKED. In a fresh context sw.js installs, calls
+  // clients.claim(), and index.html's `controllerchange` handler reloads the
+  // page ONCE on purpose so the build swaps instead of running stale cached
+  // JS. That reload can land between the waitForFunction below and the
+  // evaluate after it, and kills the context mid-read: "Execution context was
+  // destroyed, most likely because of a navigation" — a message with nothing
+  // in it to connect it to a service worker, and which looks like a broken
+  // badge gate rather than the transient it is.
+  //
+  // It passed here for weeks and started failing in CI the day the card grew
+  // a playlists block and a premiere row: more markup, later parse, wider
+  // window. So the race was always present and the page size only changed how
+  // often it is lost — which is why this is fixed rather than re-run. Nothing
+  // in this file tests the service worker.
+  //
+  // Reproduced before fixing, since the CI log was not retrievable: eight
+  // copies in parallel, to widen the window the way a loaded runner does,
+  // failed 2 of 8 with that exact error. Same command passes 8 of 8 with this
+  // option set.
+  const ctx = await browser.newContext({ viewport: { width: 430, height: 950 }, serviceWorkers: 'block' });
   const page = await ctx.newPage();
   await page.clock.setFixedTime(new Date(iso));
   await page.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen', '1'); } catch (e) {} });
