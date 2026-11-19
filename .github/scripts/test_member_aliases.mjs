@@ -37,6 +37,19 @@ const server = createServer(async (req, res) => {
 });
 await new Promise(r => server.listen(0, r));
 const base = `http://127.0.0.1:${server.address().port}`;
+// JENNIE'S CURRENT LIVE RELEASE, in ONE place.
+//
+// These assertions used to name 'steps' in four of them, so every JENNIE
+// comeback broke this file in four spots and the fix was four string edits —
+// the kind of parallel list this repo keeps getting bitten by. The RULE under
+// test never changes: a member alias resolves to whatever she has coming, the
+// address bar is rewritten to that card's own slug, and on jenn.ie the live
+// release is listed before the one it supersedes. Only the name moves.
+//
+// Update this line on a JENNIE release, and nothing else here.
+const JENNIE_LIVE = 'powertrip';   // was 'steps' (Someone to Hold), Nov 6-19 2026
+const JENNIE_LIVE_LABEL = 'Power Trip';
+
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 430, height: 950 } });
 await page.addInitScript(() => { try {
@@ -69,10 +82,10 @@ async function open(path) {
 console.log('--- a member name lands on her live release');
 {
   const r = await open('/countdowns/jennie');
-  r.shown.length === 1 && r.shown[0] === 'steps'
-    ? ok('/countdowns/jennie shows Someone to Hold', r.shown.join(', '))
-    : bad('/countdowns/jennie shows Someone to Hold', `showed ${r.shown.join(', ') || 'nothing'}`);
-  r.url === '/countdowns/steps'
+  r.shown.length === 1 && r.shown[0] === JENNIE_LIVE
+    ? ok(`/countdowns/jennie shows ${JENNIE_LIVE_LABEL}`, r.shown.join(', '))
+    : bad(`/countdowns/jennie shows ${JENNIE_LIVE_LABEL}`, `showed ${r.shown.join(', ') || 'nothing'}`);
+  r.url === `/countdowns/${JENNIE_LIVE}`
     ? ok('and the address bar reads the card\'s own slug', r.url)
     : bad('and the address bar reads the card\'s own slug', `${r.url} — copying it would share a name, not a release`);
 }
@@ -119,13 +132,13 @@ console.log('\n--- and a real slug is never shadowed by a name');
   // since been shared as JENNIE's link for Someone to Hold, so the URL now has
   // two jobs and has to answer both: the share cards already posted still find
   // Fallen Angel, and everyone who followed it for the new single finds that.
-  r.shown.includes('steps')
-    ? ok('and shows Someone to Hold as well', r.shown.join(' then '))
-    : bad('and shows Someone to Hold as well',
+  r.shown.includes(JENNIE_LIVE)
+    ? ok(`and shows ${JENNIE_LIVE_LABEL} as well`, r.shown.join(' then '))
+    : bad(`and shows ${JENNIE_LIVE_LABEL} as well`,
           `showed only ${r.shown.join(', ')} — the link was shared for the new single`);
   // Order matters: people arriving here were sent for the new release. Fallen
   // Angel keeps its place under Past countdowns, below.
-  r.shown[0] === 'steps'
+  r.shown[0] === JENNIE_LIVE
     ? ok('with the live one first')
     : bad('with the live one first', r.shown.join(' then '));
 }
@@ -185,40 +198,51 @@ console.log('\n--- the alias follows the dates, not a list');
   await page.goto(base + '/countdowns', { waitUntil: 'domcontentloaded' });
   await page.locator("#home-countdowns .cd-card").first().waitFor({ state: "attached", timeout: 20000 });
   await page.waitForFunction(() => typeof resolveCountdownSlug === 'function', { timeout: 20000 });
-  const moved = await page.evaluate(() => {
+  const moved = await page.evaluate((LIVE) => {
     const out = {};
     out.before = resolveCountdownSlug('jennie');
-    // Someone to Hold comes out: its date moves into the past. YESTERDAY, not
+    // Her live release comes out: its date moves into the past. YESTERDAY, not
     // some round date years ago — the first version of this used 2020, which
     // made Fallen Angel (August) genuinely her most recent release, and the
     // resolver was right to pick it. The check was wrong, not the rule.
-    const steps = document.querySelector('[data-slug="steps"]');
-    const kept  = steps.dataset.target;
-    steps.dataset.target = new Date(Date.now() - 86400000).toISOString();
+    //
+    // Driven off LIVE rather than a named card: this block pushed 'steps' into
+    // the past, which stopped proving anything the moment Power Trip was
+    // dated ahead of it — the simulation ran, nothing moved, and the
+    // assertions failed on a rule that was working perfectly.
+    const live = document.querySelector(`[data-slug="${LIVE}"]`);
+    const kept  = live.dataset.target;
+    const keptLocal = live.dataset.targetLocal;
+    // Both, or cardTargetAt reads the local date and ignores the one we set —
+    // which is precisely how a midnight-local card hides a change like this.
+    delete live.dataset.targetLocal;
+    live.dataset.target = new Date(Date.now() - 86400000).toISOString();
     out.afterRelease = resolveCountdownSlug('jennie');
     // And then she announces something new, dated ahead.
     const fa = document.querySelector('[data-slug="jenn.ie"]');
     const faKept = fa.dataset.target;
     fa.dataset.target = '2099-01-01T00:00:00Z';
     out.afterNext = resolveCountdownSlug('jennie');
-    steps.dataset.target = kept; fa.dataset.target = faKept;
+    live.dataset.target = kept;
+    if (keptLocal !== undefined) live.dataset.targetLocal = keptLocal;
+    fa.dataset.target = faKept;
     out.restored = resolveCountdownSlug('jennie');
     return out;
-  });
-  moved.before === 'steps'
-    ? ok('today it is Someone to Hold', moved.before)
-    : bad('today it is Someone to Hold', moved.before);
+  }, JENNIE_LIVE);
+  moved.before === JENNIE_LIVE
+    ? ok(`today it is ${JENNIE_LIVE_LABEL}`, moved.before)
+    : bad(`today it is ${JENNIE_LIVE_LABEL}`, moved.before);
   // Once it is out, the most recent release is still the right answer for a
   // member with nothing ahead — and Someone to Hold is then more recent than
   // Fallen Angel, so it stays.
-  moved.afterRelease === 'steps'
+  moved.afterRelease === JENNIE_LIVE
     ? ok('after it is released it stays, as her most recent', moved.afterRelease)
     : bad('after it is released it stays, as her most recent', moved.afterRelease);
   moved.afterNext === 'jenn.ie'
     ? ok('and a newly dated release takes it over', 'the resolver read the date, not a list')
     : bad('and a newly dated release takes it over',
           `${moved.afterNext} — the alias is pinned to a slug somewhere instead of following the dates`);
-  moved.restored === 'steps'
+  moved.restored === JENNIE_LIVE
     ? ok('and the page is as it was')
     : bad('and the page is as it was', moved.restored);
 }
@@ -227,32 +251,37 @@ console.log('\n--- the alias follows the dates, not a list');
   // not "also steps". If it were named, this would keep showing Someone to
   // Hold after JENNIE's next release lands — which is the whole reason it is
   // not named.
-  const moved = await page.evaluate(() => {
+  const moved = await page.evaluate((LIVE) => {
     const view = (p) => resolveCountdownView(p).show;
     const out = { before: view('jenn.ie') };
-    const steps = document.querySelector('[data-slug="steps"]');
+    // LIVE, not a named card — see the note in the block above.
+    const steps = document.querySelector(`[data-slug="${LIVE}"]`);
     const sunsh = document.querySelector('[data-slug="sunshowers"]');
     const keptS = steps.dataset.target, keptM = sunsh.dataset.member;
-    // Someone to Hold is out, and something of JENNIE's is dated ahead.
+    const keptSL = steps.dataset.targetLocal;
+    // data-target-local wins in cardTargetAt, so it has to go too.
+    delete steps.dataset.targetLocal;
+    // Her live release is out, and something of JENNIE's is dated ahead.
     steps.dataset.target = new Date(Date.now() - 86400000).toISOString();
     sunsh.dataset.member = 'jennie';
     sunsh.dataset.target = '2099-01-01T00:00:00Z';
     out.afterNext = view('jenn.ie');
     steps.dataset.target = keptS; sunsh.dataset.member = keptM;
+    if (keptSL !== undefined) steps.dataset.targetLocal = keptSL;
     sunsh.removeAttribute('data-target');
     out.restored = view('jenn.ie');
     return out;
-  });
-  JSON.stringify(moved.before) === JSON.stringify(['steps', 'jenn.ie'])
-    ? ok('today jenn.ie pairs with Someone to Hold', moved.before.join(' then '))
-    : bad('today jenn.ie pairs with Someone to Hold', JSON.stringify(moved.before));
+  }, JENNIE_LIVE);
+  JSON.stringify(moved.before) === JSON.stringify([JENNIE_LIVE, 'jenn.ie'])
+    ? ok(`today jenn.ie pairs with ${JENNIE_LIVE_LABEL}`, moved.before.join(' then '))
+    : bad(`today jenn.ie pairs with ${JENNIE_LIVE_LABEL}`, JSON.stringify(moved.before));
   moved.afterNext[0] === 'sunshowers'
     ? ok('and a newer dated release takes that place', 'the companion is resolved, not named')
     : bad('and a newer dated release takes that place',
           `${JSON.stringify(moved.afterNext)} — ` + (moved.afterNext.includes('sunshowers')
             ? 'it found the new one but put it second'
             : 'the companion is pinned to a slug'));
-  JSON.stringify(moved.restored) === JSON.stringify(['steps', 'jenn.ie'])
+  JSON.stringify(moved.restored) === JSON.stringify([JENNIE_LIVE, 'jenn.ie'])
     ? ok('and the page is as it was')
     : bad('and the page is as it was', JSON.stringify(moved.restored));
 }

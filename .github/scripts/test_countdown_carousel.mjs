@@ -122,7 +122,10 @@ console.log('--- the countdown cards, on the home page');
   // it, second behind Leave With Me (18 Nov). Leaving it below two releases
   // that are already out would have been the dated-card rule applied to a card
   // that no longer matched the reason for the exception.
-  const ORDER = ['leavewithme','sunshowers','addicted','steps','lalisaofficial.com','newtrick','hellosawadika.com'];
+  // Power Trip leads from 19 Nov: it is the only release still ahead, and
+  // Leave With Me came out on the 18th. Soonest-first among the dated cards,
+  // which is the same rule that put Leave With Me here before it.
+  const ORDER = ['powertrip','leavewithme','sunshowers','addicted','steps','lalisaofficial.com','newtrick','hellosawadika.com'];
   // Read the AUTHORED order, not the DOM order: with looping on, the track
   // rotates cards between its ends, so the DOM order is the running order
   // turned by however many times it has wrapped.

@@ -2039,6 +2039,34 @@
      .cd-card itself has no radius, so rounding the image would cut a notch out
      of a square card rather than round the card. */
   .cd-card-steps .cd-btn, .cd-card-sunshowers .cd-btn { border-radius: 99px; }
+  /* POWER TRIP. The art is a photograph of HERS, not the album sleeve —
+     Rockstar's cover is the game's and would make this read as a GTA card
+     with a BLACKPINK footnote. The picture happens to carry the record's
+     whole mood already (a red car, a night street, hot pink), so the type
+     sits on it rather than competing with it.
+     The photo is a BANNER, not the card's background: everything below it —
+     clock, button, the note explaining the album link — is type that has to
+     stay readable at any length, and laying it over a fixed-height image is
+     how a card overflows the moment the copy grows. */
+  .cd-card-powertrip { padding: 0; overflow: hidden; }
+  .cd-card-powertrip .pt-art { position: relative; line-height: 0; }
+  .cd-card-powertrip .pt-hero { display: block; width: 100%; height: auto; }
+  /* Dark at the bottom so the lockup reads, barely there at the top so the
+     night sky is not flattened to grey. */
+  .cd-card-powertrip .pt-scrim { position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(180deg, rgba(6,2,10,0.40) 0%, rgba(6,2,10,0.05) 30%,
+                rgba(6,2,10,0.55) 72%, rgba(6,2,10,0.95) 100%); }
+  .cd-card-powertrip .pt-art-type { position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 0 1.25rem 1.05rem; line-height: 1.1; }
+  .cd-card-powertrip .pt-gta { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.26em;
+    text-transform: uppercase; color: #ffd34d; margin-bottom: 0.4rem; }
+  .cd-card-powertrip .pt-title { font-family: var(--display); font-size: 2.3rem; letter-spacing: 0.02em;
+    color: var(--white); line-height: 0.95; text-shadow: 0 2px 18px rgba(0,0,0,0.6); }
+  .cd-card-powertrip .pt-body { padding: 1rem 1.25rem 1.35rem; }
+  .cd-card-powertrip .pt-note { font-family: var(--mono); font-size: 0.62rem; line-height: 1.85;
+    color: var(--muted); margin-top: 1rem; }
+  .cd-card-powertrip .pt-note b { color: var(--white); font-weight: 600; }
+  .cd-card-powertrip .cd-btn { border-radius: 99px; }
   /* Says plainly what is not announced yet, so the missing buttons read as
      "not out" rather than as a broken card. */
   .st-pending { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.08em; line-height: 1.7; color: rgba(245,240,240,0.42); border-left: 2px solid rgba(255,0,102,0.35); padding-left: 0.7rem; margin-bottom: 1.1rem; }
@@ -4232,9 +4260,84 @@
              not one photograph. It only advances while it is actually on
              screen, so reading further down the page does not move it. -->
         <div class="cd-wrap" data-carousel data-carousel-fit data-carousel-loop data-carousel-autoplay="12000" aria-label="Countdowns">
-          <!-- LISA — "Leave With Me", out Nov 18, 2026. First in the track
-               because it is the only release still ahead of us, and a drop
-               nobody has carded yet should be the first thing you see.
+          <!-- JENNIE — "Power Trip", on GTA VI: THE ALBUM. First in the track
+               because it is the next thing to land.
+
+               MIDNIGHT WHEREVER YOU ARE, on the night of Nov 19→20. Confirmed
+               as the local rule, not a worldwide instant: it goes live in each
+               country as that country's clock turns over, so Seoul has it
+               about thirteen hours before Los Angeles. That is
+               data-target-local, which names the DATE and lets cardTargetAt()
+               work out each reader's own midnight — the same rule the PRESS
+               PLAY EP needed, and the OPPOSITE of Sun Showers and ADDICTED,
+               which have one announced hour and therefore carry only
+               data-target. Getting this backwards is the most expensive
+               mistake available on a countdown card and it has been made here
+               in both directions, so: an announced HOUR means data-target
+               alone; "midnight local" means data-target-local plus a floor.
+
+               data-target is that floor, at 00:00 UTC — the site's day
+               boundary, for anything reading this card that does not know the
+               local rule. It is NOT a claimed release hour.
+
+               THE LINK IS THE ALBUM, NOT THE SONG, and the card says so in as
+               many words. The only thing published is a pre-save for the whole
+               34-track GTA VI album; there is no "Power Trip" single link.
+               Sending people to a 34-track album under a button that reads
+               like a song is how a card loses trust, so the button names the
+               album and the note explains why.
+
+               WHAT THIS CARD DOES NOT CLAIM. No release hour, no tracklist
+               position, no artwork — the sleeve is Rockstar's album art, not
+               hers, and nothing about her inclusion was announced by Rockstar
+               directly. It was a leaked tracklist that Billboard and Rolling
+               Stone are reported to have confirmed through sources, and the
+               album's own Spotify listing is what this card actually rests on.
+               The card therefore says where the song is and when, and stops. -->
+          <div class="cd-card cd-card-powertrip" data-slug="powertrip" data-member="jennie"
+               data-target-local="2026-11-20" data-target="2026-11-20T00:00:00Z"
+               data-live="OUT NOW ✨" data-plain="1" data-prerelease-name="power trip">
+            <!-- A photograph of HERS, not the album sleeve. It already carries
+                 the record's whole mood — a red car, a night street, hot pink —
+                 which is why the type sits on it instead of beside it.
+                 "GTA VI · THE ALBUM" is TYPE, not Rockstar's logo: that mark is
+                 theirs and we do not have the file, and a lookalike drawn from
+                 memory would be both wrong and theirs. Swap in the real asset
+                 here if one is ever licensed. -->
+            <div class="pt-art">
+              <img class="pt-hero" src="/powertrip/jennie-powertrip.webp" width="900" height="1020"
+                   alt="JENNIE at night in a pink skirt and thigh-high pink boots, leaning against a red car" loading="lazy">
+              <div class="pt-scrim"></div>
+              <div class="pt-art-type">
+                <div class="pt-gta">GTA VI · The Album</div>
+                <div class="pt-title">POWER TRIP</div>
+              </div>
+            </div>
+            <div class="pt-body">
+            <div class="cd-eyebrow">JENNIE · New Song</div>
+            <div class="cd-sub">Out <b>midnight your time</b> · Fri, Nov 20, 2026<span class="cd-sub-local" data-local-target></span></div>
+            <div class="cd-timer cd-timer-plain" data-timer></div>
+            <div class="cd-links">
+              <!-- Named for what it actually opens. "Pre-save" alone would read
+                   as the song. -->
+              <a class="cd-btn" href="https://open.spotify.com/album/5BYKG4MHfySZthe2W6r7n4" target="_blank" rel="noopener">Pre-save the album ↗</a>
+            </div>
+            <div class="pt-note">
+              <b>“Power Trip”</b> is JENNIE's song on <b>GTA VI: The Album</b>, the
+              official soundtrack to Grand Theft Auto VI.
+              <br><br>
+              The link above is the <b>whole album</b> — there is no separate link for
+              the song yet. Pre-saving the album is what gets you “Power Trip” the
+              moment it lands.
+              <br><br>
+              It arrives at <b>midnight where you are</b>, so the clock above is counting
+              to your own, not to one hour somewhere else.
+            </div>
+            </div>
+          </div>
+          <!-- LISA — "Leave With Me", out Nov 18, 2026. It led the track while
+               it was the only release still ahead of us; it is out now, and
+               Power Trip is ahead, so it sits second.
 
                Her song for the ALWAYS LALISA documentary, which is why the
                film's poster is the art: it stands in for a sleeve that does
@@ -4924,7 +5027,7 @@
             <div class="nt-hero"><img src="/newtrick/newtrick-cover.jpg" alt="ROSÉ — new trick (single cover)" loading="lazy"></div>
             <div class="nt-title">new trick</div>
             <div class="cd-eyebrow nt-eyebrow">ROSÉ · New Single · rosesarerosie.lnk.to</div>
-            <div class="cd-sub">World Premiere · Wed, Sep 17, 2026 · 7PM EDT / Thu, Sep 18 · 8AM KST<span class="cd-sub-local" data-local-target></span></div>
+            <div class="cd-sub">World Premiere · Thu, Sep 17, 2026 · 7PM EDT / Fri, Sep 18 · 8AM KST<span class="cd-sub-local" data-local-target></span></div>
             <div class="cd-timer cd-timer-plain" data-timer></div>
             <div class="cd-badge-chip nt-locket" id="newtrick-badge" style="display:none;"><img src="/newtrick/newtrick-wordmark.png" alt="" aria-hidden="true">Early Supporter</div>
             <div class="cd-goal" id="newtrick-goal" style="display:none;">
@@ -5113,7 +5216,7 @@
             <a class="js-teaser" href="https://youtu.be/LzgE8ift2Uw" target="_blank" rel="noopener" title="Watch the JISOO — CLICK MV teaser"><img src="/jisoo-teaser.webp" alt="Watch the JISOO — CLICK MV teaser"></a>
             <div class="js-body">
               <img class="js-title" src="/jisoo-word-jisoo.webp" alt="JISOO" loading="lazy">
-              <div class="cd-sub"><span class="js-date">Thu, Sep 4, 2026</span><span class="js-tz">1PM KST / 12AM EDT</span><span class="cd-sub-local" data-local-target></span></div>
+              <div class="cd-sub"><span class="js-date">Fri, Sep 4, 2026</span><span class="js-tz">1PM KST / 12AM EDT</span><span class="cd-sub-local" data-local-target></span></div>
               <div class="cd-eyebrow">JISOO · 1st Single · jisoo.io</div>
               <div class="cd-badge-chip js-locket" id="jisoo-badge" style="display:none;"><img src="/jisoo-heart.webp" alt="">Early Supporter</div>
               <div class="cd-timer" data-timer></div>

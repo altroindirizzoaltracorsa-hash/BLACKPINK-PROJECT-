@@ -30,6 +30,17 @@ const COUNTDOWNS = {
   // guessed month into a link preview is how a date nobody announced ends up
   // quoted back at us from a screenshot. Still true — the distributor's own
   // pre-save page carries releaseDateInfo.date = null.
+  // JENNIE's song on GTA VI: The Album. Says where it is and when, and stops.
+  // Rockstar never announced her inclusion directly — it came from a leaked
+  // tracklist that Billboard and Rolling Stone are reported to have confirmed
+  // through sources — so the preview claims the album and the date, which the
+  // album's own Spotify listing carries, and nothing about billing or placing.
+  // No hour: it lands at midnight in each country, so there is no one time to
+  // put in a line that is read by people who never open the page.
+  powertrip: {
+    title: 'JENNIE — Power Trip, Nov 20, 2026 | Countdown · BLINKS UNITED',
+    description: "JENNIE's \u201cPower Trip\u201d is on GTA VI: The Album, out at midnight where you are on Nov 20, 2026. Pre-save the album.",
+  },
   sunshowers: {
     title: 'JISOO — Sun Showers, Nov 20, 2026 | Countdown · BLINKS UNITED',
     description: "JISOO performs and co-wrote \u201cSun Showers\u201d, an original song for The Angry Birds Movie 3, out Nov 20, 2026 (2PM KST / 12AM EST).",
@@ -122,7 +133,7 @@ export const config = {
     '/countdowns/jisoo.io', '/countdowns/jenn.ie', '/countdowns/hellosawadika.com',
     '/countdowns/lalisaofficial.com', '/countdowns/steps', '/countdowns/vmas',
     '/countdowns/addicted', '/countdowns/newtrick', '/countdowns/sunshowers',
-    '/countdowns/leavewithme',
+    '/countdowns/leavewithme', '/countdowns/powertrip',
     // The member-name aliases. The page resolves each to that member's live
     // release and rewrites the address bar to the card's own slug, so these
     // are an entry point rather than a second address for a release — which

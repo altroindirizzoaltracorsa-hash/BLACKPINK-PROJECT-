@@ -423,6 +423,14 @@ jobs:
       # did not open their badges. These two pin the window arithmetic and the
       # thing that makes server-side fetching safe: not counting it twice
       # against what the badges page already submitted.
+      # A hand-typed weekday is the one part of a date a reader cannot check
+      # and will always trust. The Power Trip card shipped its first draft
+      # saying "Thu, Nov 20" for a Friday, and this check found two more that
+      # had been live on the site since September.
+      - name: Every weekday a card prints matches its date
+        if: always()
+        run: node .github/scripts/test_card_weekdays.mjs
+
       - name: Stats.fm answers for the day it was asked for
         if: always()
         run: node .github/scripts/test_statsfm_day.mjs
