@@ -148,6 +148,28 @@ const viaPlaylist = async (iso) => {
   return got;
 };
 
+// Is the song's own button on screen at a given instant, and is the album's
+// still there? Both read from the rendered page, because the gate lives in
+// renderPtCta() and the markup alone cannot answer it.
+const songShown = async (iso) => {
+  const ctx = await browser.newContext({ viewport: { width: 430, height: 950 }, serviceWorkers: 'block' });
+  const page = await ctx.newPage();
+  await page.clock.setFixedTime(new Date(iso));
+  await page.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen', '1'); } catch (e) {} });
+  await page.goto(base + '/countdowns/powertrip', { waitUntil: 'load' });
+  const got = await (await page.waitForFunction(() => {
+    const note = document.getElementById('pt-pl-note');
+    if (!note || !note.textContent.trim()) return null;   // load path has run
+    const s = document.getElementById('pt-song');
+    const a = document.getElementById('pt-cta');
+    if (!s || !a) return null;
+    const vis = (el) => el.getBoundingClientRect().height > 0;
+    return { live: ptLive(), visible: vis(s), albumVisible: vis(a) };
+  }, null, { timeout: 25000 })).jsonValue();
+  await ctx.close();
+  return got;
+};
+
 console.log('\n--- and a playlist tap earns it too, on the same gate');
 {
   let r = await viaPlaylist('2026-11-19T22:00:00Z');
@@ -174,6 +196,23 @@ console.log('\n--- and a playlist tap earns it too, on the same gate');
   check(/onclick="grantPowerTripDayOne\(\)"/.test(sb),
         '    granting the badge but NOT the pre-save count');
   check(!/[?&]si=/.test(sb), '    with no share-tracking parameter');
+
+  // AND IT MUST BE HIDDEN UNTIL THE SONG IS OUT WHERE THE READER IS. Spotify
+  // will not serve the track before your own Nov 20, so a visible "Play the
+  // song" button in a timezone that has not turned over sends a fan to
+  // something that cannot play. The album pre-save is the link that works for
+  // everyone, so it is the one that never hides.
+  // Rendered, not read off the markup: the gate is in renderPtCta(), so only
+  // the live page can show whether it fires.
+  const shown = await songShown('2026-11-20T12:00:00Z');   // out almost everywhere
+  const hidden = await songShown('2026-11-19T22:00:00Z');  // badge open, Rome still Nov 19
+  check(shown.live && shown.visible,
+        '    shown once the song is out where you are', `live=${shown.live} visible=${shown.visible}`);
+  check(!hidden.live && !hidden.visible,
+        '    and hidden before that, when it would not play', `live=${hidden.live} visible=${hidden.visible}`);
+  // The album button is the one that must survive both.
+  check(shown.albumVisible && hidden.albumVisible,
+        '    while the album link stays up on both sides');
 }
 
 console.log('\n--- the gate opens and closes on those instants');

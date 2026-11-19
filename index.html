@@ -4478,12 +4478,15 @@
               <b>“Power Trip”</b> is JENNIE's song on <b>Grand Theft Auto VI: The Album</b>, the
               official soundtrack to Grand Theft Auto VI.
               <br><br>
-              <b>The song now has its own link</b>, and the album still has one. Spotify
-              lists “Power Trip” as its own single — credited to JENNIE and Grand Theft
-              Auto VI — as well as a track on the 34-song album, so both buttons above
-              are real and they go to different places. This card said there was no
-              separate song link for as long as that was true, and it stopped being
-              true on release day.
+              The link above is the <b>whole album</b>, and it is the one that works
+              wherever you are — a pre-save before your midnight, the record itself
+              after it.
+              <br><br>
+              The song also has <b>its own link</b> now, but Spotify only serves it where
+              <b>Nov 20 has already arrived</b>, so it appears on this card at your own
+              midnight and not before. Until then there is nothing for it to play, which
+              is why the pre-save is for the album: that is the only thing there was ever
+              a pre-save for.
               <br><br>
               It arrives at <b>midnight where you are</b>, so the clock above is counting
               to your own, not to one hour somewhere else.
@@ -20333,8 +20336,20 @@ async function shareSunShowersPlaylists() {
 // alone would both read as the song, and the only link that exists is the
 // 34-track album.
 function renderPtCta() {
+  const live = ptLive();
   const btn = document.getElementById('pt-cta');
-  if (btn) btn.textContent = ptLive() ? 'Listen to the album ↗' : 'Pre-save the album ↗';
+  if (btn) btn.textContent = live ? 'Listen to the album ↗' : 'Pre-save the album ↗';
+  // THE SONG LINK IS HIDDEN UNTIL IT IS OUT WHERE YOU ARE, and that is the
+  // whole point of it being gated rather than just relabelled. Spotify will
+  // not serve the track to a listener whose Nov 20 has not arrived, so a
+  // "Play the song" button shown in Rome at 8pm sends a fan to a track that
+  // will not play — a dead button on a card they trusted.
+  // ptLive() is each reader's own midnight, which is exactly the line Spotify
+  // itself is drawing, so the button appears for a fan in Auckland hours
+  // before it appears for one in Los Angeles. The album pre-save is the one
+  // that works for everybody, which is why it is the one that never hides.
+  const song = document.getElementById('pt-song');
+  if (song) song.style.display = live ? '' : 'none';
 }
 
 // Power Trip's playlists note, which changes at the release and nowhere else.
