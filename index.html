@@ -4439,16 +4439,6 @@
                    window — renaming a button without that guard is how you
                    hand a day-one badge to someone who tapped Listen. -->
               <a class="cd-btn" id="pt-cta" href="https://open.spotify.com/album/5BYKG4MHfySZthe2W6r7n4" target="_blank" rel="noopener" onclick="savePowerTrip()">Pre-save the album ↗</a>
-              <!-- THE SONG'S OWN LINK, which did not exist when this card was
-                   built — it carried only the album pre-save and said so in as
-                   many words. Spotify now lists "Power Trip (from GTAVI: The
-                   Album)" as its own single, credited to JENNIE and Grand Theft
-                   Auto VI, read off the track itself rather than assumed.
-                   It grants the Day One badge like the album link and the
-                   playlists do, through grantPowerTripDayOne() — the badge
-                   only, not the pre-save count, because this is not a
-                   pre-save. -->
-              <a class="cd-btn cd-btn-ghost" id="pt-song" href="https://open.spotify.com/track/1cyE4XiRueT0ANCp3CuJOK" target="_blank" rel="noopener" onclick="grantPowerTripDayOne()">Play the song ↗</a>
               <button class="cd-btn" onclick="openPowerTripCard()">📸 Share</button>
             </div>
             <!-- THE VIDEO IS A DIFFERENT CLOCK FROM THE SONG, which is the
@@ -4478,15 +4468,14 @@
               <b>“Power Trip”</b> is JENNIE's song on <b>Grand Theft Auto VI: The Album</b>, the
               official soundtrack to Grand Theft Auto VI.
               <br><br>
-              The link above is the <b>whole album</b>, and it is the one that works
-              wherever you are — a pre-save before your midnight, the record itself
-              after it.
+              <b>The button above changes at your midnight.</b> Until then it is a
+              pre-save, and it is a pre-save for the <b>whole album</b> — that is the only
+              thing there ever was a pre-save for. The moment Nov 20 reaches you it
+              becomes <b>“Power Trip” itself</b>.
               <br><br>
-              The song also has <b>its own link</b> now, but Spotify only serves it where
-              <b>Nov 20 has already arrived</b>, so it appears on this card at your own
-              midnight and not before. Until then there is nothing for it to play, which
-              is why the pre-save is for the album: that is the only thing there was ever
-              a pre-save for.
+              It works that way round because Spotify will not serve the song to you
+              before your own Nov 20, so a link to it any earlier would have nothing to
+              play.
               <br><br>
               It arrives at <b>midnight where you are</b>, so the clock above is counting
               to your own, not to one hour somewhere else.
@@ -20338,19 +20327,23 @@ async function shareSunShowersPlaylists() {
 function renderPtCta() {
   const live = ptLive();
   const btn = document.getElementById('pt-cta');
-  if (btn) btn.textContent = live ? 'Listen to the album ↗' : 'Pre-save the album ↗';
-  // THE SONG LINK IS HIDDEN UNTIL IT IS OUT WHERE YOU ARE, and that is the
-  // whole point of it being gated rather than just relabelled. Spotify will
-  // not serve the track to a listener whose Nov 20 has not arrived, so a
-  // "Play the song" button shown in Rome at 8pm sends a fan to a track that
-  // will not play — a dead button on a card they trusted.
-  // ptLive() is each reader's own midnight, which is exactly the line Spotify
-  // itself is drawing, so the button appears for a fan in Auckland hours
-  // before it appears for one in Los Angeles. The album pre-save is the one
-  // that works for everybody, which is why it is the one that never hides.
-  const song = document.getElementById('pt-song');
-  if (song) song.style.display = live ? '' : 'none';
+  if (!btn) return;
+  // ONE BUTTON, AND IT CHANGES WHERE IT GOES, not just what it says.
+  //
+  // Before your midnight the only thing that exists for you is the album
+  // pre-save — Spotify will not serve the track to a listener whose Nov 20 has
+  // not arrived, so a song link here would be a dead button on a card they
+  // trusted. After it, the pre-save is pointless and the song is the thing
+  // they actually came for, so the button becomes the song.
+  //
+  // ptLive() is each reader's own midnight, which is the same line Spotify is
+  // drawing, so this flips in Auckland fourteen hours before it flips in
+  // Honolulu. That is correct rather than inconsistent: the button always
+  // points at whatever is real where the reader is.
+  btn.textContent = live ? 'Listen to “Power Trip” ↗' : 'Pre-save the album ↗';
+  btn.href = live ? PT_SONG_URL : PT_ALBUM_URL;
 }
+
 
 // Power Trip's playlists note, which changes at the release and nowhere else.
 // Read off ptLive() — the same instant the countdown, the pre-save button and
@@ -28065,6 +28058,11 @@ async function openLeaveWithMeCard() {
 // is not a conversion here, it is the thing itself.
 const PT_BADGE_FROM  = '2026-11-19T10:00:00Z';
 const PT_BADGE_UNTIL = '2026-11-21T12:00:00Z';
+// The album pre-save is what existed before the release; the song's own
+// Spotify id only became reachable on release day, and only in timezones that
+// have reached Nov 20. renderPtCta() swaps the button between them.
+const PT_ALBUM_URL   = 'https://open.spotify.com/album/5BYKG4MHfySZthe2W6r7n4';
+const PT_SONG_URL    = 'https://open.spotify.com/track/1cyE4XiRueT0ANCp3CuJOK';
 const PT_SAVE_LS     = 'bu_jennie_powertrip_saved';
 const PT_COUNTED_LS  = 'bu_jennie_powertrip_counted';
 const ptBadgeOpen = () => {
@@ -28098,10 +28096,13 @@ function grantPowerTripDayOne() {
   refreshSupporterChips();
 }
 
-// The album link: the badge AND the count, which is what that button means.
+// The one button. Always the badge; the PRE-SAVE COUNT only while it is still
+// a pre-save. Once the song is out where you are the button points at the
+// track, and filing that tap in bu_jennie_powertrip_saves would make a number
+// called "saves" mean two different things depending on the hour.
 function savePowerTrip() {
   grantPowerTripDayOne();
-  countPresaveOnce(PT_COUNTED_LS, 'powertrip_save', () => {});
+  if (!ptLive()) countPresaveOnce(PT_COUNTED_LS, 'powertrip_save', () => {});
 }
 
 // Reconciles the browser flag with the signed-in account, both ways, so the

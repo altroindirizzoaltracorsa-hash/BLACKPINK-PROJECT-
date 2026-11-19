@@ -148,10 +148,9 @@ const viaPlaylist = async (iso) => {
   return got;
 };
 
-// Is the song's own button on screen at a given instant, and is the album's
-// still there? Both read from the rendered page, because the gate lives in
-// renderPtCta() and the markup alone cannot answer it.
-const songShown = async (iso) => {
+// The one CTA, rendered: what it says, where it points, and what tapping it
+// does. Read from the live page because the swap lives in renderPtCta().
+const ctaAt = async (iso) => {
   const ctx = await browser.newContext({ viewport: { width: 430, height: 950 }, serviceWorkers: 'block' });
   const page = await ctx.newPage();
   await page.clock.setFixedTime(new Date(iso));
@@ -159,12 +158,19 @@ const songShown = async (iso) => {
   await page.goto(base + '/countdowns/powertrip', { waitUntil: 'load' });
   const got = await (await page.waitForFunction(() => {
     const note = document.getElementById('pt-pl-note');
-    if (!note || !note.textContent.trim()) return null;   // load path has run
-    const s = document.getElementById('pt-song');
+    if (!note || !note.textContent.trim()) return null;   // the load path has run
     const a = document.getElementById('pt-cta');
-    if (!s || !a) return null;
-    const vis = (el) => el.getBoundingClientRect().height > 0;
-    return { live: ptLive(), visible: vis(s), albumVisible: vis(a) };
+    if (!a) return null;
+    try { localStorage.removeItem('bu_jennie_powertrip_saved');
+          localStorage.removeItem('bu_jennie_powertrip_counted'); } catch (e) {}
+    savePowerTrip();
+    return {
+      live:    ptLive(),
+      label:   a.textContent.trim(),
+      href:    a.getAttribute('href') || '',
+      earned:  !!localStorage.getItem('bu_jennie_powertrip_saved'),
+      counted: !!localStorage.getItem('bu_jennie_powertrip_counted'),
+    };
   }, null, { timeout: 25000 })).jsonValue();
   await ctx.close();
   return got;
@@ -183,36 +189,32 @@ console.log('\n--- and a playlist tap earns it too, on the same gate');
   r = await viaPlaylist('2026-11-22T12:00:00Z');
   check(!r.open && !r.earned, '  after it has closed everywhere: nothing');
 
-  // The song's own link grants it too, and must keep doing so. It was added
-  // on release day, once Spotify listed "Power Trip" as its own single — this
-  // card shipped with only the album pre-save because that was genuinely the
-  // only link that existed.
-  const src = readFileSync(root + 'index.html', 'utf8');
-  const songBtn = src.match(/<a class="cd-btn[^"]*" id="pt-song"[^>]*>/);
-  check(!!songBtn, '  the song has its own button on the card');
-  const sb = songBtn ? songBtn[0] : '';
-  check(sb.includes('1cyE4XiRueT0ANCp3CuJOK'),
-        '    pointing at the song, not the album', (sb.match(/track\/[A-Za-z0-9]+/) || [''])[0]);
-  check(/onclick="grantPowerTripDayOne\(\)"/.test(sb),
-        '    granting the badge but NOT the pre-save count');
-  check(!/[?&]si=/.test(sb), '    with no share-tracking parameter');
-
-  // AND IT MUST BE HIDDEN UNTIL THE SONG IS OUT WHERE THE READER IS. Spotify
-  // will not serve the track before your own Nov 20, so a visible "Play the
-  // song" button in a timezone that has not turned over sends a fan to
-  // something that cannot play. The album pre-save is the link that works for
-  // everyone, so it is the one that never hides.
-  // Rendered, not read off the markup: the gate is in renderPtCta(), so only
-  // the live page can show whether it fires.
-  const shown = await songShown('2026-11-20T12:00:00Z');   // out almost everywhere
-  const hidden = await songShown('2026-11-19T22:00:00Z');  // badge open, Rome still Nov 19
-  check(shown.live && shown.visible,
-        '    shown once the song is out where you are', `live=${shown.live} visible=${shown.visible}`);
-  check(!hidden.live && !hidden.visible,
-        '    and hidden before that, when it would not play', `live=${hidden.live} visible=${hidden.visible}`);
-  // The album button is the one that must survive both.
-  check(shown.albumVisible && hidden.albumVisible,
-        '    while the album link stays up on both sides');
+  // THE ONE BUTTON SWAPS WHERE IT GOES at the reader's own midnight: the
+  // album pre-save before, the song itself after. Spotify will not serve the
+  // track to a listener whose Nov 20 has not arrived, so pointing at it any
+  // earlier is a dead button on a card they trusted; and once the song is out
+  // the pre-save is pointless and the song is what they came for.
+  //
+  // Rendered on both sides, not read off the markup: the swap lives in
+  // renderPtCta(), so the source only ever shows the pre-release state.
+  const before = await ctaAt('2026-11-19T22:00:00Z');  // badge open, Rome still Nov 19
+  const after  = await ctaAt('2026-11-20T12:00:00Z');  // out almost everywhere
+  check(before.live === false && after.live === true,
+        '  the two samples straddle the reader\'s own midnight', `${before.live} -> ${after.live}`);
+  check(/pre-save/i.test(before.label) && before.href.includes('/album/'),
+        '  before it: a pre-save, pointing at the ALBUM', `${before.label} -> ${before.href}`);
+  check(!/pre-save/i.test(after.label) && after.href.includes('/track/1cyE4XiRueT0ANCp3CuJOK'),
+        '  after it: the SONG, and no longer called a pre-save', `${after.label} -> ${after.href}`);
+  check(!/[?&]si=/.test(before.href) && !/[?&]si=/.test(after.href),
+        '  neither carries a share-tracking parameter');
+  // The badge is the same badge from either side — it is a day-one badge, not
+  // a pre-save badge, so it must keep granting after the song is out.
+  check(before.earned && after.earned, '  and the button earns the badge on both sides',
+        `${before.earned} / ${after.earned}`);
+  // But the PRE-SAVE COUNT must stop once it is no longer a pre-save.
+  check(before.counted && !after.counted,
+        '  while the pre-save count stops when it stops being a pre-save',
+        `counted before=${before.counted} after=${after.counted}`);
 }
 
 console.log('\n--- the gate opens and closes on those instants');
