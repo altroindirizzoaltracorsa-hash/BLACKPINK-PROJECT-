@@ -160,6 +160,20 @@ console.log('\n--- and a playlist tap earns it too, on the same gate');
   check(!r.open && !r.earned, '  an hour before the window opens: nothing');
   r = await viaPlaylist('2026-11-22T12:00:00Z');
   check(!r.open && !r.earned, '  after it has closed everywhere: nothing');
+
+  // The song's own link grants it too, and must keep doing so. It was added
+  // on release day, once Spotify listed "Power Trip" as its own single — this
+  // card shipped with only the album pre-save because that was genuinely the
+  // only link that existed.
+  const src = readFileSync(root + 'index.html', 'utf8');
+  const songBtn = src.match(/<a class="cd-btn[^"]*" id="pt-song"[^>]*>/);
+  check(!!songBtn, '  the song has its own button on the card');
+  const sb = songBtn ? songBtn[0] : '';
+  check(sb.includes('1cyE4XiRueT0ANCp3CuJOK'),
+        '    pointing at the song, not the album', (sb.match(/track\/[A-Za-z0-9]+/) || [''])[0]);
+  check(/onclick="grantPowerTripDayOne\(\)"/.test(sb),
+        '    granting the badge but NOT the pre-save count');
+  check(!/[?&]si=/.test(sb), '    with no share-tracking parameter');
 }
 
 console.log('\n--- the gate opens and closes on those instants');

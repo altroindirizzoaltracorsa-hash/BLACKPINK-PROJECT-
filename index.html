@@ -4439,6 +4439,16 @@
                    window — renaming a button without that guard is how you
                    hand a day-one badge to someone who tapped Listen. -->
               <a class="cd-btn" id="pt-cta" href="https://open.spotify.com/album/5BYKG4MHfySZthe2W6r7n4" target="_blank" rel="noopener" onclick="savePowerTrip()">Pre-save the album ↗</a>
+              <!-- THE SONG'S OWN LINK, which did not exist when this card was
+                   built — it carried only the album pre-save and said so in as
+                   many words. Spotify now lists "Power Trip (from GTAVI: The
+                   Album)" as its own single, credited to JENNIE and Grand Theft
+                   Auto VI, read off the track itself rather than assumed.
+                   It grants the Day One badge like the album link and the
+                   playlists do, through grantPowerTripDayOne() — the badge
+                   only, not the pre-save count, because this is not a
+                   pre-save. -->
+              <a class="cd-btn cd-btn-ghost" id="pt-song" href="https://open.spotify.com/track/1cyE4XiRueT0ANCp3CuJOK" target="_blank" rel="noopener" onclick="grantPowerTripDayOne()">Play the song ↗</a>
               <button class="cd-btn" onclick="openPowerTripCard()">📸 Share</button>
             </div>
             <!-- THE VIDEO IS A DIFFERENT CLOCK FROM THE SONG, which is the
@@ -4468,9 +4478,12 @@
               <b>“Power Trip”</b> is JENNIE's song on <b>Grand Theft Auto VI: The Album</b>, the
               official soundtrack to Grand Theft Auto VI.
               <br><br>
-              The link above is the <b>whole album</b> — there is no separate link for
-              the song yet. Pre-saving the album is what gets you “Power Trip” the
-              moment it lands.
+              <b>The song now has its own link</b>, and the album still has one. Spotify
+              lists “Power Trip” as its own single — credited to JENNIE and Grand Theft
+              Auto VI — as well as a track on the 34-song album, so both buttons above
+              are real and they go to different places. This card said there was no
+              separate song link for as long as that was true, and it stopped being
+              true on release day.
               <br><br>
               It arrives at <b>midnight where you are</b>, so the clock above is counting
               to your own, not to one hour somewhere else.
