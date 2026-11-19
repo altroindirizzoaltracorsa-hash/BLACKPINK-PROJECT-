@@ -287,9 +287,17 @@ const at = async (card, iso) => {
         powertrip:  { live: () => ptLive(), post: () => _ptPlaylistPost(), render: () => renderPtPlaylistNote() },
         sunshowers: { live: () => ssLive(), post: () => _ssPlaylistPost(), render: () => renderSsPlaylistNote() },
       }[c.key];
-      T.render();
     } catch { return null; }
     if (!document.querySelector(`.${c.cls} .cd-pl-pill`)) return null;
+    // NOTHING IS RENDERED FROM HERE. An earlier version called the renderers
+    // itself, which proved they produce the right words and NOT that the page
+    // ever runs them — so unwiring renderPtCta from the load path left the
+    // test green while the live button stayed frozen on "Pre-save". The empty
+    // note is the gate instead: the page fills it on DOMContentLoaded, so a
+    // non-empty note means the load path has run, and the button's label is
+    // then whatever that path actually left on it.
+    const note = document.getElementById(c.noteId);
+    if (!note || !note.textContent.trim()) return null;
     const pills = [...document.querySelectorAll(`.${c.cls} .cd-pl-pill`)];
     return {
       live:  T.live(),
@@ -324,6 +332,9 @@ const at = async (card, iso) => {
       ].filter(([, el]) => el).map(([name, el]) => ({
         name, ink: getComputedStyle(el).color, bg: getComputedStyle(el).backgroundColor,
       })),
+      // The main button's label, which has to stop saying "pre-save" the
+      // moment the thing is out. Read AFTER the renderers above have run.
+      cta: document.querySelector(`.${c.cls} .cd-btn`)?.textContent.trim() || '',
       ground: (() => {
         for (let n = document.querySelector('.' + c.cls); n; n = n.parentElement) {
           const col = getComputedStyle(n).backgroundColor;
@@ -373,6 +384,15 @@ for (const card of CARDS) {
   check(/fill up|pre-save/i.test(before.note) && !/is out/i.test(before.note),
         'before: it does not say the song is out', before.note);
   check(/is out/i.test(after.note), 'after: it says the song is out', after.note);
+
+  // THE BUTTON HAS TO MOVE TOO, and on this card it shipped hardcoded — so at
+  // a reader's own midnight it asked them to PRE-SAVE a record that was out.
+  // Every card here that got this right did it by script, because "someone
+  // remembers on release morning" has failed on three of them, and a
+  // midnight-local release has no single morning to remember on.
+  check(/pre-save/i.test(before.cta), '  before: the button asks for a pre-save', before.cta);
+  check(!/pre-save/i.test(after.cta) && after.cta.length > 0,
+        '  after: it does not', after.cta);
 
   // Sun Showers' note must also say these are not its own, because unlike
   // Power Trip's it has no divider to show it.

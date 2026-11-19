@@ -4408,7 +4408,19 @@
             <div class="cd-links">
               <!-- Named for what it actually opens. "Pre-save" alone would read
                    as the song. -->
-              <a class="cd-btn" href="https://open.spotify.com/album/5BYKG4MHfySZthe2W6r7n4" target="_blank" rel="noopener" onclick="savePowerTrip()">Pre-save the album ↗</a>
+              <!-- Label SET BY SCRIPT (renderPtCta), like Sun Showers' and the
+                   Steps card's. It shipped hardcoded, which means at a
+                   reader's own midnight — in four hours for Rome — it would
+                   have asked them to PRE-SAVE an album that was already out.
+                   ADDICTED, new trick and Fallen Angel each carry a
+                   hand-edited "Listen ↗" somebody had to remember on release
+                   morning, and this one lands at a different hour for every
+                   reader, so there is no morning to remember it on.
+                   Only the LABEL moves. The badge guard is inside
+                   savePowerTrip(), which refuses a grant outside the Day One
+                   window — renaming a button without that guard is how you
+                   hand a day-one badge to someone who tapped Listen. -->
+              <a class="cd-btn" id="pt-cta" href="https://open.spotify.com/album/5BYKG4MHfySZthe2W6r7n4" target="_blank" rel="noopener" onclick="savePowerTrip()">Pre-save the album ↗</a>
               <button class="cd-btn" onclick="openPowerTripCard()">📸 Share</button>
             </div>
             <!-- THE VIDEO IS A DIFFERENT CLOCK FROM THE SONG, which is the
@@ -8022,6 +8034,7 @@ window.addEventListener('DOMContentLoaded', () => {
   // runs for a signed-in visitor — the note is card copy and has to be right
   // for everybody.
   renderPtPlaylistNote();
+  renderPtCta();
   refreshSupporterChips();
   loadLtalStreamsGoal();
   renderItunesInlineBadge();
@@ -20228,6 +20241,15 @@ async function shareSunShowersPlaylists() {
   try { await navigator.clipboard?.writeText(post); copied = true; } catch {}
   if (navigator.share) navigator.share({ title: 'JISOO — Sun Showers playlists', text: post }).catch(() => {});
   else _showShareToast(copied ? 'Playlists copied — paste them anywhere ✨' : 'Copy failed — try again');
+}
+
+// The call to action, off the same instant everything else on this card reads.
+// Named for what it actually opens, on both sides: "Pre-save" and "Listen"
+// alone would both read as the song, and the only link that exists is the
+// 34-track album.
+function renderPtCta() {
+  const btn = document.getElementById('pt-cta');
+  if (btn) btn.textContent = ptLive() ? 'Listen to the album ↗' : 'Pre-save the album ↗';
 }
 
 // Power Trip's playlists note, which changes at the release and nowhere else.
