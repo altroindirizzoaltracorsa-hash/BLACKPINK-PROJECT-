@@ -189,32 +189,55 @@ console.log('\n--- and a playlist tap earns it too, on the same gate');
   r = await viaPlaylist('2026-11-22T12:00:00Z');
   check(!r.open && !r.earned, '  after it has closed everywhere: nothing');
 
-  // THE ONE BUTTON SWAPS WHERE IT GOES at the reader's own midnight: the
-  // album pre-save before, the song itself after. Spotify will not serve the
-  // track to a listener whose Nov 20 has not arrived, so pointing at it any
-  // earlier is a dead button on a card they trusted; and once the song is out
-  // the pre-save is pointless and the song is what they came for.
+  // THE ONE BUTTON, THREE STATES, on two DIFFERENT instants — which is the
+  // part worth pinning, because the obvious implementation uses one.
   //
-  // Rendered on both sides, not read off the markup: the swap lives in
-  // renderPtCta(), so the source only ever shows the pre-release state.
-  const before = await ctaAt('2026-11-19T22:00:00Z');  // badge open, Rome still Nov 19
-  const after  = await ctaAt('2026-11-20T12:00:00Z');  // out almost everywhere
-  check(before.live === false && after.live === true,
-        '  the two samples straddle the reader\'s own midnight', `${before.live} -> ${after.live}`);
-  check(/pre-save/i.test(before.label) && before.href.includes('/album/'),
-        '  before it: a pre-save, pointing at the ALBUM', `${before.label} -> ${before.href}`);
-  check(!/pre-save/i.test(after.label) && after.href.includes('/track/1cyE4XiRueT0ANCp3CuJOK'),
-        '  after it: the SONG, and no longer called a pre-save', `${after.label} -> ${after.href}`);
-  check(!/[?&]si=/.test(before.href) && !/[?&]si=/.test(after.href),
-        '  neither carries a share-tracking parameter');
-  // The badge is the same badge from either side — it is a day-one badge, not
-  // a pre-save badge, so it must keep granting after the song is out.
-  check(before.earned && after.earned, '  and the button earns the badge on both sides',
-        `${before.earned} / ${after.earned}`);
-  // But the PRE-SAVE COUNT must stop once it is no longer a pre-save.
-  check(before.counted && !after.counted,
-        '  while the pre-save count stops when it stops being a pre-save',
-        `counted before=${before.counted} after=${after.counted}`);
+  //   before your own midnight      pre-save    -> album
+  //   after yours, before UTC-12's  listen      -> album   (still the album!)
+  //   once it is out everywhere     the song    -> track
+  //
+  // The song link does NOT follow the reader's clock. Spotify releases per
+  // MARKET, and a device clock is not a market: someone travelling, or on an
+  // account registered elsewhere, can be past their own midnight and still be
+  // served nothing. So it waits for Nov 20 to reach UTC-12, after which there
+  // is nobody left it can fail for.
+  const own   = await ctaAt('2026-11-19T22:00:00Z');  // badge open, Rome still Nov 19
+  const mid   = await ctaAt('2026-11-20T06:00:00Z');  // out in Asia and Europe, NOT at UTC-12
+  const world = await ctaAt('2026-11-20T13:00:00Z');  // out everywhere
+
+  // The boundary is COMPUTED from the offset, not copied off the constant, so
+  // a typo in PT_SONG_EVERYWHERE fails instead of being ratified.
+  const src2 = readFileSync(root + 'index.html', 'utf8');
+  const everywhere = (src2.match(/const PT_SONG_EVERYWHERE\s*=\s*'([^']+)'/) || [])[1];
+  const wantEverywhere = new Date(Date.UTC(2026, 10, 20, 0, 0, 0) + 12 * 3600000).toISOString();
+  check(everywhere && new Date(everywhere).toISOString() === wantEverywhere,
+        '  the song gate is midnight Nov 20 in the LAST timezone (UTC-12)',
+        `${everywhere} vs ${wantEverywhere}`);
+  // And it is not the other end of the badge window, which is a day later and
+  // looks almost identical.
+  const src3 = (src2.match(/const PT_BADGE_UNTIL\s*=\s*'([^']+)'/) || [])[1];
+  check(everywhere !== src3,
+        '    and not PT_BADGE_UNTIL, which is when Nov 20 ENDS there', `${src3}`);
+
+  check(/pre-save/i.test(own.label) && own.href.includes('/album/'),
+        '  before your midnight: a pre-save, pointing at the ALBUM', `${own.label}`);
+  check(!/pre-save/i.test(mid.label) && mid.href.includes('/album/'),
+        '  after yours but before UTC-12: no longer a pre-save, STILL the album',
+        `${mid.label} -> ${mid.href}`);
+  check(world.href.includes('/track/1cyE4XiRueT0ANCp3CuJOK') && /power trip/i.test(world.label),
+        '  once it is out everywhere: the SONG', `${world.label} -> ${world.href}`);
+  check(!/[?&]si=/.test(own.href) && !/[?&]si=/.test(world.href),
+        '  and no share-tracking parameter on either');
+  // The badge is a DAY-ONE badge, not a pre-save badge, so the button must
+  // earn it in every one of the three states.
+  check(own.earned && mid.earned && world.earned,
+        '  the button earns the badge in all three states',
+        `${own.earned} / ${mid.earned} / ${world.earned}`);
+  // The pre-save count stops when it stops being a pre-save — at the reader's
+  // own midnight, with the label, not at the worldwide instant.
+  check(own.counted && !mid.counted && !world.counted,
+        '  while the pre-save count stops at your own midnight, with the label',
+        `${own.counted} / ${mid.counted} / ${world.counted}`);
 }
 
 console.log('\n--- the gate opens and closes on those instants');

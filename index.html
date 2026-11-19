@@ -4468,14 +4468,15 @@
               <b>“Power Trip”</b> is JENNIE's song on <b>Grand Theft Auto VI: The Album</b>, the
               official soundtrack to Grand Theft Auto VI.
               <br><br>
-              <b>The button above changes at your midnight.</b> Until then it is a
-              pre-save, and it is a pre-save for the <b>whole album</b> — that is the only
-              thing there ever was a pre-save for. The moment Nov 20 reaches you it
-              becomes <b>“Power Trip” itself</b>.
+              <b>The button above is a pre-save until your own midnight</b>, and it is a
+              pre-save for the <b>whole album</b> — that is the only thing there ever was
+              a pre-save for. After your midnight the album is simply out, and you are
+              listening to it rather than saving it.
               <br><br>
-              It works that way round because Spotify will not serve the song to you
-              before your own Nov 20, so a link to it any earlier would have nothing to
-              play.
+              It becomes <b>“Power Trip” itself</b> a little later: once Nov 20 has reached
+              the <b>last timezone on Earth</b>. Spotify releases market by market, and the
+              clock on your phone is not your Spotify market — so until the song is out
+              everywhere, a link straight to it can still find nothing to play.
               <br><br>
               It arrives at <b>midnight where you are</b>, so the clock above is counting
               to your own, not to one hour somewhere else.
@@ -20325,24 +20326,32 @@ async function shareSunShowersPlaylists() {
 // alone would both read as the song, and the only link that exists is the
 // 34-track album.
 function renderPtCta() {
-  const live = ptLive();
   const btn = document.getElementById('pt-cta');
   if (!btn) return;
-  // ONE BUTTON, AND IT CHANGES WHERE IT GOES, not just what it says.
+  // ONE BUTTON, THREE STATES, and the label never promises more than the href
+  // delivers.
   //
-  // Before your midnight the only thing that exists for you is the album
-  // pre-save — Spotify will not serve the track to a listener whose Nov 20 has
-  // not arrived, so a song link here would be a dead button on a card they
-  // trusted. After it, the pre-save is pointless and the song is the thing
-  // they actually came for, so the button becomes the song.
+  //   before your own midnight     Pre-save the album      -> the album
+  //   after yours, before UTC-12's Listen to the album     -> the album
+  //   once it is out everywhere    Listen to "Power Trip"  -> the song
   //
-  // ptLive() is each reader's own midnight, which is the same line Spotify is
-  // drawing, so this flips in Auckland fourteen hours before it flips in
-  // Honolulu. That is correct rather than inconsistent: the button always
-  // points at whatever is real where the reader is.
-  btn.textContent = live ? 'Listen to “Power Trip” ↗' : 'Pre-save the album ↗';
-  btn.href = live ? PT_SONG_URL : PT_ALBUM_URL;
+  // The first line moves on ptLive(), your own midnight, because that is when
+  // a pre-save stops being a pre-save FOR YOU.
+  //
+  // The song link moves on something else entirely — ptSongOut(), when Nov 20
+  // has reached the last timezone on Earth. Spotify releases per MARKET and a
+  // device clock is not a market, so a reader past their own midnight can
+  // still be served nothing; waiting for UTC-12 means there is nobody left it
+  // can fail for. Those two instants are 12 hours apart at most and the middle
+  // state is what lives between them.
+  const live = ptLive();
+  const songOut = ptSongOut();
+  btn.textContent = songOut ? 'Listen to “Power Trip” ↗'
+                  : live    ? 'Listen to the album ↗'
+                            : 'Pre-save the album ↗';
+  btn.href = songOut ? PT_SONG_URL : PT_ALBUM_URL;
 }
+
 
 
 // Power Trip's playlists note, which changes at the release and nowhere else.
@@ -28063,6 +28072,19 @@ const PT_BADGE_UNTIL = '2026-11-21T12:00:00Z';
 // have reached Nov 20. renderPtCta() swaps the button between them.
 const PT_ALBUM_URL   = 'https://open.spotify.com/album/5BYKG4MHfySZthe2W6r7n4';
 const PT_SONG_URL    = 'https://open.spotify.com/track/1cyE4XiRueT0ANCp3CuJOK';
+// WHEN THE SONG LINK IS SAFE TO POINT AT, which is NOT the reader's own
+// midnight. Spotify releases per MARKET, and a reader's device clock is not
+// their Spotify market — someone travelling, or on an account registered
+// elsewhere, can be past their own midnight and still be served nothing. So
+// the button only becomes the song once Nov 20 has reached the LAST timezone
+// on Earth, UTC-12, after which it is out everywhere and there is nobody left
+// it can fail for.
+//   midnight Nov 20 at UTC-12 == 2026-11-20T12:00:00Z
+// Note this is NOT PT_BADGE_UNTIL (2026-11-21T12:00:00Z, when Nov 20 ENDS in
+// that last timezone). It is when Nov 20 BEGINS there. The badge window spans
+// both, which is why the two constants look similar and mean opposite ends.
+const PT_SONG_EVERYWHERE = '2026-11-20T12:00:00Z';
+const ptSongOut = () => Date.now() >= new Date(PT_SONG_EVERYWHERE).getTime();
 const PT_SAVE_LS     = 'bu_jennie_powertrip_saved';
 const PT_COUNTED_LS  = 'bu_jennie_powertrip_counted';
 const ptBadgeOpen = () => {
