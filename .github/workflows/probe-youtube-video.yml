@@ -1,0 +1,82 @@
+name: What is this YouTube video (read-only)
+
+# Answers "is this the MV or just the audio?" — and, before the release, "is it
+# even public yet?" — for one video id.
+#
+# Why a workflow for one curl: youtube.com is not reachable from a Claude Code
+# session, and the alternative is putting a guess on a card. A card that says
+# "Watch MV" over an audio upload is a small lie that thousands of people tap,
+# and the same card has already been written twice to avoid exactly that kind
+# of claim (it names the album rather than the song, because only the album
+# link exists).
+#
+# It prints three things, in increasing order of how much they can be trusted:
+#   oEmbed      — title and channel. 401/404 here means NOT PUBLIC: unlisted,
+#                 private, or a premiere that has not started. That is an
+#                 answer, not a failure.
+#   og: tags    — the watch page's own title/description/image.
+#   duration    — <meta itemprop="duration"> in ISO 8601. The tell: an audio
+#                 upload runs the track's exact length, an MV usually does not,
+#                 and a scheduled premiere often reports none at all.
+#
+# Read-only: it fetches two public URLs and prints what came back. No secrets,
+# nothing written. Dispatch only.
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: 'YouTube video id (the part after youtu.be/ or ?v=)'
+        required: true
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ask YouTube what it is
+        env:
+          # Taken as an env var, never interpolated into the script: an input
+          # goes straight into the shell otherwise, and this one comes off a
+          # pasted link.
+          VID: ${{ inputs.id }}
+        run: |
+          set -u
+          case "$VID" in
+            *[!A-Za-z0-9_-]*|"") echo "::error::not a video id: $VID"; exit 1 ;;
+          esac
+          echo "video: $VID"
+          echo "watch: https://www.youtube.com/watch?v=$VID"
+          echo
+
+          echo "── oEmbed ─────────────────────────────────"
+          code=$(curl -sS --max-time 30 -o /tmp/oe.json -w '%{http_code}' \
+            --get --data-urlencode "url=https://www.youtube.com/watch?v=$VID" \
+            --data-urlencode 'format=json' \
+            'https://www.youtube.com/oembed' || echo 000)
+          echo "HTTP $code"
+          if [ "$code" = "200" ]; then
+            jq -r '"  title   : \(.title)\n  channel : \(.author_name)\n  thumb   : \(.thumbnail_url)"' /tmp/oe.json
+          else
+            echo "  NOT PUBLIC YET (or wrong id) — unlisted, private, or a premiere"
+            echo "  that has not started. Before a release that is the expected answer."
+            head -c 300 /tmp/oe.json; echo
+          fi
+          echo
+
+          echo "── watch page ─────────────────────────────"
+          # A desktop UA: YouTube serves a different, thinner page to curl's
+          # default, and the og: tags are what we are here for.
+          curl -sS --max-time 45 -A 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36' \
+            "https://www.youtube.com/watch?v=$VID" -o /tmp/w.html || true
+          echo "  bytes   : $(wc -c </tmp/w.html)"
+          for p in title description image; do
+            v=$(grep -o "<meta property=\"og:$p\" content=\"[^\"]*\"" /tmp/w.html | head -1 | sed "s/.*content=\"//; s/\"$//")
+            echo "  og:$p : ${v:-—}"
+          done
+          dur=$(grep -o '<meta itemprop="duration" content="[^"]*"' /tmp/w.html | head -1 | sed 's/.*content="//; s/"$//')
+          echo "  duration: ${dur:-— (none — often a scheduled premiere)}"
+          # The scheduled-premiere marker, which is the state this is most
+          # likely to be in before midnight.
+          if grep -q 'isUpcoming":true\|scheduledStartTime' /tmp/w.html; then
+            start=$(grep -o '"scheduledStartTime":"[0-9]*"' /tmp/w.html | head -1 | sed 's/.*:"//; s/"$//')
+            echo "  PREMIERE: scheduled, starts at $(date -u -d "@${start:-0}" '+%Y-%m-%d %H:%M UTC' 2>/dev/null || echo "$start")"
+          fi
