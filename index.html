@@ -2071,6 +2071,16 @@
   .cd-card-powertrip .pt-title { font-family: var(--display); font-size: 2.3rem; letter-spacing: 0.02em;
     color: var(--white); line-height: 0.95; text-shadow: 0 2px 18px rgba(0,0,0,0.6); }
   .cd-card-powertrip .pt-body { padding: 1rem 1.25rem 1.35rem; }
+  /* The chip carries the GTA mark, so it gets a dark pill rather than the
+     default light one: a near-white lockup on a pale chip disappears. */
+  /* The eyebrow becomes a row so the chip sits BESIDE the line rather than
+     flowing into it: the base chip is inline-flex with a 1rem bottom margin,
+     which drags it off the text's baseline and straight through the last word.
+     Scoped to this card, so no other release's chip moves. */
+  .cd-card-powertrip .cd-eyebrow { display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem; }
+  .cd-card-powertrip .cd-badge-chip.pt-chip { color: #ffd34d; background: rgba(255,211,77,0.12);
+    border-color: rgba(255,211,77,0.35); margin-bottom: 0; }
+  .cd-card-powertrip .cd-badge-chip.pt-chip img { height: 1.05rem; width: auto; object-fit: contain; }
   .cd-card-powertrip .pt-note { font-family: var(--mono); font-size: 0.62rem; line-height: 1.85;
     color: var(--muted); margin-top: 1rem; }
   .cd-card-powertrip .pt-note b { color: var(--white); font-weight: 600; }
@@ -4339,13 +4349,13 @@
               </div>
             </div>
             <div class="pt-body">
-            <div class="cd-eyebrow">JENNIE · New Song</div>
+            <div class="cd-eyebrow">JENNIE · New Song<div class="cd-badge-chip pt-chip" id="pt-badge" style="display:none;"><img src="/powertrip/gta-vi-logo.webp" alt="" aria-hidden="true">Day One</div></div>
             <div class="cd-sub">Out <b>midnight your time</b> · Fri, Nov 20, 2026<span class="cd-sub-local" data-local-target></span></div>
             <div class="cd-timer cd-timer-plain" data-timer></div>
             <div class="cd-links">
               <!-- Named for what it actually opens. "Pre-save" alone would read
                    as the song. -->
-              <a class="cd-btn" href="https://open.spotify.com/album/5BYKG4MHfySZthe2W6r7n4" target="_blank" rel="noopener">Pre-save the album ↗</a>
+              <a class="cd-btn" href="https://open.spotify.com/album/5BYKG4MHfySZthe2W6r7n4" target="_blank" rel="noopener" onclick="savePowerTrip()">Pre-save the album ↗</a>
               <button class="cd-btn" onclick="openPowerTripCard()">📸 Share</button>
             </div>
             <div class="pt-note">
@@ -16217,6 +16227,14 @@ const SPECIAL_BADGES = [
     check: () => sthEarlySupporterEarned(),
   },
   {
+    id: 'jennie-powertrip-dayone',
+    icon: '<img src="/powertrip/gta-vi-logo.webp" alt="" style="height:20px;width:auto;max-width:96px;object-fit:contain;vertical-align:middle;">',
+    label: 'DAY ONE',
+    song: 'Power Trip \u2014 JENNIE',
+    desc: 'Was there on release day',
+    check: () => ptDayOneEarned(),
+  },
+  {
     id: 'jisoo-sunshowers-presave',
     icon: '<img src="/sunshowers/shumon.webp" alt="" style="height:22px;width:22px;object-fit:contain;vertical-align:middle;">',
     label: 'EARLY SUPPORTER',
@@ -19702,6 +19720,7 @@ async function refreshSupporterChips() {
   renderNewTrickBadge();
   renderAddictedBadge();
   renderSsBadge();
+  renderPtBadge();
 }
 
 function renderFaSaveCount(count) {
@@ -27650,6 +27669,73 @@ async function openLeaveWithMeCard() {
   label.textContent = 'LEAVE WITH ME · COUNTDOWN';
   drawPresaveCard(canvas, _presaveCardData);
   _markCardReady(canvas);
+}
+
+// ── DAY ONE, the Power Trip badge ───────────────────────────────────────────
+//
+// THE WINDOW IS "NOV 20 SOMEWHERE ON EARTH", which is 50 hours, not 24. The
+// song lands at midnight in each country, so release day opens in the first
+// timezone long before it opens in the last, and it is still Nov 20 in the
+// last one for most of a day after the first has moved on. A badge for "day
+// one" that ran 24 hours would miss most of the planet's day one.
+//
+//   OPENS  2026-11-19T10:00:00Z — midnight Nov 20 at UTC+14, Kiribati's Line
+//          Islands (Kiritimati). NOT New Zealand, which is UTC+13 in November
+//          because it is on daylight saving, so it is second by an hour.
+//   CLOSES 2026-11-21T12:00:00Z — midnight Nov 21 at UTC-12 (Baker and
+//          Howland Islands), the last place on Earth still inside Nov 20.
+//
+// Stored as INSTANTS, not as a date plus a rule. Everything in this file that
+// tried to hold a local hour has eventually drifted — see the day-boundary
+// note in CLAUDE.md — and these two are each a single moment in time, so UTC
+// is not a conversion here, it is the thing itself.
+const PT_BADGE_FROM  = '2026-11-19T10:00:00Z';
+const PT_BADGE_UNTIL = '2026-11-21T12:00:00Z';
+const PT_SAVE_LS     = 'bu_jennie_powertrip_saved';
+const PT_COUNTED_LS  = 'bu_jennie_powertrip_counted';
+const ptBadgeOpen = () => {
+  const n = Date.now();
+  return n >= new Date(PT_BADGE_FROM).getTime() && n < new Date(PT_BADGE_UNTIL).getTime();
+};
+
+function renderPtBadge() {
+  const el = document.getElementById('pt-badge');
+  if (el) el.style.display = (_buSignedIn && localStorage.getItem(PT_SAVE_LS)) ? 'inline-flex' : 'none';
+}
+
+// The grant. Tapping the pre-save button inside the window earns it; outside
+// the window the tap still works, it just earns nothing — which is the whole
+// point of a day-one badge and the hole that ADDICTED and new trick both
+// shipped with, handing "Early Supporter" to anyone who arrived weeks later.
+function savePowerTrip() {
+  if (!ptBadgeOpen()) return;
+  if (!localStorage.getItem(PT_SAVE_LS)) {
+    localStorage.setItem(PT_SAVE_LS, '1');
+    _showShareToast(_buSignedIn ? '🏆 Badge unlocked: Day One!' : '✅ Counted! Sign in on My Badges to claim your Day One badge.');
+    try { sb?.auth.updateUser({ data: { pt_day_one: true } }); } catch {}
+    refreshSupporterChips();
+  }
+  countPresaveOnce(PT_COUNTED_LS, 'powertrip_save', () => {});
+}
+
+// Reconciles the browser flag with the signed-in account, both ways, so the
+// badge survives a new device and a cleared localStorage alike.
+async function ptDayOneEarned() {
+  const localFlag = !!localStorage.getItem(PT_SAVE_LS);
+  let metaFlag = false;
+  try {
+    const user = (await sb?.auth.getUser())?.data?.user || null;
+    if (user) {
+      metaFlag = !!user.user_metadata?.pt_day_one;
+      if (localFlag && !metaFlag) {
+        await sb.auth.updateUser({ data: { pt_day_one: true } });
+        metaFlag = true;
+      } else if (metaFlag && !localFlag) {
+        localStorage.setItem(PT_SAVE_LS, '1');
+      }
+    }
+  } catch (e) {}
+  return localFlag || metaFlag;
 }
 
 // JENNIE — "Power Trip", on Grand Theft Auto VI: The Album.

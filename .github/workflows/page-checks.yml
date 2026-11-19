@@ -427,6 +427,14 @@ jobs:
       # and will always trust. The Power Trip card shipped its first draft
       # saying "Thu, Nov 20" for a Friday, and this check found two more that
       # had been live on the site since September.
+      # The Day One window is 50 hours, not 24 — release day opens in the
+      # first timezone a day before it ends in the last. Both ends are
+      # recomputed from the UTC+14 / UTC-12 offsets rather than compared
+      # against the constants, so a typo fails instead of being ratified.
+      - name: The Day One badge is earned on release day anywhere, and nowhere else
+        if: always()
+        run: node .github/scripts/test_powertrip_badge.mjs
+
       - name: Every weekday a card prints matches its date
         if: always()
         run: node .github/scripts/test_card_weekdays.mjs
