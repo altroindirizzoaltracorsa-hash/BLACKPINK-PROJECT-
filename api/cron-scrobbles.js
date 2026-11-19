@@ -69,7 +69,7 @@ function communityGoalTotal(users, todayDDMM) {
     // Whole campaign incl. the Fallen Angel EP — matches computeDailyCommunityTotal
     // (client) and the record-goal path in leaderboard.js so all three agree.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_newtrick || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_addicted || 0) + (s.daily_sth || 0) + (s.daily_lwm || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_newtrick || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_addicted || 0) + (s.daily_sth || 0) + (s.daily_lwm || 0) + (s.daily_powertrip || 0);
   }, 0);
 }
 
@@ -149,6 +149,26 @@ const TRACKS = [
   // Must stay byte-identical to index.html's TRACKS entry —
   // test_track_titles_match.mjs fails if the two copies drift.
   { id: 'lwm',        artist: 'LISA',   track: 'Leave With Me' },
+  // JENNIE on "Grand Theft Auto VI: The Album" (2026-11-20, midnight local).
+  // THE BARE TITLE, and that is a MEASUREMENT like the two entries above it.
+  //
+  // Last.fm already holds this as 'pOwEr tRiP' — stylized alternating caps,
+  // which is how the credit reads — and probe-lastfm-title says the bare
+  // spelling RESOLVES to it: track.getInfo('Jennie','Power Trip') hits
+  // last.fm/music/Jennie/_/pOwEr+tRiP with autocorrect both off and on. So the
+  // exact-string path is satisfied by this spelling, and the suffixed forms
+  // ("Power Trip (From Grand Theft Auto VI: The Album)", with and without
+  // quotes) do not exist on Last.fm at all — both MISS.
+  //
+  // The week/today path is safe either way: trackKey() lowercases before it
+  // strips, so 'pOwEr tRiP' and 'Power Trip' both reduce to 'powertrip'. The
+  // stylization is therefore invisible to our matcher and only ever mattered
+  // to the exact lookup, which is the one that was probed.
+  //
+  // Probed at 3 listeners / 3 plays, hours into the release. Worth re-probing
+  // if the all-time figure ever looks low against the daily one: that is the
+  // shape of Last.fm having split the spellings into two tracks.
+  { id: 'powertrip',  artist: 'Jennie', track: 'Power Trip' },
 ];
 
 // Less Than a Lover leaves the campaign at the reset cutoff. Per-track ltal values
@@ -467,7 +487,7 @@ async function extensionCountsForUsers(sb, appUserIds, dayFrom, dayTo, weekFrom,
   // Includes the Fallen Angel EP ids so the extension's per-song plays fold into
   // overall_fallenangel / overall_heaven (the EP boards). They're excluded from
   // campaignTotal / *_all above, so this never inflates the campaign totals.
-  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0, lwm: 0 });
+  const empty = () => ({ jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0, lwm: 0, powertrip: 0 });
   const out = { total: empty(), week: empty(), today: empty() };
   if (!sb || !appUserIds || !appUserIds.length) return out;
   // Counted in the database (see supabase/extension_counts_fn.sql) so it scales
@@ -583,10 +603,10 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
   const dayWindowKey  = dayKey(dayFrom);
   const weekWindowKey = dayKey(weekFrom);
 
-  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0, lwm: 0 };
+  const totalPlays  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0, lwm: 0, powertrip: 0 };
   let artistPlays   = 0;
-  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0, lwm: 0 };
-  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0, lwm: 0 };
+  const todayCounts = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0, lwm: 0, powertrip: 0 };
+  const weekCounts  = { jump: 0, shutdown: 0, ddududu: 0, ltal: 0, go: 0, sawadika: 0, click: 0, fallenangel: 0, heaven: 0, newtrick: 0, v12: 0, cobra: 0, tarantino: 0, cutuoff: 0, sweat: 0, addicted: 0, sth: 0, lwm: 0, powertrip: 0 };
   let lastScrobbleAt = entry.lastScrobbleAt || null;
   // Per-scrobbler split of TODAY's counts, for the personal history calendar. Each
   // key is a human label ("Last.fm · Alice9629", "BU Extension", "Musicat / Stats.fm")
@@ -846,6 +866,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
         totalPlays.addicted += lbTotals.addicted || 0;
         totalPlays.sth      += lbTotals.sth      || 0;
         totalPlays.lwm      += lbTotals.lwm      || 0;
+        totalPlays.powertrip += lbTotals.powertrip || 0;
 
         const todayListens = weekListens.filter(l => l.listened_at >= dayFrom && l.listened_at < dayTo);
         const lbTodayCounts = countLbByTrack(todayListens);
@@ -867,6 +888,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
         todayCounts.addicted += lbTodayCounts.addicted || 0;
         todayCounts.sth      += lbTodayCounts.sth      || 0;
         todayCounts.lwm      += lbTodayCounts.lwm      || 0;
+        todayCounts.powertrip += lbTodayCounts.powertrip || 0;
         todayBySource[`ListenBrainz · ${u}`] = {
           jump: lbTodayCounts.jump || 0, shutdown: lbTodayCounts.shutdown || 0, ddududu: lbTodayCounts.ddududu || 0, ltal: lbTodayCounts.ltal || 0, go: lbTodayCounts.go || 0,
         };
@@ -890,6 +912,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
         weekCounts.addicted += lbWeekCounts.addicted || 0;
         weekCounts.sth      += lbWeekCounts.sth      || 0;
         weekCounts.lwm      += lbWeekCounts.lwm      || 0;
+        weekCounts.powertrip += lbWeekCounts.powertrip || 0;
 
         // ListenBrainz never fed lastScrobbleAt before -- a fan scrobbling only
         // through LB (e.g. after moving off Last.fm) would drift towards a
@@ -1141,6 +1164,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
       overall_addicted: totalPlays.addicted,
       overall_sth:      totalPlays.sth,
       overall_lwm:      totalPlays.lwm,
+      overall_powertrip: totalPlays.powertrip,
       overall_artist:   artistPlays,
       daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0) + (todayCounts.sawadika || 0) + (todayCounts.click || 0) + (todayCounts.fallenangel || 0) + (todayCounts.heaven || 0) + (todayCounts.newtrick || 0) + (todayCounts.v12 || 0) + (todayCounts.cobra || 0) + (todayCounts.tarantino || 0) + (todayCounts.cutuoff || 0) + (todayCounts.sweat || 0) + (todayCounts.addicted || 0) + (todayCounts.sth || 0) + (todayCounts.lwm || 0),
       daily_jump:       todayCounts.jump     || 0,
@@ -1161,6 +1185,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
       daily_addicted: todayCounts.addicted || 0,
       daily_sth:      todayCounts.sth      || 0,
       daily_lwm:      todayCounts.lwm      || 0,
+      daily_powertrip: todayCounts.powertrip || 0,
       daily_date:       todayLabel,
       weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0) + (weekCounts.sawadika || 0) + (weekCounts.click || 0) + (weekCounts.fallenangel || 0) + (weekCounts.heaven || 0) + (weekCounts.newtrick || 0) + (weekCounts.v12 || 0) + (weekCounts.cobra || 0) + (weekCounts.tarantino || 0) + (weekCounts.cutuoff || 0) + (weekCounts.sweat || 0) + (weekCounts.addicted || 0) + (weekCounts.sth || 0) + (weekCounts.lwm || 0),
       weekly_jump:      weekCounts.jump     || 0,
@@ -1181,6 +1206,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
       weekly_addicted: weekCounts.addicted || 0,
       weekly_sth:      weekCounts.sth      || 0,
       weekly_lwm:      weekCounts.lwm      || 0,
+      weekly_powertrip: weekCounts.powertrip || 0,
       weekly_start:     weekStartLabel,
     },
   };
@@ -1557,6 +1583,7 @@ export default async function handler(req, res) {
             addicted: s.daily_addicted || 0,
             sth:      s.daily_sth      || 0,
             lwm:      s.daily_lwm      || 0,
+            powertrip: s.daily_powertrip || 0,
             by_source: Object.keys(bySrc).length ? bySrc : null,
           });
         }
@@ -1958,6 +1985,36 @@ export default async function handler(req, res) {
         }
       } catch (eLwm) {
         console.error('user_daily_counts lwm upsert skipped (column migrated yet?):', eLwm.message || eLwm);
+      }
+
+      // JENNIE "Power Trip" (2026-11-20), its own isolated guarded upsert for
+      // the same reason as the four above: a missing `powertrip` column must
+      // not disturb any column beside it. Shipped WITH the release, like Leave
+      // With Me's and unlike ADDICTED's — that one arrived a week late and the
+      // count was computed every run and silently discarded, because every
+      // path here is deliberately forgiving and the guard that stops a missing
+      // column taking the others down is the same guard that stops it
+      // announcing itself.
+      //   ALTER TABLE user_daily_counts ADD COLUMN IF NOT EXISTS powertrip integer NOT NULL DEFAULT 0;
+      try {
+        const { data: ptEx } = await sb
+          .from('user_daily_counts')
+          .select('app_user_id,powertrip')
+          .eq('day_key', todayKey)
+          .in('app_user_id', ids);
+        const ptMap = new Map((ptEx || []).map(r => [r.app_user_id, r]));
+        const ptRows = ids.map(id => ({
+          app_user_id: id, day_key: todayKey,
+          powertrip: Math.max(dailyByUser.get(id).powertrip || 0, ptMap.get(id)?.powertrip || 0),
+        }));
+        if (ptRows.length) {
+          const { error: ptErr } = await sb
+            .from('user_daily_counts')
+            .upsert(ptRows, { onConflict: 'app_user_id,day_key' });
+          if (ptErr) throw ptErr;
+        }
+      } catch (ePt) {
+        console.error('user_daily_counts powertrip upsert skipped (column migrated yet?):', ePt.message || ePt);
       }
     } catch (e) {
       console.error('user_daily_counts upsert failed:', e.message || e);

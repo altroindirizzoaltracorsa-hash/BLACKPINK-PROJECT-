@@ -112,6 +112,56 @@ const at = async (iso, label) => {
   return got;
 };
 
+// The same gate, reached by TAPPING A PLAYLIST rather than the album button.
+// Every pill on this card grants the badge now, because a fan in a timezone
+// where the song is already out is as likely to open a playlist as the album.
+//
+// It also checks the pre-save COUNTER is not touched by a playlist tap. The
+// badge and the count used to be one function, and wiring the pills to it
+// would have filed every playlist tap in bu_jennie_powertrip_saves as a
+// pre-save — a number that is supposed to mean one thing quietly meaning two.
+const viaPlaylist = async (iso) => {
+  const ctx = await browser.newContext({ viewport: { width: 430, height: 950 }, serviceWorkers: 'block' });
+  const page = await ctx.newPage();
+  await page.clock.setFixedTime(new Date(iso));
+  await page.addInitScript(() => { try { localStorage.setItem('bu_tutorial_seen', '1'); } catch (e) {} });
+  await page.goto(base + '/countdowns/powertrip', { waitUntil: 'load' });
+  const got = await (await page.waitForFunction(() => {
+    try { if (typeof grantPowerTripDayOne !== 'function') return null; } catch { return null; }
+    const pills = [...document.querySelectorAll('.cd-card-powertrip .cd-pl-pill')];
+    if (!pills.length) return null;
+    try { localStorage.removeItem('bu_jennie_powertrip_saved');
+          localStorage.removeItem('bu_jennie_powertrip_counted'); } catch (e) {}
+    // A real click on a real pill, not a direct call: the wiring is the thing
+    // under test, so calling the function by name would pass with no onclick
+    // on any of them.
+    pills[2].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    return {
+      open:    ptBadgeOpen(),
+      earned:  !!localStorage.getItem('bu_jennie_powertrip_saved'),
+      counted: !!localStorage.getItem('bu_jennie_powertrip_counted'),
+      pills:   pills.length,
+      wired:   pills.filter(p => (p.getAttribute('onclick') || '').includes('grantPowerTripDayOne')).length,
+    };
+  }, null, { timeout: 25000 })).jsonValue();
+  await ctx.close();
+  return got;
+};
+
+console.log('\n--- and a playlist tap earns it too, on the same gate');
+{
+  let r = await viaPlaylist('2026-11-19T22:00:00Z');
+  check(r.pills > 0 && r.wired === r.pills,
+        'every playlist on the card grants the badge', `${r.wired}/${r.pills} wired`);
+  check(r.open && r.earned, '  opening a playlist inside the window earns it');
+  check(!r.counted,
+        '  and does NOT file the tap as a pre-save', 'bu_jennie_powertrip_counted stayed unset');
+  r = await viaPlaylist('2026-11-19T09:00:00Z');
+  check(!r.open && !r.earned, '  an hour before the window opens: nothing');
+  r = await viaPlaylist('2026-11-22T12:00:00Z');
+  check(!r.open && !r.earned, '  after it has closed everywhere: nothing');
+}
+
 console.log('\n--- the gate opens and closes on those instants');
 {
   // An hour before the first midnight anywhere.

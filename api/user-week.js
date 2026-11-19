@@ -96,6 +96,13 @@ export default async function handler(req, res) {
       if (!lr.error) for (const row of (lr.data || [])) lwmByDay[row.day_key] = row.lwm || 0;
     } catch {}
 
+    // "Power Trip" (JENNIE, 2026-11-20) in its own tolerant query, same reason.
+    const ptByDay = {};
+    try {
+      const pr = await runQuery('day_key,powertrip');
+      if (!pr.error) for (const row of (pr.data || [])) ptByDay[row.day_key] = row.powertrip || 0;
+    } catch {}
+
     const days = {};
     for (const row of (data || [])) {
       days[row.day_key] = {
@@ -112,6 +119,7 @@ export default async function handler(req, res) {
         addicted:    adByDay[row.day_key] || 0,
         sth:         sthByDay[row.day_key] || 0,
         lwm:         lwmByDay[row.day_key] || 0,
+        powertrip:   ptByDay[row.day_key] || 0,
         by_source: hasBySource ? (row.by_source || null) : null,
       };
     }

@@ -107,7 +107,11 @@ for (const card of CARDS) {
   // The label sits after an inline Spotify glyph, so the visible text is what
   // is left once tags are stripped — reading up to the first '<' would measure
   // the <svg> and every name would come back empty.
-  const links = [...html.matchAll(/<a class="cd-pl-pill" href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)]
+  // ATTRIBUTE ORDER MUST NOT MATTER. This used to require href to come
+  // immediately after class, so adding an onclick between them made all five
+  // playlists read as missing — a test failing on where an attribute sits
+  // rather than on anything about the card.
+  const links = [...html.matchAll(/<a class="cd-pl-pill"[^>]*?href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)]
     .map((m) => [m[2].replace(/<[^>]*>/g, '').trim(), m[1]]);
 
   check(links.length === card.want.length, `${card.want.length} playlists listed`,

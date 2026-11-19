@@ -1,0 +1,48 @@
+-- 2026-11-20 — make JENNIE's "Power Trip" count per-user, like the other solo
+-- singles. It is her track on "Grand Theft Auto VI: The Album".
+--
+-- Adds the `powertrip` column to user_daily_counts. Until this runs, the cron
+-- (api/cron-scrobbles.js) and the live submit (api/leaderboard.js) both no-op
+-- on it through their own isolated guarded upserts, and api/user-week.js reads
+-- it in its own tolerant query — so nothing breaks before it is applied, but
+-- the badges "Today's Challenge" grid has no Power Trip row and the per-day
+-- history has nowhere to put the count. Same shape as the `newtrick`,
+-- `addicted`, `sth` and `lwm` migrations.
+--
+-- WRITTEN ON RELEASE DAY, for the reason ADDICTED's wasn't — and this time the
+-- song was already out in the early timezones while it was being written, so
+-- counts were being computed before the column existed to hold them. That
+-- column arrived a week after its song, and for that week the count was
+-- computed every run and silently discarded: the grid showed no row at all
+-- while every other column kept working, so nothing looked broken. The code
+-- paths above are deliberately forgiving, and the guard that stops a missing
+-- column taking the others down is the same guard that stops it announcing
+-- itself.
+--
+-- THE RELEASE IS MIDNIGHT-LOCAL, which matters here in a way it did not for
+-- the four before it. There is no single instant at which this column starts
+-- receiving numbers: a fan in Auckland can scrobble it fourteen hours before a
+-- fan in Los Angeles can, and both are day one. So "apply it on release day"
+-- means apply it now rather than at any particular hour — the earliest
+-- timezones have been streaming since 2026-11-19T10:00Z.
+--
+-- Then re-applies vma_vote_board() so the new column is inside the voting
+-- board's streamed-ever rank gate and its per-row "streams today". Without
+-- that, a blink whose streaming is mostly Power Trip would read as having
+-- streamed less than they have, which is the gate deciding eligibility.
+--
+-- NOT ADDED HERE: the five PRESS PLAY EP tracks (v12, cobra, tarantino,
+-- cutuoff, sweat) still have no columns, so they remain missing from this grid
+-- and from that gate in exactly the same way. That is a bigger scope decision
+-- than one single and is still left to be taken deliberately rather than
+-- smuggled in beside it.
+--
+-- Idempotent; safe to re-run. Apply via the "Apply SQL" workflow with
+--   file: supabase/migrations/2026_11_powertrip_stream_column.sql
+-- or paste into the Supabase SQL editor.
+
+alter table public.user_daily_counts add column if not exists powertrip integer not null default 0;
+
+-- Re-apply the function definitions now that the column exists. Relative to
+-- this file's directory (supabase/migrations/), so ../ points at supabase/.
+\ir ../vma_user_votes.sql

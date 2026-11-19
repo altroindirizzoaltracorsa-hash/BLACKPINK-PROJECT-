@@ -119,15 +119,17 @@ as $$
       -- so a blink streaming them counts toward voting eligibility. The PRESS PLAY
       -- EP has no columns yet, so it is absent here too — not an omission, a
       -- migration that has not been taken.
-      -- NOTE ON ORDER: `sth` arrived with 2026_11_sth_stream_column.sql and
-      -- `lwm` (LISA, "Leave With Me") with 2026_11_lwm_stream_column.sql, each
+      -- NOTE ON ORDER: `sth` arrived with 2026_11_sth_stream_column.sql,
+      -- `lwm` (LISA, "Leave With Me") with 2026_11_lwm_stream_column.sql, and
+      -- `powertrip` (JENNIE, on the GTA VI album) with
+      -- 2026_11_powertrip_stream_column.sql, each
       -- of which ALTERs its column before re-applying this file. Re-running an
       -- OLDER migration that also \ir's this file on a database without those
       -- columns would fail here. Apply forward.
       sum(coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(ltal,0)+coalesce(go,0)
-          +coalesce(sawadika,0)+coalesce(click,0)+coalesce(fallenangel,0)+coalesce(heaven,0)+coalesce(newtrick,0)+coalesce(addicted,0)+coalesce(sth,0)+coalesce(lwm,0))  as all_streams,
+          +coalesce(sawadika,0)+coalesce(click,0)+coalesce(fallenangel,0)+coalesce(heaven,0)+coalesce(newtrick,0)+coalesce(addicted,0)+coalesce(sth,0)+coalesce(lwm,0)+coalesce(powertrip,0))  as all_streams,
       sum((coalesce(jump,0)+coalesce(shutdown,0)+coalesce(ddududu,0)+coalesce(ltal,0)+coalesce(go,0)
-           +coalesce(sawadika,0)+coalesce(click,0)+coalesce(fallenangel,0)+coalesce(heaven,0)+coalesce(newtrick,0)+coalesce(addicted,0)+coalesce(sth,0)+coalesce(lwm,0)))
+           +coalesce(sawadika,0)+coalesce(click,0)+coalesce(fallenangel,0)+coalesce(heaven,0)+coalesce(newtrick,0)+coalesce(addicted,0)+coalesce(sth,0)+coalesce(lwm,0)+coalesce(powertrip,0)))
         filter (where day_key::date = (now() at time zone 'America/New_York')::date)                    as today_streams
     from user_daily_counts
     group by app_user_id
