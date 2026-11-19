@@ -2061,12 +2061,11 @@
   /* Sized in ch so the mark and the "VI · The Album" line under it stay in
      proportion to each other when the card is narrow, instead of the logo
      growing away from its own caption. */
-  .cd-card-powertrip .pt-from { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.85rem; }
-  .cd-card-powertrip .pt-gta-mark { display: block; width: 6.6rem; flex: 0 0 auto; height: auto;
-    border-radius: 5px; }
-  .cd-card-powertrip .pt-from-text { font-family: var(--mono); font-size: 0.68rem; line-height: 1.5;
-    color: var(--white); min-width: 0; }
-  .cd-card-powertrip .pt-from-text .pt-gta { display: block; margin-bottom: 0.15rem; }
+  /* The real logo, with its own alpha — so it sits ON the photograph without a
+     rectangular edge or the cover's other characters coming with it, which is
+     what made the two earlier attempts read as a sticker. */
+  .cd-card-powertrip .pt-gta-mark { display: block; width: 8.2rem; max-width: 50%; height: auto;
+    margin-bottom: 0.35rem; filter: drop-shadow(0 3px 14px rgba(0,0,0,0.65)); }
   .cd-card-powertrip .pt-gta { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.26em;
     text-transform: uppercase; color: #ffd34d; margin-bottom: 0.4rem; }
   .cd-card-powertrip .pt-title { font-family: var(--display); font-size: 2.3rem; letter-spacing: 0.02em;
@@ -4328,16 +4327,14 @@
                      Album" and keeps this from reading as the game.
                      onerror: a missing or blocked image leaves the full name in
                      words rather than an empty row where the logo should be. -->
+                <img class="pt-gta-mark" src="/powertrip/gta-vi-logo.webp" width="540" height="410"
+                     alt="Grand Theft Auto VI" loading="lazy"
+                     onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'pt-gta',textContent:'Grand Theft Auto VI'}))">
+                <div class="pt-gta">The Album</div>
                 <div class="pt-title">POWER TRIP</div>
               </div>
             </div>
             <div class="pt-body">
-            <div class="pt-from">
-              <img class="pt-gta-mark" src="/powertrip/gta-vi-lockup.webp" width="520" height="339"
-                   alt="Grand Theft Auto VI" loading="lazy"
-                   onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'pt-gta',textContent:'Grand Theft Auto VI'}))">
-              <div class="pt-from-text"><span class="pt-gta">From</span><b>GTA VI: The Album</b></div>
-            </div>
             <div class="cd-eyebrow">JENNIE · New Song</div>
             <div class="cd-sub">Out <b>midnight your time</b> · Fri, Nov 20, 2026<span class="cd-sub-local" data-local-target></span></div>
             <div class="cd-timer cd-timer-plain" data-timer></div>
