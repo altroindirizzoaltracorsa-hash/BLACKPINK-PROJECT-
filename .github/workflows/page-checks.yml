@@ -431,6 +431,15 @@ jobs:
         if: always()
         run: node .github/scripts/test_statsfm_sync.mjs
 
+      # The recovery for the days already lost. Runs the real script against a
+      # stubbed Supabase, because the failure it has to be proof against —
+      # adding a day that was already counted — is worse than the missing days
+      # it exists to fix: an understated fan complains and can be checked, an
+      # overstated one is never questioned and cannot be undone.
+      - name: The Stats.fm backfill never adds a day twice
+        if: always()
+        run: node .github/scripts/test_statsfm_backfill.mjs
+
       # The refresh reads the whole board and writes the whole board, so two
       # overlapping runs mean the second silently discards the first — with
       # both reporting success. Two schedulers can now reach it (the hourly

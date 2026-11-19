@@ -1,0 +1,59 @@
+name: Backfill Stats.fm days
+
+# Recovers the Stats.fm plays that were never counted.
+#
+# api/cron-scrobbles.js left Stats.fm to whatever the badges page last
+# submitted, so a fan's Stats.fm plays counted for nothing on every day they
+# did not personally open /badges. /api/statsfm?day= makes those days
+# retrievable — the window was always arbitrary, it had just never been asked
+# for one — and this applies them.
+#
+# DRY BY DEFAULT. Run it once with write unset, read the summary, then again
+# with write: 1. It is idempotent either way: each row it writes carries a
+# "Stats.fm · <handle>" marker in by_source, and a later run skips every day
+# that already has one.
+#
+# Manual only. This is a recovery, not a schedule — once the days are back,
+# the hourly cron keeps them that way.
+
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'How many days back to check (1-90). Today is always excluded — the hourly cron owns it.'
+        required: false
+        default: '14'
+      write:
+        description: 'Set to 1 to actually write. Anything else is a dry run.'
+        required: false
+        default: ''
+      only:
+        description: 'Optional: a single Stats.fm handle, to try one account first.'
+        required: false
+        default: ''
+      pace_ms:
+        description: 'Milliseconds between Stats.fm requests (default 900). Raise it if the run reports no-answers.'
+        required: false
+        default: '900'
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    # A day costs one request per fan and Stats.fm throttles bursts, so a wide
+    # window paced at ~1/s takes a while. Well under the 6h ceiling.
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Backfill
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          DAYS:    ${{ inputs.days }}
+          WRITE:   ${{ inputs.write }}
+          ONLY:    ${{ inputs.only }}
+          PACE_MS: ${{ inputs.pace_ms }}
+        run: node .github/scripts/backfill_statsfm_days.mjs
