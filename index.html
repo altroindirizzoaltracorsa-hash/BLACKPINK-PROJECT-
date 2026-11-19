@@ -2574,6 +2574,17 @@
      generic and only its palette is per-card. */
   .cd-card-lwm { --pl-ink: #a9bcff; --pl-line: rgba(169,188,255,0.34);
     --pl-edge: rgba(169,188,255,0.22); --pl-on-ink: #06060f; }
+  /* Power Trip's gold, the same #ffd34d the card's "The Album" line and its
+     Day One chip already use — so the playlists read as part of this card
+     rather than as the generic block dropped onto it. */
+  .cd-card-powertrip { --pl-ink: #ffd34d; --pl-line: rgba(255,211,77,0.34);
+    --pl-edge: rgba(255,211,77,0.22); --pl-on-ink: #0a0608; }
+  /* Two of the five span other releases, so they are set apart rather than
+     listed as if they were Power Trip's own — a fan tapping "LWM x PT x SS"
+     expecting only this song is a small broken promise. */
+  .cd-card-powertrip .pt-pl-also { font-family: var(--mono); font-size: 0.54rem;
+    letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,240,240,0.42);
+    margin: 0.85rem 0 0.1rem; }
   .cd-card-jisoo .js-park { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; height: auto; opacity: 0.9; mix-blend-mode: multiply; pointer-events: none; z-index: 2; }
   .cd-badge-chip.js-locket { color: var(--js-ink); background: rgba(255,251,250,0.28);
@@ -4368,6 +4379,50 @@
               <br><br>
               It arrives at <b>midnight where you are</b>, so the clock above is counting
               to your own, not to one hour somewhere else.
+            </div>
+            <!-- Our playlists, open on the card rather than behind a <summary>:
+                 these are something to go and do, and a collapsed row reads as
+                 reference material. Same block, same component variables, as
+                 Leave With Me's and Someone to Hold's.
+
+                 THE NOTE IS FILLED BY SCRIPT (#pt-pl-note), off ptLive() — the
+                 same instant the countdown and the pre-save button read. This
+                 card went up before the song, so a line written into the markup
+                 would say "pre-save them" for as long as nobody remembered to
+                 change it: PRESS PLAY's still reads "they fill up when PRESS
+                 PLAY lands" two weeks after it landed, and ADDICTED's had to be
+                 rewritten by hand the morning after.
+
+                 FIVE, NOT THREE, and the last two are set apart. Three are this
+                 song's own. "JENSOO RELEASE DAY" is Nov 20 as a whole — JENNIE's
+                 "Power Trip" and JISOO's "Sun Showers" land on the same date —
+                 and "LWM x PT x SS" also carries LISA's "Leave With Me". Both
+                 belong here because both contain this song, but listing them
+                 unlabelled among the other three would promise a fan a Power
+                 Trip playlist and hand them a mixed one.
+
+                 No ?si= on any link, as everywhere else here: that token
+                 identifies whoever copied the link and would be handed to every
+                 visitor alike. -->
+            <div class="cd-pl-pills">
+              <div class="cd-pl-pills-head">🎧 Community Playlists</div>
+              <p class="cd-pl-note" id="pt-pl-note"></p>
+              <div class="cd-pl-pills-list">
+                <a class="cd-pl-pill" href="https://open.spotify.com/playlist/6itTleOIire70BDaVOLf50" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>POWER TRIP Focused</a>
+                <a class="cd-pl-pill" href="https://open.spotify.com/playlist/4FMIAhP7tdzV7xgZbwsSCe" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>POWER TRIP x PINKS</a>
+                <a class="cd-pl-pill" href="https://open.spotify.com/playlist/2QI45Deh6MrFuUKR2E6Rlu" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>POWER TRIP x BP</a>
+              </div>
+              <p class="pt-pl-also">Also on Nov 20, with the other drops</p>
+              <div class="cd-pl-pills-list">
+                <a class="cd-pl-pill" href="https://open.spotify.com/playlist/75Pc4jtAlQsKaQyBUtWpnJ" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>JENSOO RELEASE DAY</a>
+                <a class="cd-pl-pill" href="https://open.spotify.com/playlist/0PqV4NjZKG0Q3DKi2AkgJ3" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>LWM x PT x SS Focused</a>
+              </div>
+              <!-- Five links are not a picture, so this shares TEXT — the same
+                   shape as the other cards', which copy to the clipboard inside
+                   the tap gesture before opening the sheet, because Instagram,
+                   X and TikTok drop a share `text` when anything else rides
+                   along. -->
+              <button class="cd-pl-share" onclick="sharePowerTripPlaylists()">🎧 Share these playlists</button>
             </div>
             </div>
           </div>
@@ -7860,6 +7915,11 @@ window.addEventListener('DOMContentLoaded', () => {
   loadAddictedSaveCount();
   loadSthSaveCount();
   loadSsSaveCount();
+  // Power Trip has no save-count to load, so its playlist note is rendered
+  // here rather than off the back of one. NOT in loadBadgeState(), which only
+  // runs for a signed-in visitor — the note is card copy and has to be right
+  // for everybody.
+  renderPtPlaylistNote();
   refreshSupporterChips();
   loadLtalStreamsGoal();
   renderItunesInlineBadge();
@@ -20023,6 +20083,54 @@ async function shareSomeoneToHoldPlaylists() {
   let copied = false;
   try { await navigator.clipboard?.writeText(post); copied = true; } catch {}
   if (navigator.share) navigator.share({ title: 'JENNIE — Someone to Hold playlists', text: post }).catch(() => {});
+  else _showShareToast(copied ? 'Playlists copied — paste them anywhere ✨' : 'Copy failed — try again');
+}
+
+// Power Trip's playlists note, which changes at the release and nowhere else.
+// Read off ptLive() — the same instant the countdown, the pre-save button and
+// the Day One badge use — so the card cannot be counting down while its own
+// copy says the song is out. The reason it is script-filled at all is in the
+// markup comment: this card went up before the song.
+function renderPtPlaylistNote() {
+  const el = document.getElementById('pt-pl-note');
+  if (!el) return;
+  el.textContent = ptLive()
+    ? '“Power Trip” is out — open one and let it run.'
+    : 'Pre-save them — they fill up the moment “Power Trip” lands.';
+}
+
+// Our Power Trip playlists as a post. Text, not a picture, for the same reason
+// as the other three: there is no image of five links, and attaching one makes
+// the targets that drop `text` swallow the whole thing.
+//
+// The rows are read OFF THE CARD rather than listed here. A second copy of
+// five URLs is a second place to edit, and the one that gets forgotten is the
+// one nobody looks at — the post, which is the half that travels. It picks up
+// all five across both lists, in the order they are on the card, so the two
+// cross-release ones land at the bottom of the post as well.
+function _ptPlaylistPost() {
+  const links = [...document.querySelectorAll('.cd-card-powertrip .cd-pl-pill')];
+  if (!links.length) return null;
+  const rows = links.map(a => `▶ ${a.textContent.trim()}\n${a.href}`).join('\n\n');
+  // The opening line moves at the release instant for the same reason the note
+  // does: a post asking fans to pre-save a song that is already out reads as
+  // stale the moment it is pasted anywhere.
+  const lead = ptLive()
+    ? 'JENNIE’s “Power Trip” is out. Put one on and let it run.'
+    : 'JENNIE’s “Power Trip” lands at midnight where you are. Pre-save these and they fill up the moment it does.';
+  return 'BLINKs — our “Power Trip” playlists 🎧\n' + lead + '\n\n'
+       + rows + '\n\n' + PRESAVE_CARD_LINKS.powertrip;
+}
+
+async function sharePowerTripPlaylists() {
+  const post = _ptPlaylistPost();
+  if (!post) { _showShareToast('Playlists not loaded — try again'); return; }
+  // Clipboard FIRST, inside the tap gesture: a write attempted after the share
+  // sheet opens has lost the gesture that permits it, so copying here means the
+  // post is always pasteable whatever the target does with `text`.
+  let copied = false;
+  try { await navigator.clipboard?.writeText(post); copied = true; } catch {}
+  if (navigator.share) navigator.share({ title: 'JENNIE — Power Trip playlists', text: post }).catch(() => {});
   else _showShareToast(copied ? 'Playlists copied — paste them anywhere ✨' : 'Copy failed — try again');
 }
 

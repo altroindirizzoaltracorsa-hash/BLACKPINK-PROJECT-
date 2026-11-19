@@ -435,6 +435,17 @@ jobs:
         if: always()
         run: node .github/scripts/test_powertrip_badge.mjs
 
+      # A playlist id is 22 base62 characters, and Spotify answers a wrong one
+      # with its own "couldn't find that" page rather than an error anyone here
+      # would see — so a typo is a dead link on the card and silence in the
+      # logs. These five were read out of the account by API for that reason;
+      # this pins what was read, and checks the note under them tells the truth
+      # on BOTH sides of the release, rendered, because it is deliberately not
+      # in the markup.
+      - name: Power Trip’s five playlists, and a note that ages correctly
+        if: always()
+        run: node .github/scripts/test_powertrip_playlists.mjs
+
       - name: Every weekday a card prints matches its date
         if: always()
         run: node .github/scripts/test_card_weekdays.mjs
