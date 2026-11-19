@@ -64,12 +64,19 @@ const CARDS = [
   {
     key: 'sunshowers', cls: 'cd-card-sunshowers', song: 'Sun Showers', path: '/countdowns/sunshowers',
     noteId: 'ss-pl-note', post: '_ssPlaylistPost', live: 'ssLive',
-    want: [SHARED.jensoo, SHARED.lwmpt],
-    // NO DIVIDER, and that is the point: neither of these is Sun Showers' own,
-    // so there is nothing above to set them apart from. The honesty moves into
-    // the note instead, which is checked below. If this card ever gets its own
-    // playlists they go above these and the divider comes with them.
-    dividerAfter: null,
+    want: [
+      ['SUN SHOWERS Focused', '1moPTFq04E8UWnjZCq7x12'],
+      ['SUN SHOWERS x PINKS', '5xaaLknpFI9E3lQ5WnOyGs'],
+      ['SUN SHOWERS x BP',    '3k5Z4Wbj5mYngXBDhX9tnu'],
+      SHARED.jensoo,
+      SHARED.lwmpt,
+    ],
+    // This block shipped with ONLY the shared pair and no divider, because
+    // there was nothing above to set them apart from — the note carried it
+    // instead. Now that the song has three of its own, the pair moves below a
+    // divider and the note goes back to the ordinary wording, which is what
+    // that earlier comment said would happen.
+    dividerAfter: 3,
   },
 ];
 
@@ -120,7 +127,7 @@ for (const card of CARDS) {
   check(!si.length, '  and none carries a share-tracking parameter', si.join(' '));
 
   if (card.dividerAfter !== null) {
-    const divider = html.indexOf('class="pt-pl-also"');
+    const divider = html.indexOf('class="cd-pl-also"');
     check(divider > 0, '  a divider marks where its own playlists end');
     if (divider > 0) {
       const last  = html.indexOf(card.want[card.dividerAfter - 1][1]);
@@ -129,7 +136,7 @@ for (const card of CARDS) {
             `    and it sits between #${card.dividerAfter} and #${card.dividerAfter + 1}`);
     }
   } else {
-    check(!html.includes('pt-pl-also'),
+    check(!html.includes('cd-pl-also'),
           '  no divider, because none of these is this song\'s own');
   }
 
@@ -171,50 +178,76 @@ for (const [name, id] of ALL) {
   check(!elsewhere, `    and nowhere else on the page`);
 }
 
-// ── the YouTube premiere row, which is NOT the card's own instant ───────────
-console.log('\n--- the Power Trip premiere row keeps its own clock');
-{
-  const html = cardSrc('cd-card-powertrip');
-  const PREMIERE = '2026-11-20T05:00:00Z';   // read off the watch page's scheduledStartTime
-  const VIDEO    = 'aCRr5rASMGY';
+// ── the YouTube rows, each on its own clock ────────────────────────────────
+//
+// Both videos premiere at 2026-11-20T05:00:00Z. For Sun Showers that IS the
+// song's instant; for Power Trip it is not, because that song lands at each
+// reader's own midnight. The two agreeing on one card and disagreeing on the
+// other is the whole reason each row carries its own instant rather than the
+// card's — "the video goes up with the song" has been wrong twice in this
+// repo already ("Someone to Hold"'s video went up SIXTEEN HOURS after its
+// single).
+const VIDEOS = [
+  { cls: 'cd-card-powertrip', song: 'Power Trip', id: 'aCRr5rASMGY',
+    at: '2026-11-20T05:00:00Z',
+    // Title carries no format marker, so the card must claim none.
+    claimsFormat: false },
+  { cls: 'cd-card-sunshowers', song: 'Sun Showers', id: 'REUpBcmDbTE',
+    at: '2026-11-20T05:00:00Z',
+    // "JISOO - SUN SHOWERS from THE ANGRY BIRDS MOVIE 3 (Official MV)" — the
+    // title says MV, so the card may too.
+    claimsFormat: true },
+];
+
+for (const v of VIDEOS) {
+  console.log(`\n--- ${v.song}: the video row keeps its own clock`);
+  const html = cardSrc(v.cls);
   const row = html.match(/<a class="cd-mv-note"[\s\S]*?<\/a>/);
-  check(!!row, 'the card carries a premiere row');
+  check(!!row, 'the card carries a video row');
   const r = row ? row[0] : '';
-  check(r.includes(`youtube.com/watch?v=${VIDEO}`), '  pointing at the right video', VIDEO);
+  check(r.includes(`youtube.com/watch?v=${v.id}`), '  pointing at the right video', v.id);
   // ?is= is YouTube's share token — it identifies whoever copied the link and
   // would be handed to every visitor alike, same rule as ?si= on Spotify.
   check(!/[?&](is|si|feature|t)=/.test(r), '  with no share-tracking parameter on it',
         (r.match(/https:\/\/[^"]*/) || [''])[0]);
 
-  // THE CHECK THAT MATTERS. The song lands at midnight LOCAL; the premiere is
-  // one worldwide instant. If this row ever borrows the card's target it will
-  // say "is on YouTube" at a reader's own midnight — up to 14 hours early in
-  // Kiritimati, and still 6 hours early in Rome. Pinning the literal instant
-  // is not enough on its own: it also has to DIFFER from the card's.
-  const preAt = (r.match(/data-pre-at="([^"]+)"/) || [])[1];
+  // THE CHECK THAT MATTERS, and it is NOT "does it equal the card's target".
+  // On Sun Showers the premiere and the song really are the same instant, so
+  // requiring them to differ would be wrong there. What must hold on both is
+  // that the row states its instant EXPLICITLY, so the day one of them moves
+  // the other does not follow it by accident.
+  const preAt  = (r.match(/data-pre-at="([^"]+)"/) || [])[1];
   const whenAt = (r.match(/data-local-target="([^"]+)"/) || [])[1];
-  check(preAt === PREMIERE, '  its label flips on the premiere instant', `${preAt}`);
-  check(whenAt === PREMIERE, '  and the time it prints is that same instant', `${whenAt}`);
-  const cardTarget = (html.match(/data-target="([^"]+)"/) || [])[1];
-  check(preAt && cardTarget && preAt !== cardTarget,
-        '  which is NOT the card\'s own target', `premiere ${preAt} vs song ${cardTarget}`);
-  // 05:00 UTC is midnight on the US east coast, which is the one place the two
-  // do coincide — and the note says so, so it is worth pinning that it stays
-  // true if either instant is ever edited.
-  const etMidnight = new Date(Date.UTC(2026, 10, 20, 0, 0, 0) + 5 * 3600000).toISOString();
-  check(new Date(PREMIERE).toISOString() === etMidnight,
-        '  and it really is midnight US east coast, as the note claims', etMidnight);
+  check(preAt === v.at,  '  its label flips on the premiere instant, written out', `${preAt}`);
+  check(whenAt === v.at, '  and the time it prints is that same instant', `${whenAt}`);
 
-  // It must not claim a format nobody has confirmed. The video is titled with
-  // no "Official Music Video" / "Official Audio" marker and has no published
-  // duration, so the card says "premiere" and stops.
+  const cardTarget = (html.match(/data-target="([^"]+)"/) || [])[1];
+  if (v.cls === 'cd-card-powertrip') {
+    // Here they genuinely differ, and if this row ever borrows the card's
+    // target it says "is on YouTube" at a reader's own midnight — 14 hours
+    // early in Kiritimati, 6 in Rome, 3 hours LATE in Los Angeles.
+    check(preAt !== cardTarget, '  and differs from the song\'s own instant, as it must here',
+          `premiere ${preAt} vs song ${cardTarget}`);
+    // 05:00 UTC is midnight US east coast, the one place the two coincide,
+    // and the card's note says so — derived here rather than trusted.
+    const etMidnight = new Date(Date.UTC(2026, 10, 20, 0, 0, 0) + 5 * 3600000).toISOString();
+    check(new Date(v.at).toISOString() === etMidnight,
+          '  and it really is midnight US east coast, as the note claims', etMidnight);
+  } else {
+    check(preAt === cardTarget, '  and matches the song\'s own instant, as it does here',
+          `premiere ${preAt} vs song ${cardTarget}`);
+  }
+
   // The VISIBLE text only. Matching the raw markup catches the row's own
   // `cd-mv-note` / `cd-mv-when` class names and fails on the component it is
   // built from rather than on anything the card says.
   const words = [r.replace(/<[^>]*>/g, ' '),
                  ...(r.match(/data-(?:pre|post)="([^"]*)"/g) || [])].join(' ');
-  check(!/\bMV\b|Music Video|Official Audio|Visualizer|Lyric Video/i.test(words),
-        '  and claims no format the title does not state', words.replace(/\s+/g, ' ').trim());
+  const claims = /\bMV\b|Music Video|Official Audio|Visualizer|Lyric Video/i.test(words);
+  check(claims === v.claimsFormat,
+        v.claimsFormat ? '  and names the format its title states'
+                       : '  and claims no format its title does not state',
+        words.replace(/\s+/g, ' ').trim());
 }
 
 // ── rendered, in a real browser, on both sides of each release ──────────────
@@ -393,13 +426,6 @@ for (const card of CARDS) {
   check(/pre-save/i.test(before.cta), '  before: the button asks for a pre-save', before.cta);
   check(!/pre-save/i.test(after.cta) && after.cta.length > 0,
         '  after: it does not', after.cta);
-
-  // Sun Showers' note must also say these are not its own, because unlike
-  // Power Trip's it has no divider to show it.
-  if (card.dividerAfter === null) {
-    check(/alongside the other/i.test(before.note) && /alongside the other/i.test(after.note),
-          '  and on both sides it says whose they also are', before.note);
-  }
 
   // What a reader actually sees: each element's own wash composited over the
   // card's opaque ground, with its ink on top. AA for body text is 4.5:1, and

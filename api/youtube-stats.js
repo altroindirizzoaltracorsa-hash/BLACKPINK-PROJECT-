@@ -54,6 +54,31 @@ const RELEASE = {
   'FyS5dAywkEo': '2026-09-04T00:00:00Z', // LISA MV      — 02:00 Rome Sep 4 → 24h mark Sep 5, 02:00
   'sf02ugzPFE4': '2026-09-04T04:00:00Z', // JISOO MV     — 06:00 Rome Sep 4 → 24h mark Sep 5, 06:00
   'Lufa9QAFFeY': '2026-09-17T23:00:00Z', // ROSÉ new trick MV — 7PM EDT Sep 17 → 24h mark Sep 18, 7PM EDT
+  // EVERYTHING BELOW WAS MISSING, and the comment above this map says exactly
+  // what that costs: this endpoint stamps a milestone the instant it is
+  // crossed, and for an id it has not heard of it writes `since: null` — the
+  // "how long after release" figure, gone. Those records are HSETNX, so the
+  // history endpoint can never correct one afterwards.
+  //
+  // This copy stopped being updated after ROSÉ in September while
+  // youtube-history.js's kept growing, so Tarantino, ADDICTED, Someone to Hold
+  // and Leave With Me were all crossing milestones against a map that did not
+  // contain them. The drift was invisible because nothing compares the two —
+  // test_youtube_marks.mjs reads youtube-history.js and vs.html and has never
+  // opened this file. It does now.
+  '-5ZXrO_lYSA': '2026-10-23T04:00:00Z', // LISA Tarantino MV — one worldwide instant
+  'Pksr9T8m_aA': '2026-10-29T23:00:09Z', // JISOO ADDICTED MV — :09, from publishedAt
+  'qbr271qnviI': '2026-11-06T21:00:00Z', // JENNIE Someone to Hold — Netflix channel, 16h after the single
+  'M8fO5lQpfrc': '2026-11-18T15:00:05Z', // LISA Leave With Me — :05, from publishedAt
+  // Both premiere at one worldwide instant, 2026-11-20T05:00:00Z, read off
+  // each watch page's scheduledStartTime. A premiere has no publishedAt to
+  // read yet, so these are the scheduled start and must be re-checked against
+  // publishedAt once the videos are actually live — "Someone to Hold"'s went
+  // up sixteen hours after its single, so the two are not interchangeable.
+  // Entered BEFORE the instant on purpose: ADDICTED's 24h figure is
+  // permanently gone because its entry was made too late to freeze anything.
+  'aCRr5rASMGY': '2026-11-20T05:00:00Z', // JENNIE Power Trip — Atlantic Records
+  'REUpBcmDbTE': '2026-11-20T05:00:00Z', // JISOO Sun Showers MV — her own channel
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;

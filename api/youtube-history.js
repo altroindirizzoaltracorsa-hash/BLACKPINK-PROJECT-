@@ -37,7 +37,20 @@ const YT_API = 'https://www.googleapis.com/youtube/v3/videos';
 // to freeze. A release has to be in ALL THREE lists; test_youtube_marks.mjs
 // now fails if a marked video is missing from this one.
 const DEFAULT_IDS = ['LzgE8ift2Uw', 'h-7_04c_hVc', 'FyS5dAywkEo', 'sf02ugzPFE4', 's466YCiHfKw', 'Lufa9QAFFeY',
-  '-5ZXrO_lYSA', 'Pksr9T8m_aA', 'qbr271qnviI', 'M8fO5lQpfrc'];
+  '-5ZXrO_lYSA', 'Pksr9T8m_aA', 'qbr271qnviI', 'M8fO5lQpfrc', 'aCRr5rASMGY', 'REUpBcmDbTE'];
+// The per-request id cap. It was a bare `.slice(0, 10)` at the call site with
+// DEFAULT_IDS sitting at exactly 10, so the next release added to that list
+// would have been silently dropped — from the END, which is where a new
+// release goes, so the one video that actually needed recording is the one
+// that would have stopped being recorded. Named here, and
+// test_youtube_marks.mjs compares DEFAULT_IDS against THIS number rather than
+// a literal, so the two cannot drift apart again.
+// 12 because Power Trip and Sun Showers both land on 2026-11-20 and both need
+// their 24h and 7-day figures. The ceiling that matters is not YouTube's (its
+// videos endpoint takes 50 ids a call) but Upstash commands, at ~5 reads per
+// video per poll while vs.html is open — two more videos is ~800 commands an
+// hour of open page, which against ~$0.20 per 100K is not a consideration.
+const MAX_IDS = 12;
 const MAX_POINTS = 2400;              // ~100 days at hourly — keep the full-life gain list
 const MIN_GAP_MS = 55 * 60 * 1000;    // don't store more than ~once an hour
 const key = id => `bu_yt_hist_${id}`;
@@ -129,6 +142,29 @@ const RELEASE = {
   // 24h figure is permanently gone because its entry was made too late to
   // freeze anything.
   'M8fO5lQpfrc': '2026-11-18T15:00:05Z',
+  // JENNIE "Power Trip" (Grand Theft Auto VI: The Album) — ATLANTIC RECORDS'
+  // channel, not hers, the same way "Someone to Hold" is on Netflix's: a
+  // soundtrack single's video belongs to the record's label or the film's
+  // distributor, and the member's channel is the wrong first guess.
+  // JISOO "Sun Showers" (THE ANGRY BIRDS MOVIE 3) — her own channel.
+  //
+  // BOTH ARE SCHEDULED PREMIERES AT 2026-11-20T05:00:00Z, read off each watch
+  // page's scheduledStartTime. That is not a publishedAt: a premiere has none
+  // to read until it starts. So these two entries are the scheduled start and
+  // must be re-checked against publishedAt once the videos are live — the
+  // three entries above are the reason that distinction is written down
+  // (ADDICTED's is :09, Leave With Me's :05, and Someone to Hold's video went
+  // up SIXTEEN HOURS after its song).
+  //
+  // Entered before the instant rather than after it, which is the whole
+  // lesson of ADDICTED: its 24h figure is permanently gone because the entry
+  // was made too late for anything to freeze.
+  //
+  // Note Power Trip's video premieres at ONE worldwide instant while the song
+  // itself lands at each listener's local midnight. The release row here is
+  // the VIDEO's clock, because that is what a view count is measured from.
+  'aCRr5rASMGY': '2026-11-20T05:00:00Z',
+  'REUpBcmDbTE': '2026-11-20T05:00:00Z',
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -152,6 +188,8 @@ const EXTRA_MARKS = {
   'Pksr9T8m_aA': [{ key: '7d', label: '7 DAYS', at: '2026-11-05T23:00:09Z' }], // JISOO ADDICTED — release + 7d
   'M8fO5lQpfrc': [{ key: '7d', label: '7 DAYS', at: '2026-11-25T15:00:05Z' }], // LISA — Leave With Me (release + 7d)
   'qbr271qnviI': [{ key: '7d', label: '7 DAYS', at: '2026-11-13T21:00:00Z' }], // JENNIE Someone to Hold (Netflix) — release + 7d
+  'aCRr5rASMGY': [{ key: '7d', label: '7 DAYS', at: '2026-11-27T05:00:00Z' }], // JENNIE Power Trip — release + 7d
+  'REUpBcmDbTE': [{ key: '7d', label: '7 DAYS', at: '2026-11-27T05:00:00Z' }], // JISOO Sun Showers MV — release + 7d
 };
 const marksOf = id => [
   ...(RELEASE[id] ? [{ key: '24h', label: '24H', at: Date.parse(RELEASE[id]) + DAY_MS }] : []),
@@ -427,7 +465,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   const idsParam = String(req.query.ids || '').split(',').map(s => s.trim()).filter(Boolean);
-  const ids = (idsParam.length ? idsParam : DEFAULT_IDS).slice(0, 10);
+  const ids = (idsParam.length ? idsParam : DEFAULT_IDS).slice(0, MAX_IDS);
   if (!ids.every(id => /^[A-Za-z0-9_-]{11}$/.test(id))) return res.status(400).json({ error: 'invalid video id' });
   if (!storeUrl()) return res.status(200).json({ error: 'no-store', videos: {} });
   // Every path, reads included. The read is not passive — it freezes newly
