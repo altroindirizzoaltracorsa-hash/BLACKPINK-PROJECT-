@@ -97,7 +97,13 @@ globalThis.fetch = async (url, o = {}) => {
   if (u.includes('/rest/v1/user_daily_counts')) {
     if ((o.method || 'GET') === 'POST') {
       globalThis.__posts.push(JSON.parse(o.body));
-      return { ok: true, status: 204, text: async () => '', json: async () => null };
+      // 201 WITH AN EMPTY BODY, which is what PostgREST really answers to an
+      // upsert. This stub used to say 204, and the script branched on the
+      // status: anything but 204 got r.json(), which on an empty body throws
+      // "Unexpected end of JSON input". The first real write run died after
+      // exactly one row and this test was green the whole time, because the
+      // only shape it ever produced was the one shape that worked.
+      return { ok: true, status: 201, text: async () => '', json: async () => { throw new SyntaxError('Unexpected end of JSON input'); } };
     }
     const days = (u.match(/day_key=in\\.\\(([^)]*)\\)/) || [,''])[1].split(',');
     return json(WORLD.rows.filter(r => days.includes(r.day_key)));

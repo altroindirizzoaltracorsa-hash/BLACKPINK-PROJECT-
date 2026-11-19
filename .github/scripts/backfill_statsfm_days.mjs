@@ -107,7 +107,14 @@ function dayKeyOf(d) {
 async function sb(path, opts = {}) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1${path}`, { headers, ...opts });
   if (!r.ok) throw new Error(`${opts.method || 'GET'} ${path} → HTTP ${r.status} ${(await r.text()).slice(0, 300)}`);
-  return r.status === 204 ? null : r.json();
+  // READ THE BODY, THEN DECIDE. This used to be `r.status === 204 ? null :
+  // r.json()`, which crashed the first write run after exactly one row with
+  // "Unexpected end of JSON input": a PostgREST upsert answers 201 with an
+  // EMPTY body, not 204, so r.json() had nothing to parse. Status is the wrong
+  // thing to branch on — emptiness is.
+  const text = await r.text();
+  if (!text) return null;
+  try { return JSON.parse(text); } catch { return null; }
 }
 
 async function statsfmDay(handle, day) {
@@ -235,7 +242,10 @@ async function main() {
       if (WRITE) {
         await sb('/user_daily_counts', {
           method: 'POST',
-          headers: { ...headers, Prefer: 'resolution=merge-duplicates' },
+          // return=minimal so PostgREST does not send the row back at all —
+          // nothing here reads it, and asking for it is what made the response
+          // body's shape matter in the first place.
+          headers: { ...headers, Prefer: 'resolution=merge-duplicates,return=minimal' },
           body: JSON.stringify([{ app_user_id: fan.uid, day_key: day.key, ...patch }]),
         });
       }
