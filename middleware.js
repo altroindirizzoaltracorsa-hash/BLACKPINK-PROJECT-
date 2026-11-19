@@ -30,7 +30,7 @@ const COUNTDOWNS = {
   // guessed month into a link preview is how a date nobody announced ends up
   // quoted back at us from a screenshot. Still true — the distributor's own
   // pre-save page carries releaseDateInfo.date = null.
-  // JENNIE's song on GTA VI: The Album. Says where it is and when, and stops.
+  // JENNIE's song on Grand Theft Auto VI: The Album. Says where it is and when, and stops.
   // Rockstar never announced her inclusion directly — it came from a leaked
   // tracklist that Billboard and Rolling Stone are reported to have confirmed
   // through sources — so the preview claims the album and the date, which the
@@ -39,7 +39,7 @@ const COUNTDOWNS = {
   // put in a line that is read by people who never open the page.
   powertrip: {
     title: 'JENNIE — Power Trip, Nov 20, 2026 | Countdown · BLINKS UNITED',
-    description: "JENNIE's \u201cPower Trip\u201d is on GTA VI: The Album, out at midnight where you are on Nov 20, 2026. Pre-save the album.",
+    description: "JENNIE's \u201cPower Trip\u201d is on Grand Theft Auto VI: The Album, out at midnight where you are on Nov 20, 2026. Pre-save the album.",
     // Without this the slug is wired everywhere else and a shared link still
     // comes up bare — a title and a line of text, no picture. Her own photo
     // cropped to 1200x630, not the album sleeve: the sleeve is the game's.

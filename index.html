@@ -4330,7 +4330,11 @@
                 <img class="pt-gta-mark" src="/powertrip/gta-vi-logo.webp" width="540" height="410"
                      alt="Grand Theft Auto VI" loading="lazy"
                      onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'pt-gta',textContent:'Grand Theft Auto VI'}))">
-                <div class="pt-gta">The Album</div>
+                <!-- The mark above is "Grand Theft Auto VI", so this line
+                     completes the album's real title rather than repeating it:
+                     read together they say Grand Theft Auto VI: The Album,
+                     which is exactly how Spotify lists it. -->
+                <div class="pt-gta">: The Album</div>
                 <div class="pt-title">POWER TRIP</div>
               </div>
             </div>
@@ -4345,7 +4349,7 @@
               <button class="cd-btn" onclick="openPowerTripCard()">📸 Share</button>
             </div>
             <div class="pt-note">
-              <b>“Power Trip”</b> is JENNIE's song on <b>GTA VI: The Album</b>, the
+              <b>“Power Trip”</b> is JENNIE's song on <b>Grand Theft Auto VI: The Album</b>, the
               official soundtrack to Grand Theft Auto VI.
               <br><br>
               The link above is the <b>whole album</b> — there is no separate link for
@@ -23348,7 +23352,7 @@ async function shareCard() {
       // destination for that release. Ours must be the full deep link or
       // nothing. test_share_links.mjs reads the FIRST url now, not the last.
       statsText = d.campaign === 'powertrip'
-        ? `\n🚗 ${d.act} — "${d.release}", her song on GTA VI: The Album\n📅 ${d.verb} ${d.dateShort} — at midnight wherever you are\n👉 ${d.verbCta} on Blinks United — share it!\n`
+        ? `\n🚗 ${d.act} — "${d.release}", her song on Grand Theft Auto VI: The Album\n📅 ${d.verb} ${d.dateShort} — at midnight wherever you are\n👉 ${d.verbCta} on Blinks United — share it!\n`
         : d.campaign === 'leavewithme'
         ? `\n🕊️ ${d.act} — "${d.release}" ${d.verb} ${d.dateShort}\n🎬 Her song for the documentary ALWAYS LALISA\n🎧 Out on every platform: https://LISA.lnk.to/leavewithme\n👉 Count it down on Blinks United — share it!\n`
         : d.campaign === 'sunshowers'
@@ -27648,7 +27652,7 @@ async function openLeaveWithMeCard() {
   _markCardReady(canvas);
 }
 
-// JENNIE — "Power Trip", on GTA VI: The Album.
+// JENNIE — "Power Trip", on Grand Theft Auto VI: The Album.
 //
 // MIDNIGHT LOCAL, so the instant is built from PARTS the way the page's own
 // cardTargetAt does. Date.parse('2026-11-20') is UTC midnight, which is most
@@ -27716,7 +27720,7 @@ async function openPowerTripCard() {
     // The CTA slot names the ALBUM, not a link: the only thing published is
     // the album pre-save, and a card that read like a song link would send
     // people somewhere 34 tracks wide without saying so.
-    cta: 'On GTA VI: The Album',
+    cta: 'On Grand Theft Auto VI: The Album',
     verb: out ? 'is out' : 'drops',
     verbCta: 'Count it down',
   };
