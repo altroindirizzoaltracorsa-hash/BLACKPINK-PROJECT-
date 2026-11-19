@@ -2058,6 +2058,11 @@
                 rgba(6,2,10,0.55) 72%, rgba(6,2,10,0.95) 100%); }
   .cd-card-powertrip .pt-art-type { position: absolute; left: 0; right: 0; bottom: 0;
     padding: 0 1.25rem 1.05rem; line-height: 1.1; }
+  /* Sized in ch so the mark and the "VI · The Album" line under it stay in
+     proportion to each other when the card is narrow, instead of the logo
+     growing away from its own caption. */
+  .cd-card-powertrip .pt-gta-mark { display: block; width: 7.4rem; max-width: 46%; height: auto;
+    margin-bottom: 0.3rem; filter: drop-shadow(0 2px 10px rgba(0,0,0,0.55)); }
   .cd-card-powertrip .pt-gta { font-family: var(--mono); font-size: 0.54rem; letter-spacing: 0.26em;
     text-transform: uppercase; color: #ffd34d; margin-bottom: 0.4rem; }
   .cd-card-powertrip .pt-title { font-family: var(--display); font-size: 2.3rem; letter-spacing: 0.02em;
@@ -4309,7 +4314,20 @@
                    alt="JENNIE at night in a pink skirt and thigh-high pink boots, leaning against a red car" loading="lazy">
               <div class="pt-scrim"></div>
               <div class="pt-art-type">
-                <div class="pt-gta">GTA VI · The Album</div>
+                <!-- Rockstar's own wordmark, lifted from the key art rather
+                     than redrawn: the white letters were keyed off the purple
+                     "VI" behind them, so this is their type, not a lookalike.
+                     The "VI" itself is NOT in the file — it is a huge gradient
+                     letterform the whole cover is built inside, and any crop of
+                     it drags the character panels along with it. So the version
+                     is set as type beside the mark, which also carries "The
+                     Album" and keeps this from reading as the game.
+                     onerror: a missing or blocked image leaves the full name in
+                     words rather than an empty row where the logo should be. -->
+                <img class="pt-gta-mark" src="/powertrip/gta-wordmark.webp" width="360" height="260"
+                     alt="Grand Theft Auto" loading="lazy"
+                     onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'pt-gta',textContent:'Grand Theft Auto'}))">
+                <div class="pt-gta">VI · The Album</div>
                 <div class="pt-title">POWER TRIP</div>
               </div>
             </div>
