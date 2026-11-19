@@ -2585,6 +2585,19 @@
   .cd-card-powertrip .pt-pl-also { font-family: var(--mono); font-size: 0.54rem;
     letter-spacing: 0.1em; text-transform: uppercase; color: rgba(245,240,240,0.42);
     margin: 0.85rem 0 0.1rem; }
+  /* Sun Showers is the one card on a BRIGHT ground, so its pills invert: the
+     component's defaults are light ink on a dark wash and both vanish on
+     #f9b218. Same four variables, opposite direction — this is what they are
+     for. The hover still flips to the card's own dark brown, which is the
+     treatment its .cd-btn already uses. */
+  .cd-card-sunshowers { --pl-ink: #231703; --pl-line: rgba(35,23,3,0.30);
+    --pl-edge: rgba(35,23,3,0.22); --pl-bg: rgba(35,23,3,0.07); --pl-on-ink: #ffd978; }
+  /* Spotify's green is mid-luminance and so is this yellow, so the 15px glyph
+     muddies at rest here and nowhere else. A CSS fill beats the presentation
+     attribute on the <svg>, so it darkens on this card only — and goes back to
+     the real green on hover, where the pill is dark brown and it reads. */
+  .cd-card-sunshowers .cd-pl-pill svg { fill: #0b6b2e; }
+  .cd-card-sunshowers .cd-pl-pill:hover svg { fill: #1DB954; }
   .cd-card-jisoo .js-park { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
     width: 100%; height: auto; opacity: 0.9; mix-blend-mode: multiply; pointer-events: none; z-index: 2; }
   .cd-badge-chip.js-locket { color: var(--js-ink); background: rgba(255,251,250,0.28);
@@ -4663,6 +4676,36 @@
                 on the US west coast. The line under the title has it in your own clock.
                 <span class="ss-src">Reported by The Hollywood Reporter</span>
               </div>
+            <!-- Our playlists. Both of these are also on the Power Trip card,
+                 and that is not a copy-paste slip: JENNIE's "Power Trip" and
+                 JISOO's "Sun Showers" land on the same date, so "JENSOO
+                 RELEASE DAY" is both of them and "LWM x PT x SS" is both plus
+                 LISA's single. A playlist that carries two songs belongs on
+                 both their cards.
+                 NEITHER IS SUN SHOWERS' OWN, and the note says so rather than
+                 letting the heading imply it. The Power Trip card has three of
+                 its own and sets these two apart under a divider; here there
+                 is nothing to set them apart FROM, so the honesty has to live
+                 in the sentence. When this song gets its own, they go above
+                 these and the divider comes with them.
+                 Note filled by script (#ss-pl-note) off ssLive(), same as the
+                 other cards' — see the Power Trip one for why none of them is
+                 written into the markup.
+                 No ?si= on the links, as everywhere else here. -->
+            <div class="cd-pl-pills">
+              <div class="cd-pl-pills-head">🎧 Community Playlists</div>
+              <p class="cd-pl-note" id="ss-pl-note"></p>
+              <div class="cd-pl-pills-list">
+                <a class="cd-pl-pill" href="https://open.spotify.com/playlist/75Pc4jtAlQsKaQyBUtWpnJ" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>JENSOO RELEASE DAY</a>
+                <a class="cd-pl-pill" href="https://open.spotify.com/playlist/0PqV4NjZKG0Q3DKi2AkgJ3" target="_blank" rel="noopener"><svg width="15" height="15" viewBox="0 0 24 24" fill="#1DB954" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.5 17.32c-.22.36-.68.47-1.03.26-2.82-1.72-6.37-2.11-10.55-1.16-.4.09-.8-.16-.9-.56-.09-.4.16-.8.56-.9 4.57-1.04 8.5-.6 11.66 1.33.36.22.47.68.26 1.03zm1.47-3.27c-.27.44-.85.58-1.29.31-3.23-1.98-8.15-2.56-11.97-1.4-.5.15-1.02-.13-1.17-.62-.15-.5.13-1.02.62-1.17 4.36-1.32 9.78-.68 13.49 1.6.44.27.58.85.31 1.29zm.13-3.41C16.7 8.87 10.75 8.65 7.17 9.74c-.59.18-1.22-.15-1.4-.75-.18-.59.15-1.22.75-1.4 4.11-1.25 10.68-1 14.9 1.5.53.31.7 1 .39 1.53-.31.53-1 .7-1.53.39z"/></svg>LWM x PT x SS Focused</a>
+              </div>
+              <!-- Links are not a picture, so this shares TEXT — the same shape
+                   as the other cards', which copy to the clipboard inside the
+                   tap gesture before opening the sheet, because Instagram, X
+                   and TikTok drop a share `text` when anything else rides
+                   along. -->
+              <button class="cd-pl-share" onclick="shareSunShowersPlaylists()">🎧 Share these playlists</button>
+            </div>
             </div>
           </div>
           <!-- JISOO — "ADDICTED", counted down at jisoo.io. ONE worldwide
@@ -19994,6 +20037,7 @@ async function ssEarlySupporterEarned() {
 
 async function loadSsSaveCount() {
   renderSsBadge();
+  renderSsPlaylistNote();
   renderSsCta();
   try {
     const r = await fetch('/api/proxy-image?sunshowers_save=count');
@@ -20083,6 +20127,47 @@ async function shareSomeoneToHoldPlaylists() {
   let copied = false;
   try { await navigator.clipboard?.writeText(post); copied = true; } catch {}
   if (navigator.share) navigator.share({ title: 'JENNIE — Someone to Hold playlists', text: post }).catch(() => {});
+  else _showShareToast(copied ? 'Playlists copied — paste them anywhere ✨' : 'Copy failed — try again');
+}
+
+// Sun Showers' playlists note, off ssLive() — one worldwide instant, not a
+// midnight-local one, so this flips for everybody at once.
+//
+// IT SAYS WHOSE THEY ARE, because neither is this song's own: both also carry
+// JENNIE's "Power Trip", and one carries LISA's single too. The Power Trip
+// card can set that pair apart under a divider because it has three of its own
+// above them; this card has nothing to set them apart from, so the sentence is
+// where the honesty has to live.
+function renderSsPlaylistNote() {
+  const el = document.getElementById('ss-pl-note');
+  if (!el) return;
+  el.textContent = ssLive()
+    ? '“Sun Showers” is out — open one and let it run. Both carry it alongside the other Nov 20 drops.'
+    : 'Both carry “Sun Showers” alongside the other Nov 20 drops. They fill up the moment it lands.';
+}
+
+// Read off the card, not from a second list here — same reason as the others:
+// the copy that gets forgotten is the post, which is the half that travels.
+function _ssPlaylistPost() {
+  const links = [...document.querySelectorAll('.cd-card-sunshowers .cd-pl-pill')];
+  if (!links.length) return null;
+  const rows = links.map(a => `▶ ${a.textContent.trim()}\n${a.href}`).join('\n\n');
+  const lead = ssLive()
+    ? 'JISOO’s “Sun Showers” is out. Put one on and let it run.'
+    : 'JISOO’s “Sun Showers” lands 2PM KST on Nov 20. Pre-save it and these fill up the moment it does.';
+  return 'BLINKs — our “Sun Showers” playlists 🎧\n' + lead + '\n\n'
+       + rows + '\n\n' + PRESAVE_CARD_LINKS.sunshowers;
+}
+
+async function shareSunShowersPlaylists() {
+  const post = _ssPlaylistPost();
+  if (!post) { _showShareToast('Playlists not loaded — try again'); return; }
+  // Clipboard FIRST, inside the tap gesture: a write attempted after the share
+  // sheet opens has lost the gesture that permits it, so copying here means the
+  // post is always pasteable whatever the target does with `text`.
+  let copied = false;
+  try { await navigator.clipboard?.writeText(post); copied = true; } catch {}
+  if (navigator.share) navigator.share({ title: 'JISOO — Sun Showers playlists', text: post }).catch(() => {});
   else _showShareToast(copied ? 'Playlists copied — paste them anywhere ✨' : 'Copy failed — try again');
 }
 

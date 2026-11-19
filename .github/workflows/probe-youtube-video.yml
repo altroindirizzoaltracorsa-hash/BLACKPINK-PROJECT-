@@ -72,8 +72,21 @@ jobs:
             v=$(grep -o "<meta property=\"og:$p\" content=\"[^\"]*\"" /tmp/w.html | head -1 | sed "s/.*content=\"//; s/\"$//")
             echo "  og:$p : ${v:-—}"
           done
+          # Whose channel it is on. oEmbed answers 200-with-nulls for a
+          # scheduled premiere rather than 404, so author_name is not available
+          # from there and this is the only place it can be read.
+          ch=$(grep -o '"ownerChannelName":"[^"]*"' /tmp/w.html | head -1 | sed 's/.*:"//; s/"$//')
+          [ -n "$ch" ] || ch=$(grep -o '<link itemprop="name" content="[^"]*"' /tmp/w.html | head -1 | sed 's/.*content="//; s/"$//')
+          echo "  channel : ${ch:-—}"
           dur=$(grep -o '<meta itemprop="duration" content="[^"]*"' /tmp/w.html | head -1 | sed 's/.*content="//; s/"$//')
           echo "  duration: ${dur:-— (none — often a scheduled premiere)}"
+          # The markers that would settle MV-vs-audio outright. Absence proves
+          # nothing — plenty of real MVs are titled without one — so this
+          # reports what it finds and does not conclude.
+          echo "  title markers:"
+          for m in 'Official Music Video' 'Official Video' 'Official Audio' 'Visualizer' 'Lyric Video' 'Performance Video'; do
+            grep -qi "$m" /tmp/w.html && echo "    found somewhere on the page: $m"
+          done
           # The scheduled-premiere marker, which is the state this is most
           # likely to be in before midnight.
           if grep -q 'isUpcoming":true\|scheduledStartTime' /tmp/w.html; then

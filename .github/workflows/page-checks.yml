@@ -438,13 +438,17 @@ jobs:
       # A playlist id is 22 base62 characters, and Spotify answers a wrong one
       # with its own "couldn't find that" page rather than an error anyone here
       # would see — so a typo is a dead link on the card and silence in the
-      # logs. These five were read out of the account by API for that reason;
-      # this pins what was read, and checks the note under them tells the truth
-      # on BOTH sides of the release, rendered, because it is deliberately not
-      # in the markup.
-      - name: Power Trip’s five playlists, and a note that ages correctly
+      # logs. These were read out of the account by API for that reason; this
+      # pins what was read, and checks the note under them tells the truth on
+      # BOTH sides of each release, rendered, because it is deliberately not in
+      # the markup.
+      # One file for two cards because two of the playlists are on BOTH, which
+      # is deliberate — Power Trip and Sun Showers land on the same date — and
+      # a per-card test would have to treat a shared id as either forbidden or
+      # invisible. It counts instead, so a real copy-paste slip still fails.
+      - name: The Power Trip and Sun Showers playlists, and notes that age correctly
         if: always()
-        run: node .github/scripts/test_powertrip_playlists.mjs
+        run: node .github/scripts/test_release_playlists.mjs
 
       - name: Every weekday a card prints matches its date
         if: always()
