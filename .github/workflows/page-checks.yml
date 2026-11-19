@@ -333,6 +333,15 @@ jobs:
       # A video can carry a 24h mark and still never be recorded, in which case
       # the pin is silently never taken — nothing errors, the figure is just
       # gone. Tarantino lost its 24h number exactly that way.
+      # The /youtube board's daily gain is a DAY's views, not a RUN's. The raw
+      # daily_delta is "views since the previous reading" and that gap is not
+      # 24h — this repo measures scheduled runs arriving 2-5h late — so the
+      # endpoint normalises by hours_since. At exactly 24h a broken version
+      # passes, so the test's load-bearing case is a delayed run.
+      - name: The YouTube daily gain is a day's views, not a run's
+        if: always()
+        run: node .github/scripts/test_youtube_gains.mjs
+
       - name: Every marked video is actually recorded
         if: always()
         run: node .github/scripts/test_youtube_marks.mjs

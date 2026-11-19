@@ -77,6 +77,58 @@ function latestPerVideo(rows) {
   return out;
 }
 
+// ── DAILY GAIN ─────────────────────────────────────────────────────────────
+// Two numbers, because one of them alone would mislead.
+//
+// `gain` is the newest reading's delta NORMALISED to 24 hours. The raw
+// daily_delta is "views since the previous reading", and that gap is not a day
+// — GitHub delays scheduled runs on this repo by 2-5 hours routinely, so a run
+// 29 hours after the last one shows 29 hours of views under a label saying
+// "day". Dividing by hours_since and multiplying by 24 is the whole fix, and
+// it is why hours_since exists on the table at all.
+//
+// `gain7` is a SPAN over the last week: views gained between the oldest and
+// newest readings in the window, divided by the days actually elapsed. That is
+// the Magnetic rule, and the table's own comment says why averaging the deltas
+// instead would be wrong. It is the steadier figure and the one worth reading
+// when yesterday was odd.
+//
+// A NEGATIVE GAIN IS REAL. YouTube recounts continuously and takes totals back
+// down; the schema says anything reading daily_delta must cope with a negative
+// and must not "fix" it. So nothing here clamps.
+const RECENT_DAYS = 7;
+function gainsPerVideo(rows) {
+  const byVideo = new Map();
+  for (const r of rows) {
+    if (!byVideo.has(r.video_ref)) byVideo.set(r.video_ref, []);
+    byVideo.get(r.video_ref).push(r);
+  }
+  const out = new Map();
+  for (const [ref, list] of byVideo) {
+    // The query already orders captured_at descending, but this does not rely
+    // on that staying true.
+    list.sort((a, b) => Date.parse(b.captured_at) - Date.parse(a.captured_at));
+    const newest = list[0];
+    let gain = null;
+    const hrs = Number(newest.hours_since);
+    if (newest.daily_delta != null && Number.isFinite(hrs) && hrs > 0) {
+      gain = Math.round((Number(newest.daily_delta) / hrs) * 24);
+    }
+    // The oldest reading still inside the window, so the span is real elapsed
+    // time rather than a row count.
+    const cutoff = Date.parse(newest.captured_at) - RECENT_DAYS * 86400000;
+    let oldest = null;
+    for (const r of list) if (Date.parse(r.captured_at) >= cutoff) oldest = r;
+    let gain7 = null, spanDays = null;
+    if (oldest && oldest !== newest) {
+      spanDays = (Date.parse(newest.captured_at) - Date.parse(oldest.captured_at)) / 86400000;
+      if (spanDays > 0) gain7 = Math.round((Number(newest.views) - Number(oldest.views)) / spanDays);
+    }
+    out.set(ref, { gain, gain7, gainSpanDays: spanDays });
+  }
+  return out;
+}
+
 export default async function handler(req, res) {
   // A visitor-facing board that moves once a day. A minute of shared cache
   // absorbs a rush without anyone seeing a stale milestone.
@@ -102,7 +154,10 @@ export default async function handler(req, res) {
         limit: '2000',
       }),
       sbRest('/youtube_video_daily_stats', {
-        select: 'video_ref,date,views,captured_at',
+        // daily_delta and hours_since come along for the DAILY GAIN. They are
+        // already on every row this query returns, so the gain costs no extra
+        // request — it was being fetched and thrown away.
+        select: 'video_ref,date,views,captured_at,daily_delta,hours_since',
         order: 'captured_at.desc',
         limit: '20000',
       }),
@@ -120,6 +175,7 @@ export default async function handler(req, res) {
     }
 
     const latest = latestPerVideo(stats);
+    const gainOf = gainsPerVideo(stats);
     const rateOf = new Map(rates.map(r => [r.video_ref, r]));
 
     let asOf = null, capturedAt = null;
@@ -148,6 +204,10 @@ export default async function handler(req, res) {
         views, next, gap,
         pct: ((views - prev) / (next - prev)) * 100,
         rate,
+        // The day's gain, and the steadier week-span version beside it.
+        gain:  (gainOf.get(v.id) || {}).gain  ?? null,
+        gain7: (gainOf.get(v.id) || {}).gain7 ?? null,
+        gainSpanDays: (gainOf.get(v.id) || {}).gainSpanDays ?? null,
         days,
         eta: days == null ? null
           : new Date(Date.now() + days * 86400000).toISOString().slice(0, 10),

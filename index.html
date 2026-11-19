@@ -4074,6 +4074,12 @@
   .ytm-stat .ytm-lbl { font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--v-dim); }
   .ytm-stat .ytm-val { font-size:11px; color:var(--v-text); font-variant-numeric:tabular-nums; }
   .ytm-stat .ytm-val.gap { font-size:14px; font-weight:700; color:var(--v-pink); }
+  /* A day's gain. Green up, amber down — down is a YouTube recount, which is
+     real and worth seeing, so it is coloured differently rather than hidden.
+     Amber not red: a recount is not an error. */
+  .ytm-stat .ytm-val.up   { color:#5fd38d; font-weight:600; }
+  .ytm-stat .ytm-val.down { color:#e8a13c; font-weight:600; }
+  .ytm-stat .ytm-lbl small { opacity:0.62; font-weight:400; margin-left:2px; }
 
   .ytm-bar { height:8px; border-radius:8px; overflow:hidden; border:1px solid var(--v-line);
     background:#0a0407; margin:10px 0 2px; position:relative; }
@@ -28825,6 +28831,15 @@ function ytmShort(n) {
   if (n >= 1e6) return (n / 1e6).toFixed(n % 1e6 === 0 ? 0 : 1).replace(/\.0$/, '') + 'M';
   return Math.round(n).toLocaleString('en-US');
 }
+// A day's gain, signed. A MINUS SIGN IS NOT A BUG: YouTube recounts
+// continuously and takes totals back down, and the schema behind this column
+// says anything reading it must cope with a negative and must not "fix" it. A
+// card that silently showed 0 instead would be hiding a real recount.
+function ytmGain(n) {
+  if (n == null || !Number.isFinite(Number(n))) return null;
+  const v = Number(n);
+  return (v < 0 ? '−' : '+') + ytmShort(Math.abs(v));
+}
 function ytmDays(d) {
   if (d == null) return null;
   if (d < 1) return 'today';
@@ -28845,6 +28860,12 @@ function ytmCard(v) {
   // twelve cards cost twelve images instead of twelve copies of the player.
   const id = encodeURIComponent(v.videoId);
   const eta = ytmDays(v.days);
+  // The newest reading's gain, normalised to 24h by the endpoint, and the
+  // week-span average beside it. Both can be null — a video read once has no
+  // gain at all, and inventing one from a single reading is the thing this
+  // board already refuses to do for rates.
+  const gain = ytmGain(v.gain);
+  const week = ytmGain(v.gain7);
   const title = escapeHtml(v.title);
   const kind = YTM_KIND[v.kind] || 'Video';
   const sub = v.artist === 'BLACKPINK' ? kind : `${v.artist} · ${kind}`;
@@ -28872,6 +28893,14 @@ function ytmCard(v) {
         <span class="ytm-lbl">Views</span>
         <span class="ytm-val">${Number(v.views).toLocaleString('en-US')}</span>
       </div>
+      ${gain ? `<div class="ytm-stat">
+        <span class="ytm-lbl">Daily gain</span>
+        <span class="ytm-val ${Number(v.gain) < 0 ? 'down' : 'up'}">${gain}</span>
+      </div>` : ''}
+      ${week ? `<div class="ytm-stat">
+        <span class="ytm-lbl">${v.gainSpanDays ? Math.round(v.gainSpanDays) : 7}-day avg</span>
+        <span class="ytm-val ${Number(v.gain7) < 0 ? 'down' : 'up'}">${week}</span>
+      </div>` : ''}
       ${eta ? `<div class="ytm-stat">
         <span class="ytm-lbl">Gets there</span>
         <span class="ytm-val">≈ ${eta}</span>
