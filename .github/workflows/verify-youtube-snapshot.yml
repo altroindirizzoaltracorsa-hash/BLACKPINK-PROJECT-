@@ -1,0 +1,34 @@
+name: Verify the Vercel YouTube snapshot (dry run)
+# Read-only: ?dry=1 fetches the catalogue and reports what it WOULD write,
+# writing nothing. Proves the endpoint is reachable, authorised and that the
+# statistics part is still coming through, BEFORE the 00:00 UTC cron relies on it.
+on:
+  workflow_dispatch:
+    inputs:
+      write:
+        description: 'Set to 1 to actually take a reading (normally blank = dry run)'
+        required: false
+        default: ''
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call it
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          BASE: ${{ secrets.VERCEL_URL }}
+          WRITE: ${{ github.event.inputs.write }}
+        run: |
+          set -euo pipefail
+          Q="?dry=1"; [ "${WRITE}" = "1" ] && Q=""
+          # Admin secret in a HEADER, never the query string. -L for the apex 308.
+          code=$(curl -sS -L --location-trusted -H "x-admin-secret: ${ADMIN_KEY}" \
+                 -o out.json -w '%{http_code}' "${BASE}/api/youtube-snapshot${Q}")
+          echo "HTTP $code"
+          cat out.json; echo
+          if [ "$code" -ge 400 ]; then
+            echo "::error title=Snapshot endpoint failed::HTTP $code — the 00:00 UTC cron would fail the same way."
+            exit 1
+          fi
+          jq -e '.error == null' out.json >/dev/null || {
+            echo "::error title=Snapshot reported an error::see the body above"; exit 1; }
