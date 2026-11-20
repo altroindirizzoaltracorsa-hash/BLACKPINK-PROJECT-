@@ -1,0 +1,165 @@
+name: Probe the YouTube series spacing (read-only)
+# How precisely could a FIXED-INSTANT daily gain be read off the hourly series?
+#
+# The question this answers: if /youtube showed "views between 00:00 and 00:00
+# UTC" instead of the current 24h-normalised rate, how far off would it be?
+#
+# THE OFFSET IS NOT THE ERROR, and that is the whole point of measuring rather
+# than reasoning from MIN_GAP_MS. A daily gain is a DIFFERENCE of two readings,
+# so if the nearest stored point is 12 min late at both ends, the span is still
+# exactly 24h and the error is zero. What costs accuracy is the two offsets
+# DISAGREEING — the span is then 24h ± that difference, and the error is the
+# views accrued in it. So this prints both:
+#
+#   OFFSET      how far the nearest stored point sits from each 00:00 UTC
+#   SPAN ERROR  |offset(end) - offset(start)| — the number that actually matters
+#
+# and then the same again for a linear interpolation between the two points
+# bracketing each boundary, which is what an implementation would really do.
+#
+# READ-ONLY. One GET of the hourly series (~241 KB, see CLAUDE.md's
+# per-request sizes). No writes, no snapshot, no pin: `snapshot=1`/`repin` are
+# the write paths and neither is used here.
+on:
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'How many past 00:00 UTC boundaries to test (default 7)'
+        required: false
+        default: '7'
+      hour:
+        description: 'Boundary hour UTC to test against (default 0 = midnight)'
+        required: false
+        default: '0'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        env:
+          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          BASE: ${{ secrets.VERCEL_URL }}
+          DAYS: ${{ github.event.inputs.days }}
+          HOUR: ${{ github.event.inputs.hour }}
+        run: |
+          set -euo pipefail
+          # Admin secret in a HEADER, never the query string: query strings land
+          # in run logs and in Vercel's request records.
+          curl -sS -H "x-admin-secret: ${ADMIN_KEY}" \
+               -o series.json -w "HTTP %{http_code}  %{size_download} bytes\n" \
+               "${BASE}/api/youtube-history?admin=1"
+          python3 - <<'PY'
+          import json, os, statistics as st
+          from datetime import datetime, timezone, timedelta
+
+          days = int(os.environ.get("DAYS") or 7)
+          hour = int(os.environ.get("HOUR") or 0)
+          d = json.load(open("series.json"))
+
+          # The payload shape has moved before, so find the per-video series
+          # rather than assuming a key, and say so if it cannot be found.
+          vids = d.get("videos") or d.get("items") or d
+          if isinstance(vids, dict):
+              vids = [{"id": k, **(v if isinstance(v, dict) else {"series": v})}
+                      for k, v in vids.items()]
+          if not isinstance(vids, list):
+              print("::error::unexpected payload shape; keys:", list(d)[:10]); raise SystemExit(1)
+
+          def points(v):
+              s = v.get("series") or v.get("live") or v.get("points") or []
+              out = []
+              for p in s:
+                  if isinstance(p, dict):
+                      t = p.get("t") or p.get("ts") or p.get("time")
+                      n = p.get("v") or p.get("views")
+                  elif isinstance(p, (list, tuple)) and len(p) >= 2:
+                      t, n = p[0], p[1]
+                  else:
+                      continue
+                  if t is None or n is None: continue
+                  t = int(t);  t = t * 1000 if t < 10**12 else t
+                  out.append((t, int(n)))
+              return sorted(out)
+
+          best = max(vids, key=lambda v: len(points(v)), default=None)
+          pts = points(best) if best else []
+          print(f"\nvideo with the longest series: {best.get('id') or best.get('videoId')!r}"
+                f" — {len(pts)} points")
+          if len(pts) < 10:
+              print("::warning::too few points to characterise spacing"); raise SystemExit(0)
+
+          span_h = (pts[-1][0] - pts[0][0]) / 3.6e6
+          print(f"covering {span_h/24:.1f} days "
+                f"({datetime.fromtimestamp(pts[0][0]/1000, timezone.utc):%Y-%m-%d %H:%M} → "
+                f"{datetime.fromtimestamp(pts[-1][0]/1000, timezone.utc):%Y-%m-%d %H:%M} UTC)")
+
+          gaps = [(b[0]-a[0])/60000 for a, b in zip(pts, pts[1:])]
+          gaps.sort()
+          def pct(p): return gaps[min(len(gaps)-1, int(len(gaps)*p))]
+          print(f"\n── GAP BETWEEN STORED POINTS (minutes) ──")
+          print(f"  min {gaps[0]:.0f} · median {st.median(gaps):.0f} · "
+                f"p90 {pct(0.90):.0f} · p99 {pct(0.99):.0f} · max {gaps[-1]:.0f}")
+          over = sum(1 for g in gaps if g > 75)
+          print(f"  gaps over 75 min: {over}/{len(gaps)} ({100*over/len(gaps):.1f}%) "
+                f"— these are dropped scheduled runs, and they are what moves the phase")
+
+          def nearest(target_ms):
+              return min(pts, key=lambda p: abs(p[0] - target_ms))
+          def bracket(target_ms):
+              before = [p for p in pts if p[0] <= target_ms]
+              after   = [p for p in pts if p[0] >= target_ms]
+              return (before[-1] if before else None, after[0] if after else None)
+          def interp(target_ms):
+              a, b = bracket(target_ms)
+              if not a or not b: return None
+              if a[0] == b[0]: return a[1]
+              f = (target_ms - a[0]) / (b[0] - a[0])
+              return a[1] + f * (b[1] - a[1])
+
+          now = datetime.now(timezone.utc)
+          base = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+          bounds = [base - timedelta(days=i) for i in range(days + 1)]
+          bounds = [b for b in sorted(bounds)
+                    if pts[0][0] <= b.timestamp()*1000 <= pts[-1][0]]
+          print(f"\n── NEAREST STORED POINT TO EACH {hour:02d}:00 UTC ──")
+          offs = []
+          for b in bounds:
+              t = b.timestamp()*1000
+              p = nearest(t)
+              off = (p[0]-t)/60000
+              offs.append(off)
+              print(f"  {b:%Y-%m-%d %H:%M}  nearest point {off:+6.1f} min  "
+                    f"({datetime.fromtimestamp(p[0]/1000, timezone.utc):%H:%M})")
+          if offs:
+              print(f"  |offset|: median {st.median([abs(o) for o in offs]):.1f} min · "
+                    f"worst {max(abs(o) for o in offs):.1f} min")
+
+          print(f"\n── WHAT A DAILY GAIN WOULD ACTUALLY BE OFF BY ──")
+          print("  The span error is |offset(end) - offset(start)|, NOT the offset.")
+          print("  Equal offsets at both ends cancel exactly.")
+          errs_near, errs_int = [], []
+          for a, b in zip(bounds, bounds[1:]):
+              ta, tb = a.timestamp()*1000, b.timestamp()*1000
+              pa, pb = nearest(ta), nearest(tb)
+              span_err = abs(((pb[0]-tb) - (pa[0]-ta))/60000)
+              errs_near.append(span_err)
+              gain_near = pb[1] - pa[1]
+              ia, ib = interp(ta), interp(tb)
+              gain_int = (ib - ia) if (ia is not None and ib is not None) else None
+              diff = (gain_near - gain_int) if gain_int is not None else None
+              print(f"  {a:%m-%d} → {b:%m-%d}  span off by {span_err:5.1f} min  "
+                    f"nearest-point gain {gain_near:>12,}"
+                    + (f"  ·  interpolated {gain_int:>14,.0f}  (diff {diff:+,.0f})"
+                       if gain_int is not None else "  ·  interpolation n/a"))
+              if gain_int is not None: errs_int.append(abs(diff))
+          if errs_near:
+              print(f"\n  SPAN ERROR, nearest-point: median {st.median(errs_near):.1f} min · "
+                    f"worst {max(errs_near):.1f} min")
+          if errs_int:
+              print(f"  Interpolation moves the gain by: median {st.median(errs_int):,.0f} views · "
+                    f"worst {max(errs_int):,.0f} views")
+          print("\n  Read it against the question asked: a span error of a few or ten")
+          print("  minutes is fine; thirty-plus changes the decision. Interpolating")
+          print("  between the two bracketing points is what removes most of it.")
+          PY
