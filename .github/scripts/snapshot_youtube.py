@@ -268,8 +268,13 @@ def main():
           f"across {len(d.get('channels') or [])} channel(s)")
     for c in d.get("channels") or []:
         flag = "  [TRUNCATED]" if c.get("truncated") else ""
+        # Subscribers in the summary, so a DRY_RUN proves the channels call is
+        # still asking for part=statistics. A channel that hides its count
+        # prints "hidden" rather than 0 — those are different facts.
+        subs = c.get("subscribers")
+        subs_txt = f"{subs:>12,} subs" if subs else "      hidden subs"
         print(f"  {c.get('title','?'):<20} {c.get('uploads',0):>4} uploads  "
-              f"{c.get('videos',0):>3} above floor{flag}")
+              f"{c.get('videos',0):>3} above floor  {subs_txt}{flag}")
     if d.get("unresolved"):
         print(f"  UNRESOLVED: {', '.join(d['unresolved'])}", file=sys.stderr)
 
@@ -282,7 +287,14 @@ def main():
 
     if DRY_RUN:
         day = OVERRIDE_DATE or now.date().isoformat()
+        # Prove the statistics part is still coming through BEFORE a real run
+        # writes a day of nulls. All of them missing at once is the catalog
+        # having stopped asking, which is otherwise silent.
+        have_likes = sum(1 for v in videos if v.get("likes") is not None)
+        have_comments = sum(1 for v in videos if v.get("comments") is not None)
         print(f"\nDRY_RUN — would record {len(videos)} row(s) for {day}")
+        print(f"  likes published: {have_likes}/{len(videos)} · "
+              f"comments published: {have_comments}/{len(videos)}")
         for v in sorted(videos, key=lambda x: x["gap"])[:10]:
             print(f"  {v['gap']:>12,} to {v['next']/1e6:g}M  {v['views']:>15,}  "
                   f"{v.get('kind',''):<11} {v['title'][:52]}")
