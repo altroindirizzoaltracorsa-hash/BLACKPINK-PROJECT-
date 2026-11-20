@@ -109,7 +109,18 @@ export default async function handler(request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const username = searchParams.get('user');
+  // NORMALISED: a leading '@' is how people write a Stats.fm handle and how
+  // some of them typed it when linking, but Stats.fm's own API does not
+  // resolve '@name' — it answers with nothing at all, so the whole payload
+  // comes back undefined and that account silently contributes zero. Measured
+  // on a real row: the bare handle returned today.sunshowers=13 and the same
+  // handle with an '@' returned `today: undefined`.
+  //
+  // Stripping it here is only HALF the fix and is useless — in fact harmful —
+  // without the dedup in api/cron-scrobbles.js: once both spellings resolve,
+  // a row carrying the same account twice would be fetched and ADDED twice.
+  // See the note there.
+  const username = String(searchParams.get('user') || '').trim().replace(/^@+/, '') || null;
   const debug = searchParams.get('debug');
   if (!username) return json({ error: 'user required' }, 400);
 

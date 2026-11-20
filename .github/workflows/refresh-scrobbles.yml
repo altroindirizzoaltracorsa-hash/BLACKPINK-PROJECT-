@@ -96,6 +96,10 @@ jobs:
           # A title here on a release day clears itself; a title STILL here a
           # day later is our spelling being wrong.
           jq -r '.missingTracks[]? | "  NO LAST.FM PAGE (counted as 0 all-time): \(.)"' response.json || true
+          # Same account linked twice on one row under two spellings. Printed,
+          # not errored: it is a tidy-up on somebody's profile, not a failure,
+          # and a red run nobody can act on is a red run nobody reads.
+          jq -r '.duplicateAccounts[]? | "  DUPLICATE ACCOUNT (counted once): \(.)"' response.json || true
           miss=$(jq -r '.missingTracks // [] | length' response.json)
           if [ "$miss" -gt 0 ]; then
             echo "::warning title=Titles with no Last.fm page::$miss title(s) answered \"Track not found\" — normal within hours of a release, and OUR spelling being wrong if it persists past a day. See the NO LAST.FM PAGE lines above."

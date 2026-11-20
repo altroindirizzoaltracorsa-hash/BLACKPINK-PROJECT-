@@ -451,6 +451,22 @@ jobs:
         if: always()
         run: node .github/scripts/test_lastfm_track_missing.mjs
 
+      # ONE LINKED ACCOUNT IS COUNTED ONCE, however it is spelled. A real row
+      # carried the same Stats.fm account twice, as 'name' and '@name'.
+      # Measured first: Stats.fm does not resolve '@name', so that entry was a
+      # DEAD FETCH contributing zero — 13 stored against 13 real, not 26. Which
+      # is why the obvious fix was the dangerous one: stripping the '@' makes
+      # both spellings resolve, and the refresh adds every linked account
+      # unconditionally, so normalising ALONE would have manufactured the double
+      # count it was meant to prevent. Mutation A below reproduces that exactly.
+      # Mutation-tested four ways: normalise without dedup (26 instead of 13),
+      # a dedup keyed too broadly (eats a fan's second real account), a
+      # normaliser that strips an '@' anywhere rather than the prefix, and
+      # leaving /api/statsfm unfixed.
+      - name: One linked account is counted once, however it is spelled
+        if: always()
+        run: node .github/scripts/test_account_dedup.mjs
+
       # /api/statsfm can be asked for ANY day. It always could — the windowed
       # call takes two arbitrary bounds — but it was only ever asked for today,
       # which is why a fan's Stats.fm plays counted for nothing on days they

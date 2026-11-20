@@ -268,6 +268,12 @@ async function persistStamp(sb, username, todayKey, stamps) {
   );
 }
 
+// A scrobbler handle as it should be compared and fetched. People write a
+// Stats.fm handle as '@name', and some linked it that way; Stats.fm's own API
+// does not resolve '@name' and answers with nothing, so that account silently
+// contributes zero. Trim and drop the '@'.
+const normHandle = (u) => String(u || '').trim().replace(/^@+/, '');
+
 // ── Last.fm helpers ───────────────────────────────────────────
 const LASTFM_RETRYABLE_ERRORS = new Set([8, 11, 16]);
 // 29 = Rate Limit Exceeded, kept SEPARATE from the three above because it needs
@@ -299,6 +305,16 @@ const LASTFM_TRACK_NOT_FOUND = 6;
 //
 // Module-level like lfmCalls, and zeroed per run for the same reason.
 let lfmMissingTracks = new Set();
+// Linked accounts skipped because the same account is on the row twice under
+// two spellings. REPORTED rather than silently dropped: a skip nobody can see
+// is how a fan's second real account would disappear and look fine.
+//
+// Module-level because the dedup happens inside refreshUser while the response
+// is assembled in the handler — a run-scoped const was out of scope there and
+// threw ReferenceError on the first row that had a duplicate. Zeroed per run,
+// like lfmCalls and lfmMissingTracks, or it reports every duplicate this
+// container has ever seen.
+let duplicateAccounts = [];
 
 // WHY THERE IS A RATE GATE HERE AT ALL — the scrobble outage of early November
 // 2026, reported as "no están contando mis reproducciones desde hace días".
@@ -671,7 +687,29 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
   // Primary Last.fm account (first one, for stamps)
   const lfmAccount = linkedAccounts.find(a => a.type === 'lastfm');
 
+  // ── ONE ACCOUNT, COUNTED ONCE ────────────────────────────────────────────
+  //
+  // THIS GUARD IS WHAT MAKES normHandle SAFE. A row can carry the same account
+  // twice under two spellings — one real row has
+  //   [('statsfm','epp399…'), ('statsfm','@epp399…')]
+  // and today only the bare one resolves, so the '@' entry is a wasted fetch
+  // that adds zero. Normalising the handle WITHOUT this guard would make both
+  // spellings resolve to the same account and its plays would be added TWICE:
+  // the fix for a dead fetch would have manufactured a real double count.
+  // Measured before changing anything — bare handle today.sunshowers=13, '@'
+  // handle `today: undefined`, board stored 13 — so there is no inflation to
+  // undo today, and there must be none introduced.
+  //
+  // Keyed on type as well as handle: the same name on Last.fm and Libre.fm is
+  // two different accounts.
+  const seenAccounts = new Set();
   for (const acct of linkedAccounts) {
+    const acctKey = `${acct.type}:${normHandle(acct.username).toLowerCase()}`;
+    if (!normHandle(acct.username) || seenAccounts.has(acctKey)) {
+      if (seenAccounts.has(acctKey)) duplicateAccounts.push(`${entry.username}: ${acct.type}/${acct.username}`);
+      continue;
+    }
+    seenAccounts.add(acctKey);
     if (acct.type === 'lastfm' || acct.type === 'librefm') {
       const u = acct.username;
       const fetchFn = acct.type === 'librefm' ? librefmFetch : lfmFetch;
@@ -950,7 +988,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
       // "unfetchable" was a ~40-profile burst against the old per-fan scrape;
       // the endpoint behind this call also caches, so a run that reaches the
       // same fan twice spends nothing the second time.
-      const u = acct.username;
+      const u = normHandle(acct.username);
       const sfm = await fetchStatsfmDay(host, u, weekFrom);
       if (sfm) {
         statsfmFetched.set(u.toLowerCase(), { ...sfm, handle: u });
@@ -1559,6 +1597,7 @@ export default async function handler(req, res) {
   lfmCalls    = 0;
   lfmNextSlot = 0;
   lfmMissingTracks = new Set();
+  duplicateAccounts = [];
   let   stoppedAt     = null;   // first user not reached, if we ran out of time
 
   const ok        = [];
@@ -2127,6 +2166,8 @@ export default async function handler(req, res) {
     // the figure to watch: it was ~3,600 before the idle gate.
     lastfmCalls:  lfmCalls,
     rateLimited,
+    // Same account linked twice on one row (e.g. 'name' and '@name').
+    duplicateAccounts,
     // Titles Last.fm answered "Track not found" for. Expected and transient on
     // a release day; a title still listed here a day later is OUR spelling
     // being wrong, and its all-time figure is reading 0 for everybody.
