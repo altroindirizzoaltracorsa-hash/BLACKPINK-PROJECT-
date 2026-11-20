@@ -898,74 +898,29 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
           fetchLbRecentListens(u, weekFrom, dayTo),
         ]);
         artistPlays         += lbAp;
-        totalPlays.jump     += lbTotals.jump     || 0;
-        totalPlays.shutdown += lbTotals.shutdown || 0;
-        totalPlays.ddududu  += lbTotals.ddududu  || 0;
-        totalPlays.ltal     += lbTotals.ltal     || 0;
-        totalPlays.go       += lbTotals.go       || 0;
-        totalPlays.sawadika += lbTotals.sawadika || 0;
-        totalPlays.click    += lbTotals.click    || 0;
-        totalPlays.fallenangel += lbTotals.fallenangel || 0;
-        totalPlays.heaven      += lbTotals.heaven      || 0;
-        totalPlays.newtrick    += lbTotals.newtrick    || 0;
-        totalPlays.v12    += lbTotals.v12    || 0;
-        totalPlays.cobra    += lbTotals.cobra    || 0;
-        totalPlays.tarantino    += lbTotals.tarantino    || 0;
-        totalPlays.cutuoff    += lbTotals.cutuoff    || 0;
-        totalPlays.sweat    += lbTotals.sweat    || 0;
-        totalPlays.addicted += lbTotals.addicted || 0;
-        totalPlays.sth      += lbTotals.sth      || 0;
-        totalPlays.lwm      += lbTotals.lwm      || 0;
-        totalPlays.powertrip += lbTotals.powertrip || 0;
-        totalPlays.sunshowers += lbTotals.sunshowers || 0;
+        // ── DERIVED, like the Last.fm path above ────────────────────────
+        //
+        // These three merges were twenty hand-typed lines each, one per track,
+        // and were the LAST place in this file where a release had to be
+        // remembered by hand. The Last.fm branch a few lines up already walks
+        // TRACKS; this one did not, so a track added to TRACKS was counted for
+        // a fan's Last.fm account and silently skipped for their ListenBrainz
+        // one. Same shape as the three *_all sums that stopped at `lwm`.
+        //
+        // countLbByTrack already builds its counts BY WALKING TRACKS, so the
+        // keys are guaranteed to line up — there was never a reason to spell
+        // them out on this side.
+        for (const t of TRACKS) totalPlays[t.id] += lbTotals[t.id] || 0;
 
         const todayListens = weekListens.filter(l => l.listened_at >= dayFrom && l.listened_at < dayTo);
         const lbTodayCounts = countLbByTrack(todayListens);
-        todayCounts.jump     += lbTodayCounts.jump     || 0;
-        todayCounts.shutdown += lbTodayCounts.shutdown || 0;
-        todayCounts.ddududu  += lbTodayCounts.ddududu  || 0;
-        todayCounts.ltal     += lbTodayCounts.ltal     || 0;
-        todayCounts.go       += lbTodayCounts.go       || 0;
-        todayCounts.sawadika += lbTodayCounts.sawadika || 0;
-        todayCounts.click    += lbTodayCounts.click    || 0;
-        todayCounts.fallenangel += lbTodayCounts.fallenangel || 0;
-        todayCounts.heaven      += lbTodayCounts.heaven      || 0;
-        todayCounts.newtrick    += lbTodayCounts.newtrick    || 0;
-        todayCounts.v12    += lbTodayCounts.v12    || 0;
-        todayCounts.cobra    += lbTodayCounts.cobra    || 0;
-        todayCounts.tarantino    += lbTodayCounts.tarantino    || 0;
-        todayCounts.cutuoff    += lbTodayCounts.cutuoff    || 0;
-        todayCounts.sweat    += lbTodayCounts.sweat    || 0;
-        todayCounts.addicted += lbTodayCounts.addicted || 0;
-        todayCounts.sth      += lbTodayCounts.sth      || 0;
-        todayCounts.lwm      += lbTodayCounts.lwm      || 0;
-        todayCounts.powertrip += lbTodayCounts.powertrip || 0;
-        todayCounts.sunshowers += lbTodayCounts.sunshowers || 0;
+        for (const t of TRACKS) todayCounts[t.id] += lbTodayCounts[t.id] || 0;
         todayBySource[`ListenBrainz · ${u}`] = {
           jump: lbTodayCounts.jump || 0, shutdown: lbTodayCounts.shutdown || 0, ddududu: lbTodayCounts.ddududu || 0, ltal: lbTodayCounts.ltal || 0, go: lbTodayCounts.go || 0,
         };
 
         const lbWeekCounts = countLbByTrack(weekListens);
-        weekCounts.jump     += lbWeekCounts.jump     || 0;
-        weekCounts.shutdown += lbWeekCounts.shutdown || 0;
-        weekCounts.ddududu  += lbWeekCounts.ddududu  || 0;
-        weekCounts.ltal     += lbWeekCounts.ltal     || 0;
-        weekCounts.go       += lbWeekCounts.go       || 0;
-        weekCounts.sawadika += lbWeekCounts.sawadika || 0;
-        weekCounts.click    += lbWeekCounts.click    || 0;
-        weekCounts.fallenangel += lbWeekCounts.fallenangel || 0;
-        weekCounts.heaven      += lbWeekCounts.heaven      || 0;
-        weekCounts.newtrick    += lbWeekCounts.newtrick    || 0;
-        weekCounts.v12    += lbWeekCounts.v12    || 0;
-        weekCounts.cobra    += lbWeekCounts.cobra    || 0;
-        weekCounts.tarantino    += lbWeekCounts.tarantino    || 0;
-        weekCounts.cutuoff    += lbWeekCounts.cutuoff    || 0;
-        weekCounts.sweat    += lbWeekCounts.sweat    || 0;
-        weekCounts.addicted += lbWeekCounts.addicted || 0;
-        weekCounts.sth      += lbWeekCounts.sth      || 0;
-        weekCounts.lwm      += lbWeekCounts.lwm      || 0;
-        weekCounts.powertrip += lbWeekCounts.powertrip || 0;
-        weekCounts.sunshowers += lbWeekCounts.sunshowers || 0;
+        for (const t of TRACKS) weekCounts[t.id] += lbWeekCounts[t.id] || 0;
 
         // ListenBrainz never fed lastScrobbleAt before -- a fan scrobbling only
         // through LB (e.g. after moving off Last.fm) would drift towards a

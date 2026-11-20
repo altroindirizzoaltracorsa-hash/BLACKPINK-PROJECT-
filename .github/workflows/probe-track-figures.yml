@@ -180,6 +180,7 @@ jobs:
               # LIVE recount from the raw scrobbles, which is what the day and
               # week figures are actually derived from.
               seen_artists = {}
+              seen_titles = {}
               day_n = week_n = 0
               page = 1
               while page <= 12:
@@ -199,6 +200,15 @@ jobs:
                       if not uts:          # "now playing" has no date
                           continue
                       seen_artists[a] = seen_artists.get(a, 0) + 1
+                      # THE RAW TITLE, EXACTLY AS LAST.FM HOLDS IT. This is the
+                      # one thing that cannot be guessed and the reason four
+                      # rounds of spelling probes got nowhere: track.getInfo is
+                      # an EXACT-STRING lookup, so the only spelling that works
+                      # is the one the scrobbles actually carry. Matching here
+                      # is by trackKey (parentheticals stripped), so whatever
+                      # suffix is on them shows up intact.
+                      raw = t.get("name") or ""
+                      seen_titles[raw] = seen_titles.get(raw, 0) + 1
                       week_n += 1
                       if uts >= day_from: day_n += 1
                   total_pages = int((rt.get("@attr") or {}).get("totalPages") or 1)
@@ -206,6 +216,19 @@ jobs:
                   page += 1
               print(f"  LIVE     recounted today={day_n} week={week_n}  (UTC day, trackKey match)")
               print(f"  ARTISTS  {seen_artists if seen_artists else '(no matching scrobbles in the last 7 days)'}")
+              print(f"  TITLES   {seen_titles if seen_titles else '(none)'}")
+              # And ask Last.fm about the exact string it is holding. If THIS
+              # resolves while the title in TRACKS does not, that is the whole
+              # bug and the fix is to copy this string into TRACKS.
+              for raw in list(seen_titles)[:3]:
+                  for art in list(seen_artists)[:2]:
+                      d2 = lfm(method="track.getInfo", artist=art, track=raw, username=name)
+                      if d2.get("error"):
+                          print(f"  EXACT    {art!r} / {raw!r} -> error {d2.get('error')}: {d2.get('message')}")
+                      else:
+                          tr = d2.get("track") or {}
+                          print(f"  EXACT    {art!r} / {raw!r} -> userplaycount={tr.get('userplaycount')!r} "
+                                f"listeners={tr.get('listeners')!r} url={tr.get('url')!r}")
 
           print("")
           note("Reading this: STORED daily vs LIVE recounted today is the board "
