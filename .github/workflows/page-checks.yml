@@ -436,6 +436,21 @@ jobs:
         if: always()
         run: node .github/scripts/test_scrobble_rate.mjs
 
+      # A BRAND-NEW TITLE MUST NOT FAIL A REFRESH. Last.fm creates a track's
+      # page on its first scrobble anywhere, so for the opening hours of a
+      # release track.getInfo answers "error 6: Track not found" for a song
+      # thousands of people are playing. That used to THROW, escape
+      # refreshUser's Promise.all and fail the WHOLE user: adding "Sun Showers"
+      # to TRACKS failed 46 of 51 accounts in one run, and the five survivors
+      # were the idle ones that skip the per-track reads. The same function in
+      # index.html would have broken every signed-in fan's badges page.
+      # Mutation-tested four ways: re-throwing on 6, a blanket catch that
+      # zeroes every error, leaving the browser copy unfixed, and typing the
+      # *_all sums out again so the newest release drops off them.
+      - name: A title Last.fm has no page for does not fail the whole refresh
+        if: always()
+        run: node .github/scripts/test_lastfm_track_missing.mjs
+
       # /api/statsfm can be asked for ANY day. It always could — the windowed
       # call takes two arbitrary bounds — but it was only ever asked for today,
       # which is why a fan's Stats.fm plays counted for nothing on days they
