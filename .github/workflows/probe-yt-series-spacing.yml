@@ -46,9 +46,19 @@ jobs:
           set -euo pipefail
           # Admin secret in a HEADER, never the query string: query strings land
           # in run logs and in Vercel's request records.
-          curl -sS -H "x-admin-secret: ${ADMIN_KEY}" \
+          # -L --location-trusted for the same reason refresh-scrobbles.yml has
+          # it: VERCEL_URL can point at a domain that now 308-redirects to the
+          # current one, and without following, curl "succeeds" on a 15-byte
+          # redirect stub. That is exactly how this probe failed its first run.
+          # --location-trusted keeps the admin header across the hop, which is
+          # safe here because both ends are our own infrastructure.
+          #
+          # No query parameter: bare /api/youtube-history is the HOURLY series
+          # (~241 KB). `live=1` is the finer live series and `snapshot=1`/`repin`
+          # are the WRITE paths — not used, and not to be added to this probe.
+          curl -sS -L --location-trusted -H "x-admin-secret: ${ADMIN_KEY}" \
                -o series.json -w "HTTP %{http_code}  %{size_download} bytes\n" \
-               "${BASE}/api/youtube-history?admin=1"
+               "${BASE}/api/youtube-history"
           python3 - <<'PY'
           import json, os, statistics as st
           from datetime import datetime, timezone, timedelta
