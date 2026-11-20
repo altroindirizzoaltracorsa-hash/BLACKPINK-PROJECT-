@@ -133,8 +133,31 @@ console.log('\n--- ordering and labels');
 
 console.log('\n--- the panel, and what it refuses to show');
 const site = readFileSync(root + 'index.html', 'utf8');
-check(/class="ytm-hist"/.test(site), 'the card carries a history panel');
-check(/onclick="ytmHistory\(this\)"/.test(site), '  opened from a button on the card');
+// A SHEET, not a panel inside the card. It opened in-card first and crowded
+// the board: 168 cards in a grid, and one growing a 47-row table pushes every
+// video below it off the screen.
+check(/id="ytm-hist-overlay"/.test(site), 'the history opens as an overlay sheet');
+check(/onclick="ytmHistory\(this\)"/.test(site), '  from a button on the card');
+check(!/<div class="ytm-hist"[^>]*><\/div>/.test(site),
+      '  and there is no per-card panel left behind');
+// One overlay for the whole board, not one per card: 168 hidden overlays is
+// 168 subtrees for a thing at most one of which is ever visible.
+check((site.match(/id="ytm-hist-overlay"/g) || []).length === 1,
+      '  exactly one overlay in the document, reused');
+// Closable three ways, because a sheet you cannot dismiss is a trap on a
+// phone: the ×, the backdrop, and Escape.
+check(/aria-label="Close"[\s\S]{0,80}closeYtmHistory\(\)/.test(site), '  closed by the × button');
+check(/if\(event\.target===this\)closeYtmHistory\(\)/.test(site), '  by tapping the backdrop');
+check(/e\.key !== 'Escape'[\s\S]{0,200}closeYtmHistory\(\)/.test(site), '  and by Escape');
+// Opening scrolls the page behind it; closing must give that back, or the
+// board is frozen for the rest of the visit.
+check(/document\.body\.style\.overflow = ''/.test(site), '  and closing releases the page scroll');
+// A slow fetch must not drop one video's table into another video's sheet.
+// The RENDER call specifically, not just the identifier appearing somewhere:
+// the guard is also on the error path, so a loose match passes while the
+// success path drops one video's table into another video's sheet.
+check(/if \(_ytmHistVid === vid\) ytmHistRender\(d\);/.test(site),
+      '  a response arriving after the reader moved on is discarded');
 // NO YEARLY TAB. The first reading is 2026-10-04, so a "year" would be a label
 // over seven weeks restating the all-time total. The tabs list is the place
 // that would quietly grow one.
