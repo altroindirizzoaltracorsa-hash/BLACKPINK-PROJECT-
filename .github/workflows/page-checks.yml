@@ -467,6 +467,19 @@ jobs:
         if: always()
         run: node .github/scripts/test_account_dedup.mjs
 
+      # api/youtube-snapshot.js is a PORT of snapshot_youtube.py, moved so a
+      # Vercel cron can take the reading at 00:00 UTC instead of GitHub taking
+      # it ~9 hours late (measured: scheduled 04:41, ran 13:36 and 13:53 on
+      # consecutive days). Both write the same table and the Python one stays
+      # as the backstop, so a port that disagrees about one field would corrupt
+      # the series silently — the rows still arrive, they are just wrong.
+      # Pins the delta, the real elapsed hours, the three NULL-IS-NOT-ZERO
+      # fields, the column set read out of the Python itself, the guard that
+      # stops the late backstop clobbering the midnight row, and the cron hour.
+      - name: The Vercel YouTube snapshot builds the same rows as the Python one
+        if: always()
+        run: node .github/scripts/test_youtube_snapshot_port.mjs
+
       # /api/statsfm can be asked for ANY day. It always could — the windowed
       # call takes two arbitrary bounds — but it was only ever asked for today,
       # which is why a fan's Stats.fm plays counted for nothing on days they

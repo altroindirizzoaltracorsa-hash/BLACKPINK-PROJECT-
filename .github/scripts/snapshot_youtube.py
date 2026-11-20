@@ -53,6 +53,9 @@ MIN_VIEWS = int(os.environ.get("MIN_VIEWS") or 50_000_000)
 # floor, so the video is recorded from day one and has a rate by day two.
 FRESH_DAYS = int(os.environ.get("FRESH_DAYS") or 30)
 DRY_RUN = os.environ.get("DRY_RUN") == "1"
+# Overwrite a date that already has rows. Off by default so this backstop
+# cannot undo the punctual midnight reading — see the guard in main().
+FORCE = os.environ.get("FORCE") == "1"
 OVERRIDE_DATE = os.environ.get("OVERRIDE_DATE")
 
 CHUNK = 200
@@ -303,6 +306,31 @@ def main():
     refs = upsert_videos(videos)
     prev = previous_readings(set(refs.values()))
     day, rows, skipped = build_rows(videos, refs, prev, now)
+
+    # ── DO NOT CLOBBER A PUNCTUAL READING ────────────────────────────────
+    #
+    # THIS SCRIPT IS NOW THE BACKSTOP. /api/youtube-snapshot runs from a Vercel
+    # cron at 00:00 UTC and lands within about a minute of the boundary; this
+    # job is kept for the case where that endpoint is failing and nobody has
+    # noticed, because a reading not taken is gone for good.
+    #
+    # But GitHub runs this ~9 HOURS LATE (measured: scheduled 04:41, ran 13:36
+    # and 13:53 on consecutive days), and the primary key is (video_ref, date)
+    # with merge-duplicates — so without this guard the late run would
+    # OVERWRITE the midnight row with a mid-afternoon one and destroy exactly
+    # the property the move to Vercel was made to get. The backstop would
+    # quietly undo the fix every single day.
+    #
+    # So: write only if the day has no rows yet. FORCE=1 overrides, for a
+    # deliberate re-run.
+    if not FORCE:
+        existing = sb("GET", "/youtube_video_daily_stats", params={
+            "select": "video_ref", "date": f"eq.{day}", "limit": "1",
+        }) or []
+        if existing:
+            print(f"  ⏭ {day} already has rows — the Vercel cron got there first. "
+                  f"Nothing written (set FORCE=1 to overwrite).")
+            return 0
     if skipped:
         print(f"  ⚠ {skipped} video(s) had no row id and were skipped", file=sys.stderr)
     write(rows)

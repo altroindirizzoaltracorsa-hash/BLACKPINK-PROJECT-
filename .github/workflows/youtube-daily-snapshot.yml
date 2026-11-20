@@ -14,11 +14,29 @@ name: YouTube daily snapshot
 # elapsed hours between readings rather than assuming a day — but a run that
 # lands when it is supposed to is still worth having.
 #
-# 04:41 UTC is a quiet slot and well clear of the 03:00-ish window when the
-# girl-group jobs are usually finishing, so the two do not contend.
+# THIS IS NOW THE BACKSTOP, NOT THE PRIMARY. /api/youtube-snapshot runs from a
+# Vercel cron at 00:00 UTC (vercel.json) and lands within about a minute of the
+# boundary, which is what makes the daily gain a real UTC day rather than a
+# floating ~24h window.
+#
+# WHY IT MOVED: this job is 21 seconds of work and GitHub was running it about
+# NINE HOURS LATE, every day — scheduled 04:41, ran 13:36 and 13:53 on
+# consecutive days. That does not break a rate (the row carries hours_since and
+# the page divides by it) but it means "daily gain" is measured between two
+# arbitrary instants. Measured on the hourly series, that drift puts a fixed
+# 00:00 boundary off by a median of 50 minutes and up to 110.
+#
+# IT IS KEPT because a reading not taken is gone for good — YouTube serves a
+# cumulative number with no history — so the endpoint failing silently must not
+# mean a lost day. snapshot_youtube.py now SKIPS a date that already has rows,
+# so a late run can never overwrite the midnight one; without that guard this
+# backstop would undo the fix daily. FORCE=1 overrides for a deliberate re-run.
+#
+# 05:47 UTC: after midnight so the Vercel row already exists on a normal day,
+# and the skip is the cheap path. Not :00 or :30, for the queue reason above.
 on:
   schedule:
-    - cron: '41 4 * * *'
+    - cron: '47 5 * * *'
   workflow_dispatch:
     inputs:
       dry_run:
@@ -31,6 +49,10 @@ on:
         default: ''
       override_date:
         description: 'Label this reading YYYY-MM-DD instead of today (backfill a hole)'
+        required: false
+        default: ''
+      force:
+        description: 'Overwrite a date that already has rows (1 = force). Normally OFF so this backstop cannot clobber the punctual midnight reading.'
         required: false
         default: ''
 
@@ -54,6 +76,7 @@ jobs:
         env:
           BASE: https://blinksunited.com
           ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
+          FORCE: ${{ github.event.inputs.force }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           DRY_RUN: ${{ inputs.dry_run }}
