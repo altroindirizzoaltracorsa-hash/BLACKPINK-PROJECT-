@@ -1,0 +1,221 @@
+name: Probe one track's figures (read-only)
+# Why this exists: a fan saw THREE different numbers for the same new song
+# within a minute — 26 on their badges page, 5 on the leaderboard, then 6 back
+# on badges. Each of those is a DIFFERENT figure computed a DIFFERENT way, and
+# arguing about which is "right" from the source is how this repo has wasted
+# time before. So print them all, side by side, for the same person.
+#
+# For one track id, this prints per user:
+#   STORED   overall_* / daily_* / weekly_*          (what the board holds)
+#   LIVE     all-time via track.getInfo              (Last.fm's own total)
+#   LIVE     today  recounted from user.getRecentTracks over the UTC day
+#   LIVE     week   recounted the same way
+#   PROVIDER what providerScores contributes, per source, and whether that
+#            payload even HAS a key for this track
+#   ARTISTS  the exact artist strings the matching scrobbles carried
+#
+# The artist strings are the half that cannot be reasoned about at all: the
+# client matches with an EXACT map lookup (_lbMemberKey) while track.getInfo is
+# an exact-title lookup, so a credit of "JISOO" and one of "JISOO, Shumon" are
+# one song to a human and two different answers to this code.
+#
+# READ-ONLY. GETs only: the public leaderboard and Last.fm. It writes nothing,
+# takes no lock, and cannot change a count. The day boundary is 00:00 UTC
+# because that is what the site uses — see CLAUDE.md; do NOT reintroduce a
+# named timezone here.
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Track id as it appears in TRACKS (e.g. sunshowers)'
+        required: true
+      artist:
+        description: 'Artist for track.getInfo (e.g. JISOO)'
+        required: true
+      title:
+        description: 'Title for track.getInfo (e.g. Sun Showers)'
+        required: true
+      users:
+        description: 'Comma-separated Last.fm usernames. Blank = the top scorers on the board for this track.'
+        required: false
+        default: ''
+      top:
+        description: 'How many top scorers to probe when users is blank'
+        required: false
+        default: '6'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        env:
+          TRACK:  ${{ github.event.inputs.track }}
+          ARTIST: ${{ github.event.inputs.artist }}
+          TITLE:  ${{ github.event.inputs.title }}
+          USERS:  ${{ github.event.inputs.users }}
+          TOP:    ${{ github.event.inputs.top }}
+          BASE:   ${{ secrets.VERCEL_URL }}
+        run: |
+          python3 - <<'PY'
+          import os, json, re, time, urllib.parse, urllib.request
+          from datetime import datetime, timezone
+
+          # Same key the rest of the repo uses. Read-only methods only here.
+          LFM_KEY = "666b8ef2f3cc360fbc20df275fba2981"
+          LFM     = "https://ws.audioscrobbler.com/2.0/"
+
+          TRACK  = os.environ["TRACK"].strip()
+          ARTIST = os.environ["ARTIST"].strip()
+          TITLE  = os.environ["TITLE"].strip()
+          BASE   = os.environ.get("BASE", "").rstrip("/")
+          TOPN   = int(os.environ.get("TOP") or "6")
+
+          def note(s): print(f"::notice::{s}")
+
+          def get(url, tries=4):
+              last = None
+              for i in range(tries):
+                  try:
+                      req = urllib.request.Request(url, headers={"User-Agent": "blinks-united-probe"})
+                      with urllib.request.urlopen(req, timeout=30) as r:
+                          return json.loads(r.read().decode())
+                  except Exception as e:
+                      last = e
+                      time.sleep(0.6 * (2 ** i))
+              return {"__error": str(last)}
+
+          def lfm(**params):
+              params.update(api_key=LFM_KEY, format="json")
+              # Gentle: this shares ONE key with the whole site, and error 29 is
+              # the key being spent, not a flake. See CLAUDE.md.
+              time.sleep(0.3)
+              return get(LFM + "?" + urllib.parse.urlencode(params))
+
+          # trackKey, mirroring index.html/_trackKey and the server's norm():
+          # lowercase FIRST, then drop (...) and [...], then all non-alphanumerics.
+          # The order matters — it is why 'pOwEr tRiP' and a film suffix both
+          # collapse to the bare key.
+          def tkey(s):
+              s = (s or "").lower()
+              s = re.sub(r"\(.*?\)|\[.*?\]", "", s)
+              return re.sub(r"[^a-z0-9]", "", s)
+
+          WANT = tkey(TITLE)
+
+          # ── The day and week windows: 00:00 UTC. Never a local hour. ──────
+          now = datetime.now(timezone.utc)
+          day_from = int(datetime(now.year, now.month, now.day, tzinfo=timezone.utc).timestamp())
+          week_from = day_from - 6 * 86400
+          note(f"track={TRACK!r} key={WANT!r} artist={ARTIST!r} title={TITLE!r}")
+          note(f"UTC day starts {datetime.fromtimestamp(day_from, timezone.utc).isoformat()} · now {now.isoformat()}")
+
+          # ── The board ────────────────────────────────────────────────────
+          board = get(f"{BASE}/api/leaderboard") if BASE else {"__error": "VERCEL_URL not set"}
+          users_obj = (board or {}).get("users") or {}
+          if "__error" in (board or {}):
+              note(f"leaderboard unavailable: {board['__error']}")
+
+          picked = [u.strip() for u in (os.environ.get("USERS") or "").split(",") if u.strip()]
+          if not picked:
+              rows = []
+              for key, u in users_obj.items():
+                  sc = u.get("scores") or {}
+                  rows.append((sc.get(f"daily_{TRACK}") or 0,
+                               sc.get(f"overall_{TRACK}") or 0,
+                               u.get("username") or key))
+              rows.sort(reverse=True)
+              picked = [r[2] for r in rows[:TOPN]]
+              note(f"no users given — probing the top {len(picked)} on the board for daily_{TRACK}")
+          note(f"users: {', '.join(picked) if picked else '(none)'}")
+
+          def entry_for(name):
+              low = (name or "").lower()
+              if low in users_obj: return users_obj[low]
+              for u in users_obj.values():
+                  if (u.get("username") or "").lower() == low: return u
+                  for a in (u.get("linkedAccounts") or []):
+                      if (a.get("username") or "").lower() == low: return u
+              return None
+
+          for name in picked:
+              print("")
+              print(f"═══ {name} " + "═" * max(0, 60 - len(name)))
+              e  = entry_for(name) or {}
+              sc = e.get("scores") or {}
+              print(f"  STORED   overall={sc.get(f'overall_{TRACK}')!r} "
+                    f"daily={sc.get(f'daily_{TRACK}')!r} "
+                    f"weekly={sc.get(f'weekly_{TRACK}')!r} "
+                    f"daily_date={sc.get('daily_date')!r}")
+              print(f"  STORED   overall_all={sc.get('overall_all')!r} "
+                    f"daily_all={sc.get('daily_all')!r} updatedAt={e.get('updatedAt')!r}")
+              print(f"  ACCOUNTS {[ (a.get('type'), a.get('username')) for a in (e.get('linkedAccounts') or []) ]}")
+
+              # Does the fan's last submit even KNOW about this track? A payload
+              # written by a page older than the release has no key for it, so
+              # the cron re-adds 0 for their Musicat/Stats.fm plays — which is a
+              # real way the board can sit lower than the badges page.
+              ps = e.get("providerScores") or {}
+              bd = ps.get("breakdown") or []
+              print(f"  PROVIDER dailyDate={ps.get('dailyDate')!r} shape={'per-source' if any(b.get('overall') for b in bd if b) else 'combined-only'}")
+              print(f"  PROVIDER combined overall has key: {TRACK in (ps.get('overall') or {})} · today has key: {TRACK in (ps.get('today') or {})}")
+              for b in bd:
+                  if not b: continue
+                  has = TRACK in (b.get("overall") or {})
+                  print(f"           {b.get('source')}/{b.get('username')}: "
+                        f"overall={(b.get('overall') or {}).get(TRACK)!r} "
+                        f"today={(b.get('today') or {}).get(TRACK)!r} "
+                        f"(has key: {has})")
+
+              # LIVE all-time, Last.fm's own exact-title lookup.
+              d = lfm(method="track.getInfo", artist=ARTIST, track=TITLE, username=name)
+              if d.get("error"):
+                  print(f"  LIVE     track.getInfo -> error {d.get('error')}: {d.get('message')}  "
+                        f"(6 = no page for this track yet; counted as 0 all-time)")
+              else:
+                  print(f"  LIVE     track.getInfo userplaycount="
+                        f"{(d.get('track') or {}).get('userplaycount')!r} "
+                        f"global playcount={(d.get('track') or {}).get('playcount')!r}")
+
+              # LIVE recount from the raw scrobbles, which is what the day and
+              # week figures are actually derived from.
+              seen_artists = {}
+              day_n = week_n = 0
+              page = 1
+              while page <= 12:
+                  r = lfm(method="user.getRecentTracks", user=name,
+                          **{"from": week_from}, to=int(time.time()), limit=200, page=page)
+                  if r.get("error"):
+                      print(f"  LIVE     recentTracks -> error {r.get('error')}: {r.get('message')}")
+                      break
+                  rt = (r.get("recenttracks") or {})
+                  arr = rt.get("track") or []
+                  if isinstance(arr, dict): arr = [arr]
+                  for t in arr:
+                      if tkey(t.get("name")) != WANT: continue
+                      a = ((t.get("artist") or {}).get("#text")
+                           or (t.get("artist") or {}).get("name") or "")
+                      uts = int(((t.get("date") or {}).get("uts")) or 0)
+                      if not uts:          # "now playing" has no date
+                          continue
+                      seen_artists[a] = seen_artists.get(a, 0) + 1
+                      week_n += 1
+                      if uts >= day_from: day_n += 1
+                  total_pages = int((rt.get("@attr") or {}).get("totalPages") or 1)
+                  if page >= total_pages: break
+                  page += 1
+              print(f"  LIVE     recounted today={day_n} week={week_n}  (UTC day, trackKey match)")
+              print(f"  ARTISTS  {seen_artists if seen_artists else '(no matching scrobbles in the last 7 days)'}")
+
+          print("")
+          note("Reading this: STORED daily vs LIVE recounted today is the board "
+               "against Last.fm. A STORED number BELOW the live recount means the "
+               "last writer saw less — a failed refresh, or a provider payload with "
+               "no key for this track. A STORED number ABOVE it means other "
+               "scrobblers (extension, Musicat, Stats.fm) contributed plays Last.fm "
+               "never saw, which is correct and is NOT a double count unless the "
+               "same handle appears twice in ACCOUNTS.")
+          note("More than one ARTISTS string means the credit varies between "
+               "scrobbles; _lbMemberKey is an exact map lookup, so only the mapped "
+               "spelling is counted by the client.")
+          PY
