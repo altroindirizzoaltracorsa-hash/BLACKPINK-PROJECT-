@@ -178,6 +178,13 @@ const TRACKS = [
   // figures are RE-DERIVED from each account's Last.fm history on every run
   // rather than accumulated, and adding a track to TRACKS invalidates the
   // per-user cache precisely so a new release cannot be served as a cached 0.
+  // Spotify's own title is 'Sun Showers (From "The Angry Birds Movie 3”)' —
+  // note the MISMATCHED QUOTES, straight open and curly close. That is
+  // Spotify's metadata, not a scrobbler quirk: the same string comes back from
+  // the discography API (track 43LLlCRgC6fYYqIaXGLmpd) and from every fan's
+  // scrobbles. The bare title is kept here because norm()/trackKey strip the
+  // parenthetical on both sides, so it matches either way and does not depend
+  // on reproducing those two characters correctly.
   { id: 'sunshowers', artist: 'JISOO',  track: 'Sun Showers' },
 ];
 
