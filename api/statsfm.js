@@ -258,6 +258,10 @@ export default async function handler(request) {
       // Lalisa)" today, something else on a re-release — is matched either
       // way. This matcher is the one that does not care about punctuation.
       { id: 'lwm',         prefix: 'leave with me',     artist: 'LISA' },
+      // JENNIE on the GTA VI album (2026-11-20). A PREFIX match, so the
+      // soundtrack attribution Spotify hangs off the end — "(from GTAVI: The
+      // Album)" — is matched without this list having to carry it.
+      { id: 'powertrip',   prefix: 'power trip',        artist: 'JENNIE' },
     ];
 
     function countTracks(list) {

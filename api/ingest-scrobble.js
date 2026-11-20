@@ -54,6 +54,13 @@ const TRACKS = [
   // Lalisa)" collapses to the same key. The full title belongs in
   // cron-scrobbles, where the lookup is exact; here it would never match.
   { id: 'lwm',         artist: 'lisa',      track: 'leave with me' },
+  // JENNIE on Grand Theft Auto VI: The Album (2026-11-20). LOWERCASE AND BARE,
+  // like every entry here: keyName() runs norm() first, which lowercases and
+  // strips (...) and [...], so Spotify's "Power Trip (from GTAVI: The Album)"
+  // and Last.fm's stylised "pOwEr tRiP" both collapse to this key. The full
+  // title belongs in cron-scrobbles, where the lookup is an exact string;
+  // here it would never match.
+  { id: 'powertrip',   artist: 'jennie',    track: 'power trip' },
 ];
 
 function norm(s) {
