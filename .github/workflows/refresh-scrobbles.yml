@@ -67,6 +67,26 @@ jobs:
           # Printed every run on purpose. A skip list that nobody ever reads is
           # how a real blink who renamed their Last.fm quietly stops counting.
           jq -r '.dead[]? | "  SKIPPED (Last.fm has no such account): \(.)"' response.json || true
+          # ── TITLES LAST.FM HAS NO PAGE FOR ────────────────────────────────
+          #
+          # A WARNING, NOT A FAILURE, and the distinction is the whole point.
+          # Last.fm creates a track's page on its first scrobble anywhere, so
+          # on a release day track.getInfo answers error 6 for a song thousands
+          # of people are playing. That used to THROW and fail the whole user:
+          # adding "Sun Showers" to TRACKS failed 46 of 51 accounts in one run,
+          # every one of them "error 6: Track not found". It is now treated as
+          # 0 plays, which is the honest answer for a track with no page.
+          #
+          # But error 6 is ALSO what a misspelled entry in TRACKS returns, and
+          # that reads 0 forever while the day and week counts stay correct —
+          # the "Someone to Hold" failure. So the titles are printed every run.
+          # A title here on a release day clears itself; a title STILL here a
+          # day later is our spelling being wrong.
+          jq -r '.missingTracks[]? | "  NO LAST.FM PAGE (counted as 0 all-time): \(.)"' response.json || true
+          miss=$(jq -r '.missingTracks // [] | length' response.json)
+          if [ "$miss" -gt 0 ]; then
+            echo "::warning title=Titles with no Last.fm page::$miss title(s) answered \"Track not found\" — normal within hours of a release, and OUR spelling being wrong if it persists past a day. See the NO LAST.FM PAGE lines above."
+          fi
           if [ "$http_code" -ge 400 ]; then exit 1; fi
 
           # ── THE RUN HAS TO GO RED WHEN THE BOARD STOPS UPDATING ──────────

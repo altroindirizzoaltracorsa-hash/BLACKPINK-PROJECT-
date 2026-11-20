@@ -275,6 +275,30 @@ const LASTFM_RETRYABLE_ERRORS = new Set([8, 11, 16]);
 // it privately is right. A 29 is the KEY being over budget: every other request
 // in flight is about to get one too, so the whole run has to slow down.
 const LASTFM_RATE_LIMIT_ERROR = 29;
+// 6 = "Track not found" — NOT A FAILURE, and treating it as one took the board
+// down the moment "Sun Showers" was added to TRACKS. Last.fm creates a track's
+// page on its first scrobble anywhere, so for the first hours of a release
+// track.getInfo answers 6 for a song thousands of people are playing. That
+// throw propagated out of refreshUser's Promise.all and failed the WHOLE user,
+// so one brand-new title failed every account that had scrobbled anything:
+// 46 of 51 on run 44721468785, every one of them "error 6: Track not found".
+// The five that survived were the idle ones, which skip the per-track reads
+// altogether — which is the shape that identifies this rather than a key
+// problem.
+//
+// A track with no page has a userplaycount of 0 for everyone, so 0 is the
+// honest answer and the only one that lets the other 17 figures through.
+const LASTFM_TRACK_NOT_FOUND = 6;
+// WHICH TITLES CAME BACK 6, so that swallowing the error cannot hide a title
+// WE have wrong. That is the real risk here: error 6 is also what a misspelled
+// entry in TRACKS returns, and "Someone to Hold" already cost this repo an
+// all-time figure that read 0 while the day and week counts were correct. A
+// missing title is reported in the response body and the workflow warns on it,
+// so a release-day 6 (which clears itself) and a permanently wrong title (which
+// does not) look the same for one day and then diverge.
+//
+// Module-level like lfmCalls, and zeroed per run for the same reason.
+let lfmMissingTracks = new Set();
 
 // WHY THERE IS A RATE GATE HERE AT ALL — the scrobble outage of early November
 // 2026, reported as "no están contando mis reproducciones desde hace días".
@@ -345,7 +369,11 @@ async function lfmFetch(params, attempt = 0) {
       await new Promise(res => setTimeout(res, 500 * 3 ** attempt));
       return lfmFetch(params, attempt + 1);
     }
-    throw new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
+    const err = new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
+    // Carried numerically so a caller can test the CODE rather than regex the
+    // message, which is how `rateLimited` has to do it below and is fragile.
+    err.lfmError = data.error;
+    throw err;
   }
   return data;
 }
@@ -361,7 +389,19 @@ async function librefmFetch(params) {
 }
 
 async function fetchTrackPlays(username, artist, track, fetchFn = lfmFetch) {
-  const d = await fetchFn({ method: 'track.getInfo', artist, track, username });
+  let d;
+  try {
+    d = await fetchFn({ method: 'track.getInfo', artist, track, username });
+  } catch (e) {
+    // "Track not found" is an answer, not an outage — see LASTFM_TRACK_NOT_FOUND.
+    // Libre.fm's error object has no code attached, hence the message fallback.
+    const code = e?.lfmError;
+    if (code === LASTFM_TRACK_NOT_FOUND || /error 6\b/.test(String(e?.message || ''))) {
+      lfmMissingTracks.add(`${artist} — ${track}`);
+      return 0;
+    }
+    throw e;
+  }
   return parseInt(d?.track?.userplaycount || '0', 10);
 }
 
@@ -1137,7 +1177,26 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
   // Whole campaign incl. the Fallen Angel EP (LTAL + Fallen Angel + Heaven) so a
   // new release lifts the board. Mirrors CAMPAIGN_TOTAL_IDS / rankTids on the client
   // + leaderboard.js. (Per-track EP boards stay separate via overall_fallenangel/heaven.)
-  const campaignTotal  = totalPlays.jump + totalPlays.shutdown + totalPlays.ddududu + totalPlays.ltal + totalPlays.go + totalPlays.sawadika + totalPlays.click + totalPlays.fallenangel + totalPlays.heaven + totalPlays.newtrick + totalPlays.v12 + totalPlays.cobra + totalPlays.tarantino + totalPlays.cutuoff + totalPlays.sweat + totalPlays.addicted + totalPlays.sth + totalPlays.lwm;
+  // ── THE THREE *_all SUMS ARE DERIVED, NOT TYPED ──────────────────────────
+  //
+  // They were typed out, one `totalPlays.x +` per track, and they stopped at
+  // `lwm`: so POWER TRIP had been missing from overall_all / daily_all /
+  // weekly_all since the day it shipped, and Sun Showers would have been too.
+  // A fan's campaign total read low by however much they had streamed the
+  // newest song — the one release they were most likely to be streaming.
+  //
+  // The client never had this bug: index.html reduces CAMPAIGN_TOTAL_IDS
+  // (campaignTotalOf). So the two sides disagreed about the same fan's total
+  // depending on whether the cron or their own visit wrote it last, which is
+  // invisible in either number on its own.
+  //
+  // TRACKS is the same set as the client's CAMPAIGN_TOTAL_IDS —
+  // test_scrobbler_track_lists pins that — so reducing over it is the server's
+  // equivalent of campaignTotalOf, and a release is now counted by being added
+  // to TRACKS and nowhere else. Same rule as the community-goal heading being
+  // built rather than written out.
+  const sumTracks = (counts) => TRACKS.reduce((n, t) => n + (counts[t.id] || 0), 0);
+  const campaignTotal  = sumTracks(totalPlays);
 
   return {
     username:      displayName,
@@ -1180,7 +1239,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
       overall_powertrip: totalPlays.powertrip,
       overall_sunshowers: totalPlays.sunshowers,
       overall_artist:   artistPlays,
-      daily_all:        (todayCounts.jump || 0) + (todayCounts.shutdown || 0) + (todayCounts.ddududu || 0) + (todayCounts.ltal || 0) + (todayCounts.go || 0) + (todayCounts.sawadika || 0) + (todayCounts.click || 0) + (todayCounts.fallenangel || 0) + (todayCounts.heaven || 0) + (todayCounts.newtrick || 0) + (todayCounts.v12 || 0) + (todayCounts.cobra || 0) + (todayCounts.tarantino || 0) + (todayCounts.cutuoff || 0) + (todayCounts.sweat || 0) + (todayCounts.addicted || 0) + (todayCounts.sth || 0) + (todayCounts.lwm || 0),
+      daily_all:        sumTracks(todayCounts),
       daily_jump:       todayCounts.jump     || 0,
       daily_shutdown:   todayCounts.shutdown || 0,
       daily_ddududu:    todayCounts.ddududu  || 0,
@@ -1202,7 +1261,7 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
       daily_powertrip: todayCounts.powertrip || 0,
       daily_sunshowers: todayCounts.sunshowers || 0,
       daily_date:       todayLabel,
-      weekly_all:       (weekCounts.jump || 0) + (weekCounts.shutdown || 0) + (weekCounts.ddududu || 0) + (weekCounts.ltal || 0) + (weekCounts.go || 0) + (weekCounts.sawadika || 0) + (weekCounts.click || 0) + (weekCounts.fallenangel || 0) + (weekCounts.heaven || 0) + (weekCounts.newtrick || 0) + (weekCounts.v12 || 0) + (weekCounts.cobra || 0) + (weekCounts.tarantino || 0) + (weekCounts.cutuoff || 0) + (weekCounts.sweat || 0) + (weekCounts.addicted || 0) + (weekCounts.sth || 0) + (weekCounts.lwm || 0),
+      weekly_all:       sumTracks(weekCounts),
       weekly_jump:      weekCounts.jump     || 0,
       weekly_shutdown:  weekCounts.shutdown || 0,
       weekly_ddududu:   weekCounts.ddududu  || 0,
@@ -1523,6 +1582,7 @@ export default async function handler(req, res) {
   // reported figure is "every call this container ever made".
   lfmCalls    = 0;
   lfmNextSlot = 0;
+  lfmMissingTracks = new Set();
   let   stoppedAt     = null;   // first user not reached, if we ran out of time
 
   const ok        = [];
@@ -2091,6 +2151,10 @@ export default async function handler(req, res) {
     // the figure to watch: it was ~3,600 before the idle gate.
     lastfmCalls:  lfmCalls,
     rateLimited,
+    // Titles Last.fm answered "Track not found" for. Expected and transient on
+    // a release day; a title still listed here a day later is OUR spelling
+    // being wrong, and its all-time figure is reading 0 for everybody.
+    missingTracks: [...lfmMissingTracks],
     startedFrom:  startAt ? users[0]?.username : null,
     stoppedAt,
     tookMs:       Date.now() - runStartedAt,

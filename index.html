@@ -14211,7 +14211,11 @@ async function lfmFetch(params) {
     const r = await fetch('/api/lastfm?' + new URLSearchParams(params), { cache: 'no-store', signal: controller.signal });
     const data = await r.json();
     if (!r.ok) throw new Error(data?.message || `Last.fm unavailable (${r.status})`);
-    if (data?.error) throw new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
+    if (data?.error) {
+      const err = new Error(`Last.fm error ${data.error}: ${data.message || ''}`);
+      err.lfmError = data.error;   // testable code, not a regex on the message
+      throw err;
+    }
     return data;
   } catch (e) {
     if (e.name === 'AbortError') throw new Error('Last.fm is taking too long to respond — please try again');
@@ -14450,8 +14454,27 @@ async function fetchUserInfo(username, fetchFn = lfmFetch) {
   throw new Error(d?.message || 'User not found');
 }
 
+// Last.fm error 6 is "Track not found", which is NOT a failure: Last.fm creates
+// a track's page on its first scrobble anywhere, so for the first hours of a
+// release this answers 6 for a song thousands of people are playing. Letting it
+// throw broke every refresh the moment a brand-new title entered TRACKS — on
+// the server that failed 46 of 51 accounts in one run, and here it would take
+// the whole badges refresh down for every signed-in fan, which is worse,
+// because it is the page they are looking at.
+//
+// A track with no page has a userplaycount of 0 for everyone, so 0 is the
+// honest answer and it lets the other seventeen figures through. It self-heals:
+// once the page exists, the next scrobble of that song puts it in the delta and
+// the real total is read then.
 async function fetchTrackPlays(username, artist, track, fetchFn = lfmFetch) {
-  const d = await fetchFn({ method: 'track.getInfo', artist, track, username });
+  let d;
+  try {
+    d = await fetchFn({ method: 'track.getInfo', artist, track, username });
+  } catch (e) {
+    // Libre.fm's thrown error carries no code, hence the message fallback.
+    if (e?.lfmError === 6 || /error 6\b/.test(String(e?.message || ''))) return 0;
+    throw e;
+  }
   return parseInt(d?.track?.userplaycount || '0', 10);
 }
 
