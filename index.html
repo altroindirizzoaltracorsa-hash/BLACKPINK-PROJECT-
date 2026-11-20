@@ -10469,7 +10469,15 @@ async function validateScrobblerUsername(source, username) {
 // board display name (the LALALAMESAA nickname-mismatch bug). Only reshapes the
 // name-based scrobblers; musicat/statsfm ids pass through untouched.
 function sanitizeScrobblerUsername(source, raw) {
-  let u = String(raw || '').trim();
+  // A LEADING '@' IS NEVER PART OF A HANDLE, whatever the provider. People
+  // write a Stats.fm handle as '@name' because that is how the site displays
+  // it, and this function used to return early for Stats.fm and Musicat — so
+  // it was stored exactly as typed and Stats.fm's API, which does not resolve
+  // '@name', answered with nothing. That is how one row ended up carrying the
+  // same account as both 'name' and '@name'. Stripping it here is what stops
+  // new rows being created that way; the dedup below and in
+  // api/cron-scrobbles.js is what makes the existing ones safe.
+  let u = String(raw || '').trim().replace(/^@+/, '');
   if (!(source === 'lastfm' || source === 'librefm' || source === 'listenbrainz')) return u;
   // 1) A pasted profile URL/title → take the /user/<name> segment.
   const m = u.match(/(?:last\.fm|libre\.fm|listenbrainz\.org)\/user\/([^/\s?#|]+)/i);
@@ -15716,8 +15724,20 @@ async function loadMultiAccountProfile(accounts) {
 
   // Deduplicate by source+username in case the same account was linked twice
   const _seen = new Set();
+  // NORMALISED KEY. This deduped on the RAW handle, so 'name' and '@name' were
+  // two different keys and both survived. That was harmless only for as long as
+  // Stats.fm refused to resolve '@name' and the second one came back empty —
+  // and the moment /api/statsfm was taught to strip the '@' (so the first one
+  // would work at all), both spellings started returning the SAME account and
+  // this page would have added it twice, then submitted the doubled figure to
+  // the board. The server's loop got this guard in the same change; this is the
+  // half that was missed, and it is the half the fan actually looks at.
+  //
+  // Lowercased because scrobbler handles are case-insensitive, and the leading
+  // '@' dropped the same way api/cron-scrobbles.js's normHandle does. Only a
+  // LEADING one — some handles are email-shaped.
   const _accounts = accounts.filter(a => {
-    const k = `${a.source}:${a.source_username}`;
+    const k = `${a.source}:${String(a.source_username || '').trim().replace(/^@+/, '').toLowerCase()}`;
     if (_seen.has(k)) return false;
     _seen.add(k); return true;
   });

@@ -219,6 +219,31 @@ console.log('--- /api/statsfm resolves either spelling');
         'the endpoint strips a leading @ from ?user=', line.trim().slice(0, 80));
 }
 
+// ── 8. THE BADGES PAGE DEDUPS TOO ─────────────────────────────────────────
+// The server is not the only thing that walks a fan's linked accounts. The
+// badges page builds its own per-account breakdown and SUBMITS the total, so a
+// double count there reaches the board just the same. Its filter keyed on the
+// RAW handle, which was harmless only while Stats.fm refused to resolve
+// '@name' — teaching /api/statsfm to strip the '@' is exactly what would have
+// armed it.
+console.log('--- the badges page dedups on a normalised handle too');
+{
+  const html = readFileSync(root + 'index.html', 'utf8');
+  const m = html.match(/const _accounts = accounts\.filter\(a => \{[\s\S]{0,400}?\}\);/);
+  check(!!m, 'found the client account filter');
+  if (m) {
+    check(/replace\(\/\^@\+?\//.test(m[0]),
+          'its dedup key strips a leading @', m[0].split('\n').find(l => l.includes('const k')) ?.trim().slice(0, 90));
+    check(/toLowerCase\(\)/.test(m[0]), 'and lowercases, since handles are case-insensitive');
+  }
+  // And the link form must not store an '@' in the first place.
+  const san = html.slice(html.indexOf('function sanitizeScrobblerUsername'));
+  const body = san.slice(0, san.indexOf('\n}') + 2);
+  check(/replace\(\/\^@\+?\//.test(body),
+        'sanitizeScrobblerUsername strips a leading @ before the per-source early return',
+        body.split('\n').find(l => l.includes('let u =')) ?.trim().slice(0, 80));
+}
+
 console.log('');
 if (fails) { console.log(`${fails} FAILED`); process.exit(1); }
 console.log('All correct.');
