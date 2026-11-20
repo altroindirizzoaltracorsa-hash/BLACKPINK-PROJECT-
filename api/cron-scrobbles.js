@@ -1576,7 +1576,28 @@ export default async function handler(req, res) {
   // means the 300s tier. If a run is ever killed mid-write, set
   // SCROBBLE_RUN_BUDGET_MS in the Vercel env to put it back — no deploy needed,
   // which is why this is a default and not a constant.
-  const RUN_BUDGET_MS = Number(process.env.SCROBBLE_RUN_BUDGET_MS || 240000);
+  // ── 190s, NOT 240s, AND THE REASON IS THE WALL ABOVE IT ──────────────────
+  //
+  // Vercel kills this invocation at 300s. The budget only bounds the USER LOOP;
+  // everything after it still has to run — the daily archive, the board write,
+  // and SEVEN separate guarded user_daily_counts upserts, each a select plus an
+  // upsert over every id in the run. That tail is not free and it is not
+  // bounded by this number.
+  //
+  // At 240s it did not fit. Run 44723785222, the first one after the error-6
+  // fix: HTTP 504 FUNCTION_INVOCATION_TIMEOUT at exactly 300s, so the tail
+  // needed more than the 60s left for it and the response never came back —
+  // which also means the lock was never released on the way out and the next
+  // scheduler waits out CRON_LOCK_TTL_S instead.
+  //
+  // IT ONLY STARTED OVERRUNNING WHEN THE REFRESH STARTED WORKING. While error 6
+  // was failing 46 of 51 users the loop gave up early and the tail was cheap, so
+  // 240s looked fine. Fixing the failure is what revealed the budget was set
+  // against a broken run.
+  //
+  // Still an env-var default, for the reason it always was: it can be moved
+  // without a deploy if a run is killed mid-write again.
+  const RUN_BUDGET_MS = Number(process.env.SCROBBLE_RUN_BUDGET_MS || 190000);
   const runStartedAt  = Date.now();
   // Module-level, so it carries over on a warm instance. Zero it per run or the
   // reported figure is "every call this container ever made".

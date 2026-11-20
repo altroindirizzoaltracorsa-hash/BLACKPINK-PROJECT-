@@ -59,6 +59,19 @@ jobs:
           echo "--- response body ---"
           cat response.json
           echo ""
+          # ── A NON-JSON BODY IS ITS OWN FAILURE, SAID ONCE ────────────────
+          #
+          # A 504 FUNCTION_INVOCATION_TIMEOUT is an HTML-ish error page, and
+          # every jq below then prints "parse error: Invalid numeric literal"
+          # — seven identical lines that say nothing about what happened. Run
+          # 44723785222 failed exactly that way. Name it instead, and stop:
+          # there are no counts to summarise, and a timeout means the run was
+          # killed mid-write, so the lock is still held and the next scheduled
+          # run will be turned away until CRON_LOCK_TTL_S expires.
+          if ! jq -e . response.json >/dev/null 2>&1; then
+            echo "::error title=The endpoint did not return JSON::HTTP $http_code with a non-JSON body (see above). If it is FUNCTION_INVOCATION_TIMEOUT the run exceeded Vercel's 300s wall: lower SCROBBLE_RUN_BUDGET_MS (the loop budget does NOT cover the archive/upsert tail) and expect the Redis lock to block the next run until it expires."
+            exit 1
+          fi
           echo "--- summary ---"
           jq -r '"refreshed: \(.refreshed | length) · failed: \(.failed | length) · dead (skipped): \(.dead // [] | length) · unverified (skipped): \(.unverified | length) · merged duplicates: \(.merged | length)"' response.json || true
           jq -r '"last.fm calls: \(.lastfmCalls // "?") · rate-limited: \(.rateLimited // 0) · took: \(.tookMs // "?")ms · started from: \(.startedFrom // "top") · stopped at: \(.stoppedAt // "finished")"' response.json || true
