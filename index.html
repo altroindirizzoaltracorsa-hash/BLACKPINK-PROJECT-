@@ -4091,6 +4091,13 @@
   .ytvd-title { font-family:var(--display); font-size:clamp(1.3rem,6vw,1.9rem);
     line-height:1.15; color:var(--v-text); margin:0 0 0.35rem; }
   .ytvd-sub { font-family:var(--mono); font-size:0.62rem; color:var(--muted); margin:0 0 0.9rem; }
+  .ytvd-subs { font-family:var(--mono); font-size:0.62rem; color:var(--muted); margin:0 0 0.9rem; }
+  .ytvd-subs b { color:var(--v-text); font-weight:600; }
+  .ytvd-subs small { opacity:0.6; }
+  /* Five columns on a phone is tight; the table scrolls sideways in its own
+     box rather than making the whole page scroll. */
+  .ytm-hist-wrap { overflow-x:auto; }
+  .ytm-hist-likes, .ytm-hist-comments { color:rgba(245,240,240,0.62); }
   .ytvd-watch { display:inline-block; font-family:var(--mono); font-size:0.6rem;
     letter-spacing:0.08em; text-transform:uppercase; text-decoration:none;
     color:var(--v-pink); border:1px solid rgba(255,45,122,0.42); border-radius:99px;
@@ -29096,19 +29103,30 @@ async function loadYtVideoPage() {
     // The reader may have gone back, or opened another video, while this was
     // in flight — rendering then would drop one video's table under another
     // video's heading.
-    if (_ytmHistVid === vid) { ytvdHead(d.title || seed?.title || '', seed?.sub || '', vid); ytmHistRender(d); }
+    if (_ytmHistVid === vid) { ytvdHead(d.title || seed?.title || '', seed?.sub || '', vid, d); ytmHistRender(d); }
   } catch (e) {
     if (_ytmHistVid === vid) body.innerHTML = '<p class="ytm-hist-empty">Could not load the history.</p>';
   }
 }
 
-function ytvdHead(title, sub, vid) {
+function ytvdHead(title, sub, vid, d) {
   const head = document.getElementById('ytvd-head');
   if (!head) return;
+  // SUBSCRIBERS ARE ROUNDED BY YOUTUBE to three significant figures, and have
+  // been since 2019 — 95.8M, never 95,812,043. So the level is shown and no
+  // daily gain is derived from it anywhere: the rounding step on a channel
+  // this size is 100,000, and a "gain" would sit at 0 for days and then jump
+  // by a whole step. That is the rounding being observed, not the fandom.
+  const subs = d && d.subscribers != null
+    ? `<p class="ytvd-subs">${escapeHtml(d.channel || 'Channel')} ·
+         <b>${ytmShort(d.subscribers)}</b> subscribers
+         <small>rounded by YouTube</small></p>`
+    : '';
   head.innerHTML = `
     <p class="ytvd-eyebrow">View history</p>
     <h1 class="ytvd-title">${escapeHtml(title || 'This video')}</h1>
     ${sub ? `<p class="ytvd-sub">${escapeHtml(sub)}</p>` : ''}
+    ${subs}
     <a class="ytvd-watch" href="https://www.youtube.com/watch?v=${encodeURIComponent(vid)}"
        target="_blank" rel="noopener">Watch on YouTube ↗</a>`;
 }
@@ -29130,23 +29148,30 @@ function ytmHistRender(d) {
   const tabs = YTM_HIST_TABS.map(([k, label]) =>
     `<button class="ytm-hist-tab${k === _ytmHistTab ? ' on' : ''}" type="button"
              onclick="ytmHistSetTab(this, '${k}')">${label}</button>`).join('');
+  // A DASH, NOT A ZERO, wherever a figure was not published: likes are absent
+  // when the uploader hides them and comments when they are switched off,
+  // which is ordinary on a soundtrack upload. A 0 would say nobody did it.
+  const num = (n) => n == null ? '—' : Number(n).toLocaleString('en-US');
   const rowsHtml = rows.map(r => `<tr>
       <td class="ytm-hist-when">${escapeHtml(r.label)}</td>
       <td class="ytm-hist-views">${Number(r.views).toLocaleString('en-US')}</td>
       <td class="ytm-hist-gain ${r.gain == null ? '' : (r.gain < 0 ? 'down' : 'up')}">${
         r.gain == null ? '—' : ytmGain(r.gain)}</td>
+      <td class="ytm-hist-likes">${num(r.likes)}</td>
+      <td class="ytm-hist-comments">${num(r.comments)}</td>
     </tr>`).join('');
   // The oldest row of every view carries no gain: there is no reading before
   // it to measure from. A dash says that; a 0 would be a lie, and the video's
   // whole view count would be an even bigger one.
   body.innerHTML = `
     <div class="ytm-hist-tabs">${tabs}</div>
-    <table class="ytm-hist-table">
+    <div class="ytm-hist-wrap"><table class="ytm-hist-table">
       <thead><tr><th>${_ytmHistTab === 'daily' ? 'Day' : _ytmHistTab === 'weekly' ? 'Week' : 'Month'}</th>
-                 <th>Views</th><th>Gained</th></tr></thead>
+                 <th>Views</th><th>Gained</th><th>Likes</th><th>Comments</th></tr></thead>
       <tbody>${rowsHtml}</tbody>
-    </table>
+    </table></div>
     <p class="ytm-hist-note">Tracked since <b>${escapeHtml(d.first)}</b> · ${d.readings} readings.
+      Likes and comments are the totals on that day, not that day's gain.
       No yearly view yet — that needs a year of readings.</p>`;
 }
 

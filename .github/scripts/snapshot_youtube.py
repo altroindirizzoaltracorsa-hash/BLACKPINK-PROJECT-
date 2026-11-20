@@ -170,6 +170,12 @@ def build_rows(videos, refs, prev, now):
             "views": v["views"],
             "daily_delta": delta,
             "hours_since": hours,
+            # NULL IS NOT ZERO. likeCount is absent when the uploader hides it
+            # and commentCount when comments are off — common on a soundtrack
+            # upload. `or None` would be wrong here and `v.get(...)` is what
+            # keeps a genuine 0 distinct from a missing figure.
+            "like_count": v.get("likes"),
+            "comment_count": v.get("comments"),
             "captured_at": now.isoformat(),
         })
     return day, rows, skipped
@@ -181,6 +187,51 @@ def write(rows):
            params={"on_conflict": "video_ref,date"},
            headers={"Prefer": "resolution=merge-duplicates"},
            json=rows[i:i + CHUNK])
+
+
+def upsert_channels(channels):
+    """channel_id -> row id, for the subscriber series."""
+    rows = [{"channel_id": c["id"], "title": c.get("title")}
+            for c in channels if c.get("id")]
+    if not rows:
+        return {}
+    sb("POST", "/youtube_channels",
+       params={"on_conflict": "channel_id"},
+       headers={"Prefer": "resolution=merge-duplicates"},
+       json=rows)
+    got = sb("GET", "/youtube_channels",
+             params={"select": "id,channel_id",
+                     "channel_id": "in.(" + ",".join(c["channel_id"] for c in rows) + ")"})
+    return {r["channel_id"]: r["id"] for r in got}
+
+
+def write_channel_stats(channels, refs, day, now):
+    """One subscriber reading per channel per day.
+
+    NO DELTA COLUMN, deliberately — see the migration. YouTube rounds
+    subscriber counts to three significant figures, so on a 95.8M channel the
+    step is 100,000 and a day-over-day difference reports the rounding rather
+    than the fandom: several days of exactly 0, then a jump of one whole step.
+    The level is worth keeping; a daily gain derived from it would not be.
+    """
+    rows = []
+    for c in channels:
+        ref = refs.get(c.get("id"))
+        if ref is None:
+            continue
+        rows.append({
+            "channel_ref": ref,
+            "date": day,
+            # None when the channel hides its count — not 0.
+            "subscribers": c.get("subscribers"),
+            "captured_at": now.isoformat(),
+        })
+    if rows:
+        sb("POST", "/youtube_channel_daily_stats",
+           params={"on_conflict": "channel_ref,date"},
+           headers={"Prefer": "resolution=merge-duplicates"},
+           json=rows)
+    return len(rows)
 
 
 def report_fresh(videos):
@@ -243,6 +294,29 @@ def main():
     if skipped:
         print(f"  ⚠ {skipped} video(s) had no row id and were skipped", file=sys.stderr)
     write(rows)
+
+    # Subscribers, per channel rather than per video. Guarded on its own so a
+    # table that has not been migrated yet cannot take the view snapshot down
+    # with it — the views are the thing this job exists for, and they are
+    # already written by the line above.
+    try:
+        chans = d.get("channels") or []
+        chan_refs = upsert_channels(chans)
+        n = write_channel_stats(chans, chan_refs, day, now)
+        hidden = sum(1 for c in chans if c.get("subscribers") is None)
+        print(f"  subscribers: {n} channel row(s)"
+              + (f", {hidden} hidden by the channel" if hidden else ""))
+    except Exception as e:                                   # noqa: BLE001
+        print(f"  ⚠ subscriber rows skipped ({e}) — views are unaffected",
+              file=sys.stderr)
+
+    # How many videos published each figure. A soundtrack upload with comments
+    # off is normal; ALL of them going null overnight is the catalog endpoint
+    # having stopped asking for the statistics part, which is silent otherwise.
+    no_likes = sum(1 for r in rows if r["like_count"] is None)
+    no_comments = sum(1 for r in rows if r["comment_count"] is None)
+    print(f"  likes: {len(rows) - no_likes}/{len(rows)} published"
+          f" · comments: {len(rows) - no_comments}/{len(rows)} published")
 
     first = sum(1 for r in rows if r["daily_delta"] is None)
     moved = sum(1 for r in rows if (r["daily_delta"] or 0) > 0)

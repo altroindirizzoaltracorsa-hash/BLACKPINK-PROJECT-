@@ -131,6 +131,45 @@ console.log('\n--- ordering and labels');
   check(/^Oct 2026$/.test(monthly[0].label), 'months name the month', monthly[0].label);
 }
 
+console.log('\n--- likes, comments and subscribers');
+{
+  // These cost NO extra quota: api/youtube-catalog.js already asks YouTube for
+  // part=statistics, which carries likeCount and commentCount beside
+  // viewCount. They were parsed past and dropped.
+  const cat = readFileSync(root + 'api/youtube-catalog.js', 'utf8');
+  check(/likes: it\.statistics\?\.likeCount/.test(cat), 'likes are kept from the stats already fetched');
+  check(/comments: it\.statistics\?\.commentCount/.test(cat), '  and comments too');
+  check(!/part: 'statistics,snippet,contentDetails'[^]*?part: 'statistics/.test(cat) &&
+        (cat.match(/part: 'statistics,snippet,contentDetails'/g) || []).length === 1,
+        '  from the one videos call, not a second one');
+  // Subscribers needed only `statistics` adding to a channels call that was
+  // already being made.
+  check(/snippet,contentDetails,statistics/.test(cat), '  subscribers ride on the channels call');
+  check(/hiddenSubscriberCount/.test(cat),
+        '  and a channel that hides its count yields null, not 0');
+
+  // NULL IS NOT ZERO anywhere in this chain. A video with comments off has no
+  // comment count; it does not have zero comments. Collapsing the two invents
+  // a fact — and would read a switch being flipped as every comment being
+  // deleted.
+  const api2 = readFileSync(root + 'api/youtube-video-history.js', 'utf8');
+  check(/likes:\s+r\.like_count\s+== null \? null : Number/.test(api2),
+        'the history preserves a missing like count as null');
+  check(/comments: r\.comment_count == null \? null : Number/.test(api2),
+        '  and a missing comment count');
+  const snap = readFileSync(root + '.github/scripts/snapshot_youtube.py', 'utf8');
+  check(/"like_count": v\.get\("likes"\)/.test(snap) && !/v\.get\("likes"\) or 0/.test(snap),
+        '  and the snapshot writes null rather than coercing to 0');
+  // NO SUBSCRIBER GAIN, ANYWHERE. YouTube rounds the count to three
+  // significant figures, so on a 95.8M channel the step is 100,000: a true
+  // gain of 20,000 a day shows as four days of nothing and then a jump of a
+  // whole step. A "daily subscribers" figure would be the rounding presented
+  // as fan behaviour.
+  const mig = readFileSync(root + 'supabase/migrations/youtube_likes_comments_subs.sql', 'utf8');
+  check(!/daily_delta/.test(mig.split('youtube_channel_daily_stats')[1] || ''),
+        'the channel table has no delta column, because the counts are rounded');
+}
+
 console.log('\n--- the page, and what it refuses to show');
 const site = readFileSync(root + 'index.html', 'utf8');
 // A PAGE AT /youtube/<video id>. It was a panel inside the card first (a
@@ -138,6 +177,18 @@ const site = readFileSync(root + 'index.html', 'utf8');
 // screen) and then an overlay sheet (covers the board, and has no address).
 // A page has a URL: bookmarkable, pasteable, and the back button works.
 check(/id="page-ytvideo"/.test(site), 'the history is its own page');
+// A DASH FOR EVERY UNPUBLISHED FIGURE — a 0 would say nobody did it.
+check(/r\.gain == null \? '—'/.test(site) && /n == null \? '—'/.test(site),
+      '  printing a dash for a figure that was never published, not a zero');
+// The subscriber count is YouTube's rounded one and is labelled as such, and
+// no gain is derived from it anywhere: the rounding step on a 95.8M channel
+// is 100,000, so a "daily subscribers" figure would be the rounding presented
+// as fan behaviour.
+check(/rounded by YouTube/.test(site), '  saying the subscriber count is rounded');
+check(!/subscriber.{0,20}gain|gain.{0,20}subscriber/i.test(site),
+      '  and showing no subscriber gain anywhere');
+// Dislikes left the API in December 2021; nothing should claim to have them.
+check(!/dislike/i.test(site), '  and claiming no dislike count, which YouTube stopped publishing');
 check(!/ytm-hist-overlay|ytm-hist-sheet|closeYtmHistory/.test(site),
       '  with no overlay left behind');
 // The route. The trailing slash is load-bearing: '/youtube-charts' is a

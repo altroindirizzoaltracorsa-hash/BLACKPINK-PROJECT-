@@ -125,6 +125,16 @@ async function resolveChannels({ explicit, seeds }, key) {
           id: c.id,
           title: c.snippet?.title || '',
           uploads: c.contentDetails?.relatedPlaylists?.uploads || null,
+          // SUBSCRIBERS ARE ROUNDED BY YOUTUBE to three significant figures —
+          // 95.8M, never 95,812,043 — and have been since 2019. Kept because
+          // the number itself is worth showing; NOT turned into a daily gain
+          // anywhere, because at this scale the rounding step is ~100,000 and
+          // a "gain" would read 0 for days and then jump by the step. That
+          // would be an artefact of the rounding presented as fan behaviour.
+          // A channel that hides its count returns nothing here, hence null.
+          subscribers: c.statistics?.hiddenSubscriberCount
+            ? null
+            : (Number(c.statistics?.subscriberCount) || null),
         });
       }
     }
@@ -133,10 +143,10 @@ async function resolveChannels({ explicit, seeds }, key) {
   if (explicit.length) {
     const ids = explicit.filter(x => !x.startsWith('@'));
     const handles = explicit.filter(x => x.startsWith('@'));
-    if (ids.length) take((await api('channels', { part: 'snippet,contentDetails', id: ids.join(','), maxResults: '50' }, key)).items);
+    if (ids.length) take((await api('channels', { part: 'snippet,contentDetails,statistics', id: ids.join(','), maxResults: '50' }, key)).items);
     for (const h of handles) {
       try {
-        const r = await api('channels', { part: 'snippet,contentDetails', forHandle: h }, key);
+        const r = await api('channels', { part: 'snippet,contentDetails,statistics', forHandle: h }, key);
         if (r.items?.length) take(r.items); else missed.push(h);
       } catch { missed.push(h); }
     }
@@ -149,12 +159,12 @@ async function resolveChannels({ explicit, seeds }, key) {
   if (seeds.length) {
     const vids = await api('videos', { part: 'snippet', id: seeds.join(','), maxResults: '50' }, key);
     const chIds = [...new Set((vids.items || []).map(v => v.snippet?.channelId).filter(Boolean))];
-    if (chIds.length) take((await api('channels', { part: 'snippet,contentDetails', id: chIds.join(','), maxResults: '50' }, key)).items);
+    if (chIds.length) take((await api('channels', { part: 'snippet,contentDetails,statistics', id: chIds.join(','), maxResults: '50' }, key)).items);
   }
   // Then handles, for the channels no seed video covered.
   for (const h of HANDLES) {
     try {
-      const r = await api('channels', { part: 'snippet,contentDetails', forHandle: h }, key);
+      const r = await api('channels', { part: 'snippet,contentDetails,statistics', forHandle: h }, key);
       if (r.items?.length) take(r.items); else missed.push(h);
     } catch { missed.push(h); }
   }
@@ -263,6 +273,19 @@ export default async function handler(req, res) {
           duration: it.contentDetails?.duration || null,
           durationSec,
           views,
+          // ALREADY IN THE RESPONSE. The statistics part this call asks for
+          // carries likeCount and commentCount beside viewCount; they were
+          // being parsed past and dropped. No extra request, no extra quota.
+          //
+          // Both can be legitimately ABSENT rather than zero: commentCount is
+          // missing when comments are turned off, and likeCount when the
+          // uploader hides it. null says "not published", 0 says "nobody did
+          // it", and collapsing the two would invent a fact.
+          //
+          // There is no dislike count to add — YouTube stopped publishing it
+          // in December 2021.
+          likes: it.statistics?.likeCount == null ? null : Number(it.statistics.likeCount),
+          comments: it.statistics?.commentCount == null ? null : Number(it.statistics.commentCount),
           next,
           gap: next - views,
         };
@@ -272,6 +295,7 @@ export default async function handler(req, res) {
       }
       channels.push({
         id: ch.id, title: ch.title, uploads: ids.length, videos: kept,
+        subscribers: ch.subscribers ?? null,
         // 600 uploads from a 12-page cap is not "600 uploads", it is "we
         // stopped looking". Say so rather than reporting a truncated walk as
         // a complete one.

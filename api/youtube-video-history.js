@@ -88,6 +88,8 @@ export function bucketBy(series, keyOf, labelOf) {
     const b = byKey.get(k);
     // series is ascending, so the last row seen in a bucket is its latest.
     b.views = Number(r.views);
+    b.likes    = r.like_count    == null ? null : Number(r.like_count);
+    b.comments = r.comment_count == null ? null : Number(r.comment_count);
     b.date = r.date;
   }
   const out = order.map(k => byKey.get(k));
@@ -98,6 +100,8 @@ export function bucketBy(series, keyOf, labelOf) {
     to: b.date,
     views: b.views,
     gain: bucketGain(b, i, out),
+    likes: b.likes,
+    comments: b.comments,
   }));
 }
 
@@ -123,6 +127,11 @@ export function buildDaily(series) {
       views: Number(r.views),
       gain,
       hours: Number.isFinite(hrs) ? hrs : null,
+      // NULL IS NOT ZERO: likes are absent when the uploader hides them and
+      // comments when they are switched off, which is common on a soundtrack
+      // upload. A 0 would say nobody did it.
+      likes:    r.like_count    == null ? null : Number(r.like_count),
+      comments: r.comment_count == null ? null : Number(r.comment_count),
     };
   });
 }
@@ -154,7 +163,7 @@ export default async function handler(req, res) {
 
   try {
     const vids = await sbRest('/youtube_videos', {
-      select: 'id,video_id,title,channel,kind',
+      select: 'id,video_id,title,channel,channel_id,kind',
       video_id: `eq.${videoId}`,
       limit: '1',
     });
@@ -166,7 +175,7 @@ export default async function handler(req, res) {
     // Ascending, so buckets build in order and "the last row in this bucket"
     // is simply the last one seen.
     const series = await sbRest('/youtube_video_daily_stats', {
-      select: 'date,views,daily_delta,hours_since,captured_at',
+      select: 'date,views,daily_delta,hours_since,like_count,comment_count,captured_at',
       video_ref: `eq.${v.id}`,
       order: 'date.asc',
       limit: '4000',
@@ -184,6 +193,32 @@ export default async function handler(req, res) {
 
     const { weekly, monthly } = buildBuckets(series);
 
+    // The channel's subscriber level, for the page header. Its OWN query and
+    // its own try/catch: these tables are newer than the video ones, so a
+    // database that has not had the migration applied yet must still serve
+    // the history rather than erroring on a header line.
+    //
+    // NO SUBSCRIBER GAIN IS COMPUTED. YouTube rounds the count to three
+    // significant figures, so on a 95.8M channel the step is 100,000 and a
+    // day-over-day difference reports the rounding, not the fandom: several
+    // days of exactly 0 and then one jump of a whole step.
+    let subscribers = null, subscribersAt = null;
+    try {
+      const chans = await sbRest('/youtube_channels', {
+        select: 'id', channel_id: `eq.${v.channel_id || ''}`, limit: '1',
+      });
+      if (chans.length) {
+        const rows = await sbRest('/youtube_channel_daily_stats', {
+          select: 'subscribers,date', channel_ref: `eq.${chans[0].id}`,
+          order: 'date.desc', limit: '1',
+        });
+        if (rows.length && rows[0].subscribers != null) {
+          subscribers = Number(rows[0].subscribers);
+          subscribersAt = rows[0].date;
+        }
+      }
+    } catch (_) { /* not migrated yet — the history is still the point */ }
+
     const first = series[0].date, last = series[series.length - 1].date;
     const days = Math.round((Date.parse(last) - Date.parse(first)) / 86400000) + 1;
 
@@ -192,6 +227,7 @@ export default async function handler(req, res) {
     // renders it as a level with a dash, not as a zero.
     return res.status(200).json({
       videoId, title: v.title, channel: v.channel, kind: v.kind,
+      subscribers, subscribersAt,
       first, last, days, readings: series.length,
       daily, weekly, monthly,
     });
