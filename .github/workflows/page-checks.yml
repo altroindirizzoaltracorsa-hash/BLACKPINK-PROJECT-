@@ -338,6 +338,16 @@ jobs:
       # 24h — this repo measures scheduled runs arriving 2-5h late — so the
       # endpoint normalises by hours_since. At exactly 24h a broken version
       # passes, so the test's load-bearing case is a delayed run.
+      # A bucket's gain is the views at its end minus the views before it
+      # began, never a sum of the daily deltas inside it: counts are
+      # cumulative, so a span survives a missing reading and a late one, and a
+      # sum would also drop the first reading of a video (daily_delta null).
+      # Also pins that there is NO yearly tab — the first reading is
+      # 2026-10-04, so a "year" would be a label over seven weeks.
+      - name: A video's history buckets by span, not by summing deltas
+        if: always()
+        run: node .github/scripts/test_youtube_video_history.mjs
+
       - name: The YouTube daily gain is a day's views, not a run's
         if: always()
         run: node .github/scripts/test_youtube_gains.mjs

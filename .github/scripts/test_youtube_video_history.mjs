@@ -1,0 +1,155 @@
+// A video's history, bucketed by day / week / month, the way kworb shows one.
+//
+// Run: node .github/scripts/test_youtube_video_history.mjs
+//
+// THE RULE THE WHOLE FILE EXISTS FOR: a bucket's gain is the views at its end
+// minus the views before it began — NOT the sum of the daily deltas inside it.
+// View counts are cumulative, so a span is immune to a missing reading and to
+// one reading landing late, which are the two things that actually happen
+// here. A sum would also silently drop the first reading of a video, whose
+// daily_delta is null.
+//
+// And the first bucket of every view has NO gain. There is no reading before
+// it to measure from, so a dash is the honest answer; a zero would be wrong
+// and "all the views it has" would be far worse — it would report DDU-DU
+// DDU-DU as having gained 2.4 billion in its first tracked week.
+import { buildDaily, buildBuckets, isoWeek, bucketBy } from '../../api/youtube-video-history.js';
+import { readFileSync } from 'node:fs';
+
+const root = new URL('../..', import.meta.url).pathname;
+let fails = 0;
+const ok  = (m, d) => console.log(`  ok   ${m}${d ? ` (${d})` : ''}`);
+const bad = (m, d) => { fails++; console.log(`  FAIL ${m}${d ? ` (${d})` : ''}`); };
+const check = (c, m, d) => (c ? ok(m, d) : bad(m, d));
+
+// A series like the real one: one reading a day, ascending, ~24h apart.
+const mk = (startUTC, n, step = 240000, startViews = 1_000_000_000, tweak = () => ({})) => {
+  const out = []; let views = startViews;
+  for (let i = 0; i < n; i++) {
+    const d = new Date(startUTC + i * 86400000);
+    const t = tweak(i) || {};
+    const delta = t.delta !== undefined ? t.delta : step;
+    views += delta;
+    out.push({ date: d.toISOString().slice(0, 10), views,
+               daily_delta: i === 0 ? null : delta,
+               hours_since: t.hours !== undefined ? t.hours : (i === 0 ? null : 24) });
+  }
+  return out;
+};
+const OCT4 = Date.UTC(2026, 9, 4);
+
+console.log('--- ISO weeks, because a week has to mean one thing');
+{
+  // Monday-based and Thursday-decides-the-year, so a Sunday is not its own
+  // week and Jan 1 does not invent a week 53 for a year that has 52.
+  const w = (y, m, d) => { const r = isoWeek(new Date(Date.UTC(y, m, d))); return `${r.year}-W${r.week}`; };
+  check(w(2026, 10, 16) === w(2026, 10, 22), 'Mon 16 Nov and Sun 22 Nov are the same week',
+        `${w(2026, 10, 16)} / ${w(2026, 10, 22)}`);
+  check(w(2026, 10, 22) !== w(2026, 10, 23), '  and Mon 23 Nov is the next one');
+  // A Sunday-based week would put 22 Nov with 23 Nov instead. This is the
+  // check that catches someone "fixing" the day offset.
+  check(w(2026, 10, 15) !== w(2026, 10, 16), '  Sun 15 Nov belongs to the week before, not after');
+}
+
+console.log('\n--- a bucket gain is a span, not a sum of deltas');
+{
+  // 21 days from Mon 5 Oct: three whole ISO weeks, 240,000 a day.
+  const { weekly } = buildBuckets(mk(Date.UTC(2026, 9, 5), 21));
+  check(weekly.length === 3, 'three whole weeks bucket as three', `${weekly.length}`);
+  check(weekly[0].gain === null, 'the first week has no gain — nothing precedes it', `${weekly[0].gain}`);
+  check(weekly[1].gain === 240000 * 7, '  the second is a full week of views',
+        `${weekly[1].gain}`);
+  check(weekly[2].gain === 240000 * 7, '  and so is the third', `${weekly[2].gain}`);
+}
+{
+  // THE CASE A SUM GETS WRONG. Drop a day out of the middle of week two: the
+  // views still accumulate (the counter never stops), there is simply no
+  // reading. A span across the week is unchanged, because the endpoints did
+  // not move. A sum of the rows present would come up one day short.
+  const full = mk(Date.UTC(2026, 9, 5), 21);
+  const holed = full.filter(r => r.date !== '2026-10-14');
+  const a = buildBuckets(full).weekly[1].gain;
+  const b = buildBuckets(holed).weekly[1].gain;
+  check(a === b, 'a missing reading inside a week does not change its gain',
+        `${a} with the day, ${b} without`);
+  const sumOfDeltas = holed.filter(r => r.date >= '2026-10-12' && r.date <= '2026-10-18')
+    .reduce((s, r) => s + (r.daily_delta || 0), 0);
+  check(sumOfDeltas !== b, '  whereas summing the deltas present would be short',
+        `sum ${sumOfDeltas} vs span ${b}`);
+}
+{
+  // A recount flows through rather than being clamped. YouTube takes totals
+  // down and the schema says not to "fix" that.
+  const s = mk(Date.UTC(2026, 9, 5), 21, 240000, 1e9, i => (i === 9 ? { delta: -500000 } : {}));
+  const wk = buildBuckets(s).weekly;
+  check(wk[1].gain < 240000 * 7, 'a recount inside a week pulls its gain down',
+        `${wk[1].gain}`);
+}
+
+console.log('\n--- months bucket by calendar month');
+{
+  const { monthly } = buildBuckets(mk(OCT4, 47));
+  check(monthly.length === 2, 'Oct 4 to Nov 19 is two calendar months', `${monthly.length}`);
+  check(monthly[0].key === '2026-10' && monthly[1].key === '2026-11', '  keyed by year-month',
+        monthly.map(m => m.key).join(', '));
+  check(monthly[0].gain === null, '  October has no gain: it is the first', `${monthly[0].gain}`);
+  // November's gain is measured from October's LAST reading, not from its
+  // first — the bucket's level at its end is what the next one measures from.
+  const oct = monthly[0].views, nov = monthly[1].views;
+  check(monthly[1].gain === nov - oct, '  November is measured from October\'s close',
+        `${monthly[1].gain}`);
+}
+
+console.log('\n--- the daily view normalises, like the board does');
+{
+  // A run 30h after the last is not a day. Same rule, same reason, as the
+  // board's "Daily gain": hours_since exists because these land 22-26h apart.
+  const s = mk(OCT4, 5, 240000, 1e9, i => (i === 3 ? { delta: 300000, hours: 30 } : {}));
+  const d = buildDaily(s);
+  check(d[3].gain === 240000, 'a 30-hour gap is scaled back to 24', `${d[3].gain} from a raw 300000`);
+  check(d[0].gain === null, 'the first reading has no gain rather than a guess', `${d[0].gain}`);
+}
+{
+  // If hours_since is missing the fallback differences the cumulative views,
+  // which needs no gap at all — better than reporting nothing.
+  const s = mk(OCT4, 3);
+  s[2].hours_since = null; s[2].daily_delta = null;
+  const d = buildDaily(s);
+  check(d[2].gain === 240000, 'a row with no hours falls back to differencing views',
+        `${d[2].gain}`);
+}
+
+console.log('\n--- ordering and labels');
+{
+  const d = buildDaily(mk(OCT4, 3));
+  check(d[0].key === '2026-10-04' && d[2].key === '2026-10-06',
+        'the series stays ascending; the panel reverses it for display',
+        `${d[0].key} → ${d[2].key}`);
+  check(/^Oct 4$/.test(d[0].label), 'days are labelled readably', d[0].label);
+  const { weekly, monthly } = buildBuckets(mk(OCT4, 47));
+  check(/–|-/.test(weekly[1].label), 'weeks are labelled as a range', weekly[1].label);
+  check(/^Oct 2026$/.test(monthly[0].label), 'months name the month', monthly[0].label);
+}
+
+console.log('\n--- the panel, and what it refuses to show');
+const site = readFileSync(root + 'index.html', 'utf8');
+check(/class="ytm-hist"/.test(site), 'the card carries a history panel');
+check(/onclick="ytmHistory\(this\)"/.test(site), '  opened from a button on the card');
+// NO YEARLY TAB. The first reading is 2026-10-04, so a "year" would be a label
+// over seven weeks restating the all-time total. The tabs list is the place
+// that would quietly grow one.
+const tabs = (site.match(/const YTM_HIST_TABS = \[([\s\S]*?)\];/) || [])[1] || '';
+check(/'daily'/.test(tabs) && /'weekly'/.test(tabs) && /'monthly'/.test(tabs),
+      '  with daily, weekly and monthly tabs');
+check(!/'yearly'/.test(tabs) && !/'annual'/.test(tabs),
+      '  and NO yearly tab — there is not a year of readings to put in one');
+check(/needs a year of readings/.test(site),
+      '  which the panel says out loud rather than leaving as a gap');
+// The gain column must be able to render a missing gain as a dash.
+check(/r\.gain == null \? '—'/.test(site), '  a bucket with no baseline shows a dash, not a zero');
+// Fetched on open, not on render: 168 cards fetching a series each would be
+// 168 requests for a panel almost nobody opens.
+check(/_ytmHist\.has\(vid\)/.test(site), '  and the series is fetched on open, then cached');
+
+console.log(fails ? `\n${fails} FAILED` : '\nAll correct.');
+process.exit(fails ? 1 : 0);

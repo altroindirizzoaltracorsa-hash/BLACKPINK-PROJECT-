@@ -4080,6 +4080,38 @@
   .ytm-stat .ytm-val.up   { color:#5fd38d; font-weight:600; }
   .ytm-stat .ytm-val.down { color:#e8a13c; font-weight:600; }
   .ytm-stat .ytm-lbl small { opacity:0.62; font-weight:400; margin-left:2px; }
+  /* The history panel. Opens inside the card, one at a time. */
+  .ytm-hist { margin-top:10px; border-top:1px solid rgba(255,255,255,0.10); padding-top:10px; }
+  .ytm-hist-btn.on { background:rgba(255,45,122,0.16); border-color:rgba(255,45,122,0.5); }
+  .ytm-hist-tabs { display:flex; gap:6px; margin-bottom:8px; }
+  .ytm-hist-tab { font-family:var(--mono); font-size:10px; letter-spacing:0.08em;
+    text-transform:uppercase; padding:4px 10px; border-radius:99px; cursor:pointer;
+    color:rgba(245,240,240,0.62); background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.14); transition:background .15s,color .15s; }
+  .ytm-hist-tab.on { color:var(--v-pink); background:rgba(255,45,122,0.12);
+    border-color:rgba(255,45,122,0.42); }
+  /* Capped and scrollable: 47 daily rows would make the card taller than the
+     screen and push every other video out of reach. */
+  .ytm-hist-scroll { max-height:230px; overflow-y:auto; overscroll-behavior:contain; }
+  .ytm-hist-table { width:100%; border-collapse:collapse; font-size:11px;
+    font-variant-numeric:tabular-nums; }
+  .ytm-hist-table th { position:sticky; top:0; background:#140a10; z-index:1;
+    font-family:var(--mono); font-size:9px; letter-spacing:0.1em; text-transform:uppercase;
+    color:rgba(245,240,240,0.45); font-weight:400; text-align:right; padding:4px 0; }
+  /* td.ytm-hist-when, not .ytm-hist-when: `.ytm-hist-table td` below is a
+     class plus an element and outranks a bare class, so the bare version lost
+     and the Day/Week/Month column rendered right-aligned against its own
+     header. Caught by looking at it, not by reading it. */
+  .ytm-hist-table th:first-child, .ytm-hist-table td.ytm-hist-when { text-align:left; }
+  .ytm-hist-table td { padding:3px 0; border-top:1px solid rgba(255,255,255,0.05);
+    text-align:right; color:var(--v-text); }
+  .ytm-hist-when { color:rgba(245,240,240,0.72); white-space:nowrap; }
+  .ytm-hist-gain.up { color:#5fd38d; }
+  .ytm-hist-gain.down { color:#e8a13c; }
+  .ytm-hist-note { font-family:var(--mono); font-size:9px; line-height:1.6;
+    color:rgba(245,240,240,0.42); margin:8px 0 0; }
+  .ytm-hist-empty { font-family:var(--mono); font-size:10px;
+    color:rgba(245,240,240,0.45); margin:4px 0; }
 
   .ytm-bar { height:8px; border-radius:8px; overflow:hidden; border:1px solid var(--v-line);
     background:#0a0407; margin:10px 0 2px; position:relative; }
@@ -28909,9 +28941,15 @@ function ytmCard(v) {
       <div class="ytm-actions">
         <a class="ytm-watch" href="https://www.youtube.com/watch?v=${id}"
            target="_blank" rel="noopener">Watch on YouTube ↗</a>
+        <button class="ytm-watch ytm-hist-btn" type="button"
+                onclick="ytmHistory(this)">📈 History</button>
         <button class="ytm-watch ytm-stop" type="button"
                 onclick="ytmStop(this.closest('.ytm-card'))">✕ Stop</button>
       </div>
+      <!-- Filled on first open, not on render: 168 videos are on this board
+           and fetching every one's series up front would be 168 requests for
+           a panel almost nobody opens. -->
+      <div class="ytm-hist" hidden></div>
     </div>`;
 }
 
@@ -28954,6 +28992,88 @@ function ytmStop(card) {
   card.classList.remove('playing');
   const host = card.querySelector('.ytm-player');
   if (host) host.innerHTML = '';
+}
+
+// ── The history panel ──────────────────────────────────────────────────────
+// kworb-style: the same video counted by day, by week, by month.
+//
+// NO YEARLY TAB, and that is a fact about the data rather than an omission.
+// The daily snapshot's first reading is 2026-10-04, so a "year" would be a
+// label over seven weeks — it would restate the all-time total and call it
+// 2026. The panel says so in a line, and the tab can appear the first January
+// there are two years to compare.
+const YTM_HIST_TABS = [
+  ['daily',   'Daily'],
+  ['weekly',  'Weekly'],
+  ['monthly', 'Monthly'],
+];
+const _ytmHist = new Map();         // videoId -> payload, so reopening is free
+let _ytmHistTab = 'daily';
+
+async function ytmHistory(btn) {
+  const card = btn.closest('.ytm-card');
+  const panel = card?.querySelector('.ytm-hist');
+  if (!card || !panel) return;
+  if (!panel.hidden) { panel.hidden = true; btn.classList.remove('on'); return; }
+  // One open at a time: these are tall, and two open cards push the rest of
+  // the board off the screen.
+  document.querySelectorAll('.ytm-hist:not([hidden])').forEach(p => {
+    p.hidden = true;
+    p.closest('.ytm-card')?.querySelector('.ytm-hist-btn')?.classList.remove('on');
+  });
+  panel.hidden = false;
+  btn.classList.add('on');
+
+  const vid = card.dataset.vid;
+  if (_ytmHist.has(vid)) { ytmHistRender(panel, _ytmHist.get(vid)); return; }
+  panel.innerHTML = '<p class="ytm-hist-empty">Loading…</p>';
+  try {
+    const r = await fetch(`/api/youtube-video-history?video=${encodeURIComponent(vid)}`);
+    const d = await r.json();
+    _ytmHist.set(vid, d);
+    ytmHistRender(panel, d);
+  } catch (e) {
+    panel.innerHTML = '<p class="ytm-hist-empty">Could not load the history.</p>';
+  }
+}
+
+function ytmHistSetTab(btn, tab) {
+  _ytmHistTab = tab;
+  const panel = btn.closest('.ytm-hist');
+  const vid = panel?.closest('.ytm-card')?.dataset.vid;
+  if (panel && vid && _ytmHist.has(vid)) ytmHistRender(panel, _ytmHist.get(vid));
+}
+
+function ytmHistRender(panel, d) {
+  if (!d || d.error || d.note) {
+    panel.innerHTML = `<p class="ytm-hist-empty">${escapeHtml(d?.note || 'No history yet.')}</p>`;
+    return;
+  }
+  const rows = (d[_ytmHistTab] || []).slice().reverse();   // newest first, like kworb
+  if (!rows.length) { panel.innerHTML = '<p class="ytm-hist-empty">No readings yet.</p>'; return; }
+  const tabs = YTM_HIST_TABS.map(([k, label]) =>
+    `<button class="ytm-hist-tab${k === _ytmHistTab ? ' on' : ''}" type="button"
+             onclick="ytmHistSetTab(this, '${k}')">${label}</button>`).join('');
+  const body = rows.map(r => `<tr>
+      <td class="ytm-hist-when">${escapeHtml(r.label)}</td>
+      <td class="ytm-hist-views">${Number(r.views).toLocaleString('en-US')}</td>
+      <td class="ytm-hist-gain ${r.gain == null ? '' : (r.gain < 0 ? 'down' : 'up')}">${
+        r.gain == null ? '—' : ytmGain(r.gain)}</td>
+    </tr>`).join('');
+  // The oldest row of every view carries no gain: there is no reading before
+  // it to measure from. A dash says that; a 0 would be a lie, and the video's
+  // whole view count would be an even bigger one.
+  panel.innerHTML = `
+    <div class="ytm-hist-tabs">${tabs}</div>
+    <div class="ytm-hist-scroll">
+      <table class="ytm-hist-table">
+        <thead><tr><th>${_ytmHistTab === 'daily' ? 'Day' : _ytmHistTab === 'weekly' ? 'Week' : 'Month'}</th>
+                   <th>Views</th><th>Gained</th></tr></thead>
+        <tbody>${body}</tbody>
+      </table>
+    </div>
+    <p class="ytm-hist-note">Tracked since <b>${escapeHtml(d.first)}</b> · ${d.readings} readings.
+      No yearly view yet — that needs a year of readings.</p>`;
 }
 
 function ytmPlay(btn) {
