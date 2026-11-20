@@ -131,48 +131,58 @@ console.log('\n--- ordering and labels');
   check(/^Oct 2026$/.test(monthly[0].label), 'months name the month', monthly[0].label);
 }
 
-console.log('\n--- the panel, and what it refuses to show');
+console.log('\n--- the page, and what it refuses to show');
 const site = readFileSync(root + 'index.html', 'utf8');
-// A SHEET, not a panel inside the card. It opened in-card first and crowded
-// the board: 168 cards in a grid, and one growing a 47-row table pushes every
-// video below it off the screen.
-check(/id="ytm-hist-overlay"/.test(site), 'the history opens as an overlay sheet');
-check(/onclick="ytmHistory\(this\)"/.test(site), '  from a button on the card');
-check(!/<div class="ytm-hist"[^>]*><\/div>/.test(site),
-      '  and there is no per-card panel left behind');
-// One overlay for the whole board, not one per card: 168 hidden overlays is
-// 168 subtrees for a thing at most one of which is ever visible.
-check((site.match(/id="ytm-hist-overlay"/g) || []).length === 1,
-      '  exactly one overlay in the document, reused');
-// Closable three ways, because a sheet you cannot dismiss is a trap on a
-// phone: the ×, the backdrop, and Escape.
-check(/aria-label="Close"[\s\S]{0,80}closeYtmHistory\(\)/.test(site), '  closed by the × button');
-check(/if\(event\.target===this\)closeYtmHistory\(\)/.test(site), '  by tapping the backdrop');
-check(/e\.key !== 'Escape'[\s\S]{0,200}closeYtmHistory\(\)/.test(site), '  and by Escape');
-// Opening scrolls the page behind it; closing must give that back, or the
-// board is frozen for the rest of the visit.
-check(/document\.body\.style\.overflow = ''/.test(site), '  and closing releases the page scroll');
-// A slow fetch must not drop one video's table into another video's sheet.
-// The RENDER call specifically, not just the identifier appearing somewhere:
-// the guard is also on the error path, so a loose match passes while the
-// success path drops one video's table into another video's sheet.
-check(/if \(_ytmHistVid === vid\) ytmHistRender\(d\);/.test(site),
+// A PAGE AT /youtube/<video id>. It was a panel inside the card first (a
+// 47-row table growing out of one card pushes every video below it off the
+// screen) and then an overlay sheet (covers the board, and has no address).
+// A page has a URL: bookmarkable, pasteable, and the back button works.
+check(/id="page-ytvideo"/.test(site), 'the history is its own page');
+check(!/ytm-hist-overlay|ytm-hist-sheet|closeYtmHistory/.test(site),
+      '  with no overlay left behind');
+// The route. The trailing slash is load-bearing: '/youtube-charts' is a
+// different page and startsWith('/youtube') would swallow it.
+check(/clean\.startsWith\('\/youtube\/'\)\) return 'ytvideo'/.test(site),
+      '  routed from /youtube/<id>');
+check(/'\/youtube-charts'/.test(site), '  and /youtube-charts still exists to be confused with');
+// NOT in PAGE_PATHS: showPage reverse-looks-up a page's path there, and a
+// second entry pointing at /youtube would make '/youtube' ambiguous.
+const paths = (site.match(/const PAGE_PATHS = \{([\s\S]*?)\};/) || [])[1] || '';
+check(!/ytvideo:/.test(paths),
+      '  and deliberately absent from PAGE_PATHS, which would make /youtube ambiguous',
+      paths.includes('ytvideo') ? 'ytvideo is in PAGE_PATHS' : 'absent');
+// Push the URL BEFORE switching page, or showPage rewrites it back to the
+// board's path and the deep link is lost the instant it is created.
+check(/history\.pushState\(\{ page: 'ytvideo' \}, '', `\/youtube\/\$\{vid\}`\);\s*\n\s*showPage\('ytvideo'\);/.test(site),
+      '  the URL is pushed before the page switches, not after');
+// A cold load and every back/forward must rebuild it — the page cannot assume
+// a card was clicked.
+check(/if \(page === 'ytvideo'\) loadYtVideoPage\(\);/.test(site),
+      '  and showPage rebuilds it on cold load and on back/forward');
+// A malformed id is not a page. Eleven base62 characters or it is the board.
+check(/\^\\\/youtube\\\/\(\[A-Za-z0-9_-\]\{11\}\)/.test(site),
+      '  an id must be 11 base62 characters');
+check(/if \(!vid\) \{ showPage\('ytviews'\); return; \}/.test(site),
+      '  and anything else falls back to the board rather than an empty page');
+// A slow fetch must not drop one video's table under another video's heading.
+// The RENDER call specifically: the same guard is on the error path, so a
+// loose match passes while the success path is broken.
+check(/if \(_ytmHistVid === vid\) \{ ytvdHead\(/.test(site),
       '  a response arriving after the reader moved on is discarded');
-// NO YEARLY TAB. The first reading is 2026-10-04, so a "year" would be a label
-// over seven weeks restating the all-time total. The tabs list is the place
-// that would quietly grow one.
-const tabs = (site.match(/const YTM_HIST_TABS = \[([\s\S]*?)\];/) || [])[1] || '';
-check(/'daily'/.test(tabs) && /'weekly'/.test(tabs) && /'monthly'/.test(tabs),
-      '  with daily, weekly and monthly tabs');
-check(!/'yearly'/.test(tabs) && !/'annual'/.test(tabs),
-      '  and NO yearly tab — there is not a year of readings to put in one');
-check(/needs a year of readings/.test(site),
-      '  which the panel says out loud rather than leaving as a gap');
-// The gain column must be able to render a missing gain as a dash.
-check(/r\.gain == null \? '—'/.test(site), '  a bucket with no baseline shows a dash, not a zero');
-// Fetched on open, not on render: 168 cards fetching a series each would be
-// 168 requests for a panel almost nobody opens.
-check(/_ytmHist\.has\(vid\)/.test(site), '  and the series is fetched on open, then cached');
+check(/_ytmHist\.has\(vid\)/.test(site), '  and the series is cached, so going back is free');
+
+// A ROUTE THAT ONLY THE SPA KNOWS ABOUT IS A 404 ON A COLD LOAD. Every other
+// deep-linked path on this site has a rewrite in vercel.json sending it to
+// index.html; without one, pasting /youtube/<id> into a fresh tab hits Vercel
+// looking for a file that is not there, and the router never runs to fix it.
+{
+  const vercel = JSON.parse(readFileSync(root + 'vercel.json', 'utf8'));
+  const sources = (vercel.rewrites || []).map(r => r.source);
+  check(sources.includes('/youtube'), 'the board still has its rewrite');
+  check(sources.some(x => /^\/youtube\/:/.test(x)),
+        '  and /youtube/<id> has one too, or a pasted link 404s',
+        sources.filter(x => x.startsWith('/youtube')).join(', '));
+}
 
 console.log(fails ? `\n${fails} FAILED` : '\nAll correct.');
 process.exit(fails ? 1 : 0);
