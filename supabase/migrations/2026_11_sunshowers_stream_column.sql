@@ -1,0 +1,52 @@
+-- 2026-11-20 — make JISOO's "Sun Showers" count per-user, like the other solo
+-- singles. It is her original song from THE ANGRY BIRDS MOVIE 3.
+--
+-- Adds the `sunshowers` column to user_daily_counts. Until this runs, the cron
+-- (api/cron-scrobbles.js) and the live submit (api/leaderboard.js) both no-op
+-- on it through their own isolated guarded upserts, and api/user-week.js reads
+-- it in its own tolerant query — so nothing breaks before it is applied, but
+-- the badges "Today's Challenge" grid has no Sun Showers row and the per-day
+-- history has nowhere to put the count. Same shape as the `newtrick`,
+-- `addicted`, `sth`, `lwm` and `powertrip` migrations.
+--
+-- WRITTEN FIVE AND A HALF HOURS AFTER THE RELEASE, and unlike the five before
+-- it the lateness was not in this column: no list in api/cron-scrobbles.js,
+-- api/ingest-scrobble.js, api/statsfm.js, api/leaderboard.js or index.html
+-- named the track either, so nothing was computing a count for it at all. That
+-- is strictly worse than ADDICTED's week-late column, where the count was
+-- computed every run and discarded, because a discarded count can be recovered
+-- from a column that was already being written and a count never computed
+-- cannot.
+--
+-- WHAT RECOVERS ANYWAY, AND WHY: the day and week figures are RE-DERIVED from
+-- each account's Last.fm history on every cron run rather than accumulated, so
+-- today's plays appear in full on the next run. The all-time figure recovers
+-- for a different reason — bu_lfm_cache_v1 is invalidated when it predates a
+-- track in TRACKS, which is exactly the rule CLAUDE.md records for stopping a
+-- new release being served to every idle fan as a cached 0.
+--
+-- The release instant here is a SINGLE WORLDWIDE ONE, 2026-11-20T05:00:00Z
+-- (2PM KST), not midnight-local as Power Trip's was — so unlike that column
+-- there genuinely was one moment before which no fan anywhere could scrobble
+-- it, and it was five and a half hours ago.
+--
+-- Then re-applies vma_vote_board() so the new column is inside the voting
+-- board's streamed-ever rank gate and its per-row "streams today". Without
+-- that, a blink whose streaming is mostly Sun Showers would read as having
+-- streamed less than they have, which is the gate deciding eligibility.
+--
+-- NOT ADDED HERE: the five PRESS PLAY EP tracks (v12, cobra, tarantino,
+-- cutuoff, sweat) still have no columns, so they remain missing from this grid
+-- and from that gate in exactly the same way. That is a bigger scope decision
+-- than one single and is still left to be taken deliberately rather than
+-- smuggled in beside it.
+--
+-- Idempotent; safe to re-run. Apply via the "Apply SQL" workflow with
+--   file: supabase/migrations/2026_11_sunshowers_stream_column.sql
+-- or paste into the Supabase SQL editor.
+
+alter table public.user_daily_counts add column if not exists sunshowers integer not null default 0;
+
+-- Re-apply the function definitions now that the column exists. Relative to
+-- this file's directory (supabase/migrations/), so ../ points at supabase/.
+\ir ../vma_user_votes.sql

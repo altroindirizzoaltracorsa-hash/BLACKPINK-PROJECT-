@@ -6352,6 +6352,7 @@
              countdown cannot disagree about whether it has dropped. -->
         <button class="lb-subtab" id="lb-subtab-lwm" style="display:none" onclick="switchLbSong('lwm', this)">LEAVE WITH ME</button>
         <button class="lb-subtab" id="lb-subtab-powertrip" style="display:none" onclick="switchLbSong('powertrip', this)">POWER TRIP</button>
+        <button class="lb-subtab" id="lb-subtab-sunshowers" style="display:none" onclick="switchLbSong('sunshowers', this)">SUN SHOWERS</button>
       </div>
       <!-- Nested per-track row for PRESS PLAY — shown only when that tab is open.
            SaWaDiKa is track 1 and leads it; it kept the `sawadika` id it had as a
@@ -8152,6 +8153,9 @@ window.addEventListener('DOMContentLoaded', () => {
   // Auckland sees the board hours before a fan in Rome, which is correct:
   // until the song is out where you are, there is nothing of yours to rank.
   if (ptLive()) { const _pt = document.getElementById('lb-subtab-powertrip'); if (_pt) _pt.style.display = ''; }
+  // Same gate, same reason, off Sun Showers' own release instant: a tab for a
+  // song nobody can have streamed yet would sit at every row zero.
+  if (ssLive()) { const _ss = document.getElementById('lb-subtab-sunshowers'); if (_ss) _ss.style.display = ''; }
   loadLisaSaveCount();
   loadJisooSaveCount();
   loadNewTrickSaveCount();
@@ -10876,6 +10880,13 @@ const TRACKS = [
   // the 34-track album because that is the only pre-save link there was, but a
   // per-track board has to count the track.
   { id: 'powertrip',   title: 'POWER TRIP',        artist: 'Jennie', track: 'Power Trip', year: '2026', era: 'GRAND THEFT AUTO VI', spotify: 'https://open.spotify.com/track/1cyE4XiRueT0ANCp3CuJOK' },
+  // JISOO for THE ANGRY BIRDS MOVIE 3. `track` must stay byte-identical to
+  // api/cron-scrobbles.js's entry — test_track_titles_match fails if they
+  // drift — and the reasoning for the bare title lives in the comment there.
+  // No `spotify` link yet: the pre-save was JISOO.lnk.to/SunShowers and the
+  // track's own Spotify id has not been read off the release. Omitted rather
+  // than guessed; the card already links the song.
+  { id: 'sunshowers',  title: 'SUN SHOWERS',       artist: 'JISOO',  track: 'Sun Showers', year: '2026', era: 'THE ANGRY BIRDS MOVIE 3' },
 ];
 
 // Display name for a leaderboard sub-tab, taken from TRACKS rather than typed
@@ -10935,7 +10946,7 @@ const EP_TRACK_IDS = ['ltal', 'fallenangel', 'heaven'];
 // STAMP stays campaign-only — see CAMPAIGN_TRACK_IDS above).
 // PRESS PLAY's other five join SaWaDiKa here: the EP counts toward the
 // community goal, the way the Fallen Angel EP does.
-const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'sawadika', 'click', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted', 'sth', 'lwm', 'powertrip'];
+const CAMPAIGN_TOTAL_IDS = ['jump', 'shutdown', 'ddududu', 'ltal', 'go', 'fallenangel', 'heaven', 'sawadika', 'click', 'newtrick', 'v12', 'cobra', 'tarantino', 'cutuoff', 'sweat', 'addicted', 'sth', 'lwm', 'powertrip', 'sunshowers'];
 function campaignTotalOf(tp) { return CAMPAIGN_TOTAL_IDS.reduce((s, id) => s + (tp?.[id] || 0), 0); }
 
 // ── The 1k-a-day / 10k-a-week prestige totals ────────────────
@@ -14084,6 +14095,10 @@ const DAILY_TIERS = {
   // 'Someone to Hold' takes: released as a single off a soundtrack album,
   // not an EP track, so it is not the EP tracks' 30.
   powertrip:   makeTiers(40, 'POWER TRIP'),
+  // JISOO for THE ANGRY BIRDS MOVIE 3 — 40, the singles' bar, the same one
+  // 'Someone to Hold' and 'Power Trip' take: an original song released as a
+  // single off a film soundtrack, not an EP track, so not the EP tracks' 30.
+  sunshowers:  makeTiers(40, 'SUN SHOWERS'),
 };
 
 const WEEKLY_TIERS = {
@@ -14111,6 +14126,7 @@ const WEEKLY_TIERS = {
   sth:         makeTiers(40 * 7, 'SOMEONE TO HOLD', '/wk'),
   lwm:         makeTiers(40 * 7, 'LEAVE WITH ME', '/wk'),
   powertrip:   makeTiers(40 * 7, 'POWER TRIP', '/wk'),
+  sunshowers:  makeTiers(40 * 7, 'SUN SHOWERS', '/wk'),
 };
 
 function getDailyBadge(trackId, count) {
@@ -14418,6 +14434,10 @@ function countLbByTrack(listens) {
     } else if (_lbMemberKey(l.track_metadata?.artist_name) === 'jisoo') {
       if (k === 'click') counts.click++;
       else if (k === 'addicted') counts.addicted++;
+      // "Sun Showers (from THE ANGRY BIRDS MOVIE 3)" — _trackKey strips (...)
+      // and [...] before comparing, so the film suffix collapses to the bare
+      // title, the same rule the Steps and Always Lalisa suffixes take above.
+      else if (k === 'sunshowers') counts.sunshowers++;
     } else if (_lbMemberKey(l.track_metadata?.artist_name) === 'rose') {
       if (k === 'newtrick') counts.newtrick++;
     }
@@ -17175,7 +17195,7 @@ function computeDailyCommunityTotal(users) {
     // Heaven) and PRESS PLAY (SaWaDiKa + the five new tracks) — so a
     // release lifts the community goal — mirrors CAMPAIGN_TOTAL_IDS / daily_all.
     return sum + (s.daily_jump || 0) + (s.daily_shutdown || 0) + (s.daily_ddududu || 0) + (s.daily_go || 0)
-      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_newtrick || 0) + (s.daily_addicted || 0) + (s.daily_sth || 0) + (s.daily_lwm || 0) + (s.daily_powertrip || 0);
+      + (s.daily_ltal || 0) + (s.daily_fallenangel || 0) + (s.daily_heaven || 0) + (s.daily_sawadika || 0) + (s.daily_click || 0) + (s.daily_v12 || 0) + (s.daily_cobra || 0) + (s.daily_tarantino || 0) + (s.daily_cutuoff || 0) + (s.daily_sweat || 0) + (s.daily_newtrick || 0) + (s.daily_addicted || 0) + (s.daily_sth || 0) + (s.daily_lwm || 0) + (s.daily_powertrip || 0) + (s.daily_sunshowers || 0);
   }, 0);
 }
 
@@ -17284,6 +17304,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       // is not "unchanged", it is zero.
       overall_lwm:      totalPlays.lwm      || 0,
       overall_powertrip: totalPlays.powertrip || 0,
+      overall_sunshowers: totalPlays.sunshowers || 0,
       // Fallen Angel EP tracks — submitted so the per-track boards fill live from
       // badges visits (the daily cron only recomputes them once at 01:15 UTC). Kept
       // out of overall_all/daily_all/weekly_all so they never inflate campaign totals.
@@ -17320,6 +17341,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       daily_sth:        todayCounts.sth      || 0,
       daily_lwm:        todayCounts.lwm      || 0,
       daily_powertrip:  todayCounts.powertrip || 0,
+      daily_sunshowers: todayCounts.sunshowers || 0,
       daily_fallenangel: todayCounts.fallenangel || 0,
       daily_heaven:      todayCounts.heaven      || 0,
       daily_newtrick:    todayCounts.newtrick    || 0,
@@ -17337,6 +17359,7 @@ async function submitToLeaderboard(userInfo, totalPlays, todayCounts, weekCounts
       weekly_sth:       weekCounts.sth      || 0,
       weekly_lwm:       weekCounts.lwm      || 0,
       weekly_powertrip: weekCounts.powertrip || 0,
+      weekly_sunshowers: weekCounts.sunshowers || 0,
       weekly_fallenangel: weekCounts.fallenangel || 0,
       weekly_heaven:      weekCounts.heaven      || 0,
       weekly_newtrick:    weekCounts.newtrick    || 0,

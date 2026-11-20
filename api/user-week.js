@@ -103,6 +103,13 @@ export default async function handler(req, res) {
       if (!pr.error) for (const row of (pr.data || [])) ptByDay[row.day_key] = row.powertrip || 0;
     } catch {}
 
+    // "Sun Showers" (JISOO, 2026-11-20) in its own tolerant query, same reason.
+    const ssByDay = {};
+    try {
+      const sr = await runQuery('day_key,sunshowers');
+      if (!sr.error) for (const row of (sr.data || [])) ssByDay[row.day_key] = row.sunshowers || 0;
+    } catch {}
+
     const days = {};
     for (const row of (data || [])) {
       days[row.day_key] = {
@@ -120,6 +127,7 @@ export default async function handler(req, res) {
         sth:         sthByDay[row.day_key] || 0,
         lwm:         lwmByDay[row.day_key] || 0,
         powertrip:   ptByDay[row.day_key] || 0,
+        sunshowers:  ssByDay[row.day_key] || 0,
         by_source: hasBySource ? (row.by_source || null) : null,
       };
     }

@@ -262,6 +262,10 @@ export default async function handler(request) {
       // soundtrack attribution Spotify hangs off the end — "(from GTAVI: The
       // Album)" — is matched without this list having to carry it.
       { id: 'powertrip',   prefix: 'power trip',        artist: 'JENNIE' },
+      // JISOO for THE ANGRY BIRDS MOVIE 3 (2026-11-20). A PREFIX match, so the
+      // film attribution Spotify hangs off the end is matched without this
+      // list carrying it.
+      { id: 'sunshowers',  prefix: 'sun showers',       artist: 'JISOO' },
     ];
 
     function countTracks(list) {

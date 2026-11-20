@@ -61,6 +61,10 @@ const TRACKS = [
   // title belongs in cron-scrobbles, where the lookup is an exact string;
   // here it would never match.
   { id: 'powertrip',   artist: 'jennie',    track: 'power trip' },
+  // JISOO for THE ANGRY BIRDS MOVIE 3 (2026-11-20). Lowercase and bare like
+  // its neighbours: keyName() norm()s first, stripping (...) and [...], so
+  // whatever soundtrack suffix the scrobbler sends collapses to this key.
+  { id: 'sunshowers',  artist: 'jisoo',     track: 'sun showers' },
 ];
 
 function norm(s) {
