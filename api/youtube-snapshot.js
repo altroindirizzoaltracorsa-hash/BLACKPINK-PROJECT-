@@ -15,10 +15,32 @@
 // same drift puts a fixed 00:00 boundary off by a median of 50 minutes and up
 // to 110, which is too much to call it "Tuesday's views".
 //
-// Run from a Vercel cron at 00:00 UTC, the reading lands within about a minute
-// of the boundary, so the window IS the UTC day — the same 00:00 UTC day the
-// rest of the site uses, which is the point of picking midnight rather than
-// keeping 04:41.
+// Run from a Vercel cron at 05:00 UTC the reading lands within about a minute
+// of the boundary, so the window is a real fixed day rather than a drifting one.
+//
+// WHY 05:00 UTC AND NOT MIDNIGHT: it is 2PM KST, which is when the videos this
+// site tracks are released — Sun Showers and Power Trip both premiered at
+// exactly 2026-11-20T05:00:00Z. With the boundary on that instant, the first
+// full row after a release covers exactly release → release+24h, so the daily
+// table's day one IS the 24h figure. Put the boundary anywhere else and the
+// first row is a stub of a few hours followed by full days, which is the
+// partial-first-day trap CLAUDE.md documents on the Spotify side ("the first
+// row is not day one, and the next row is not day two"). There it is forced;
+// here it is a choice, so it is not taken.
+//
+// Korea has no DST, so 2PM KST is 05:00 UTC permanently. Fixed instant, never
+// a local hour — see CLAUDE.md.
+//
+// IT DELIBERATELY DOES NOT MATCH THE REST OF THE SITE. 00:00 UTC is not a
+// preference for Spotify, it is what Spotify's day MEANS — the unit it
+// publishes. YouTube has no equivalent: its public counter is cumulative with
+// no day at all, so matching Spotify's hour would buy a coincidence and
+// nothing else.
+//
+// IT ALSO DOES NOT MATCH /vs.html, which buckets by midnight KST (15:00 UTC,
+// its KST_OFF). That is left alone on purpose. The two pages answer different
+// questions and a reader comparing a figure across them should know they are
+// nine hours apart.
 //
 // THE PYTHON SCRIPT IS NOT DELETED. It stays as the backstop, for the case
 // where this endpoint is failing and nobody has noticed — a reading not taken

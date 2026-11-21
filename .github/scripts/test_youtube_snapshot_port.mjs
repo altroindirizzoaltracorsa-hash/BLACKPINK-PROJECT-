@@ -140,14 +140,29 @@ console.log('--- the python backstop skips a date that already has rows');
   check(!/cron: '41 4 \* \* \*'/.test(wf), 'the old primary slot is gone');
 }
 
-// ── 9. the cron is at midnight UTC ─────────────────────────────────────────
-console.log('--- the Vercel cron takes the reading at 00:00 UTC');
+// ── 9. the cron is at 2PM KST ──────────────────────────────────────────────
+// 05:00 UTC is the instant these videos are released (Sun Showers and Power
+// Trip both premiered at 2026-11-20T05:00:00Z), so the first full row after a
+// release covers exactly release → release+24h and the table's day one IS the
+// 24h figure. Any other hour makes the first row a stub of a few hours — the
+// partial-first-day trap CLAUDE.md documents on the Spotify side, where it is
+// forced. Here it is a choice, so it is not taken.
+//
+// Korea has no DST, so this is a fixed UTC instant and cannot drift.
+console.log('--- the Vercel cron takes the reading at 05:00 UTC (2PM KST)');
 {
   const vj = JSON.parse(readFileSync(root + 'vercel.json', 'utf8'));
   const c = (vj.crons || []).find(x => x.path.includes('youtube-snapshot'));
   check(!!c, 'the cron exists');
-  if (c) check(c.schedule === '0 0 * * *',
-               'at 00:00 UTC — the same day boundary as the rest of the site', c.schedule);
+  if (c) check(c.schedule === '0 5 * * *',
+               'at 05:00 UTC = 2PM KST, the release instant', c.schedule);
+  // /vs.html is DELIBERATELY NOT aligned to this — it buckets by midnight KST
+  // (15:00 UTC) and was left alone. Pinned so that if someone later changes
+  // one to match the other it is a deliberate edit to this assertion, not a
+  // silent drift in either direction.
+  const vs = readFileSync(root + 'vs.html', 'utf8');
+  check(/const KST_OFF = 9 \* 3600000;/.test(vs),
+        '/vs.html still buckets by midnight KST, nine hours off this one');
 }
 
 console.log('');

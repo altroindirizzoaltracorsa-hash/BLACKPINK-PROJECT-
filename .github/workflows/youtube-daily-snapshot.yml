@@ -15,9 +15,13 @@ name: YouTube daily snapshot
 # lands when it is supposed to is still worth having.
 #
 # THIS IS NOW THE BACKSTOP, NOT THE PRIMARY. /api/youtube-snapshot runs from a
-# Vercel cron at 00:00 UTC (vercel.json) and lands within about a minute of the
-# boundary, which is what makes the daily gain a real UTC day rather than a
+# Vercel cron at 05:00 UTC (vercel.json) and lands within about a minute of the
+# boundary, which is what makes the daily gain a real fixed day rather than a
 # floating ~24h window.
+#
+# 05:00 UTC is 2PM KST, the instant these videos are released — so the first
+# full row after a release covers exactly release → release+24h and the table's
+# day one IS the 24h figure. See the note at the top of api/youtube-snapshot.js.
 #
 # WHY IT MOVED: this job is 21 seconds of work and GitHub was running it about
 # NINE HOURS LATE, every day — scheduled 04:41, ran 13:36 and 13:53 on
@@ -32,8 +36,10 @@ name: YouTube daily snapshot
 # so a late run can never overwrite the midnight one; without that guard this
 # backstop would undo the fix daily. FORCE=1 overrides for a deliberate re-run.
 #
-# 05:47 UTC: after midnight so the Vercel row already exists on a normal day,
-# and the skip is the cheap path. Not :00 or :30, for the queue reason above.
+# 05:47 UTC: 47 minutes after the Vercel cron, so on a normal day the row for
+# that date already exists and the skip is the cheap path. GitHub's delay puts
+# it nearer 14:00 in practice, which is still the same UTC date and still a
+# skip. Not :00 or :30, for the queue reason above.
 on:
   schedule:
     - cron: '47 5 * * *'
