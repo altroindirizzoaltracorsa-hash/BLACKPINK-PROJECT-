@@ -113,13 +113,37 @@ export function bucketBy(series, keyOf, labelOf) {
 // snapshot's own hours_since column exists because these land 22-26h apart and
 // occasionally much further. Where hours_since is missing, fall back to
 // differencing the cumulative views, which needs no gap at all.
+// ── WHEN A "DAILY GAIN" IS REALLY AN EXTRAPOLATION ────────────────────────
+//
+// The gain is raw × 24 / hours_since, which assumes the hours actually
+// sampled look like an average day. Over a near-24h gap that is fine. Over a
+// short one it is not, and the error is not small: the GitHub → Vercel
+// switchover produced a 10.4h window spanning 22:36–09:00 KST, scaled ×2.3,
+// and it read 66,396 against K-pop Radar's 56,089 for the same video and day
+// — 18% high, because those hours contain this video's overnight peak and
+// none of its daytime trough.
+//
+// That row looked identical to a real daily figure on the page, so the only
+// way to catch it was to compare against another site. Now it is labelled.
+// 18–30h is ±6h of slack: wide enough that an ordinary late reading is not
+// nagged about, narrow enough that a half-day window cannot pass as a day.
+const DAY_MIN_H = 18, DAY_MAX_H = 30;
+
 export function buildDaily(series) {
   return series.map((r, i) => {
     const hrs = Number(r.hours_since);
     const raw = r.daily_delta == null ? null : Number(r.daily_delta);
-    const gain = raw != null && Number.isFinite(hrs) && hrs > 0
+    const normalised = raw != null && Number.isFinite(hrs) && hrs > 0;
+    const gain = normalised
       ? Math.round((raw / hrs) * 24)
       : (i > 0 ? Number(r.views) - Number(series[i - 1].views) : null);
+    // Two different ways a gain can fail to be a day, and both are flagged:
+    // a window we measured and know is the wrong length, and a window we
+    // could not measure at all (hours_since null, so the figure is a raw
+    // difference over an unknown gap rather than a rate).
+    const extrapolated = gain == null ? false
+      : normalised ? (hrs < DAY_MIN_H || hrs > DAY_MAX_H)
+      : true;
     return {
       key: r.date,
       label: dayLabel(r.date),
@@ -127,6 +151,10 @@ export function buildDaily(series) {
       views: Number(r.views),
       gain,
       hours: Number.isFinite(hrs) ? hrs : null,
+      // True when `gain` is scaled from a window materially unlike a day, or
+      // from a gap of unknown length. The page marks these rather than
+      // showing them as if they were measured over 24 hours.
+      extrapolated,
       // NULL IS NOT ZERO: likes are absent when the uploader hides them and
       // comments when they are switched off, which is common on a soundtrack
       // upload. A 0 would say nobody did it.

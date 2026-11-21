@@ -235,5 +235,60 @@ check(/_ytmHist\.has\(vid\)/.test(site), '  and the series is cached, so going b
         sources.filter(x => x.startsWith('/youtube')).join(', '));
 }
 
+// ── A GAIN SCALED FROM THE WRONG-LENGTH WINDOW IS FLAGGED ──────────────────
+// The daily gain is raw x 24 / hours_since. Over a near-24h gap that is fine;
+// over a short one the scaling assumes the sampled hours look like an average
+// day, and they need not. MEASURED: the GitHub -> Vercel switchover left a
+// 10.4h window spanning 22:36-09:00 KST, scaled x2.3, which reported 66,396
+// against K-pop Radar's 56,089 for the same video and day — 18% high, because
+// those hours hold the video's overnight peak and none of its daytime trough.
+// On the page it looked like any other daily figure. Now it says so.
+console.log('--- a gain scaled from a window unlike a day is marked');
+{
+  const row = (date, views, delta, hours) => ({
+    date, views, daily_delta: delta, hours_since: hours,
+    like_count: null, comment_count: null, captured_at: date + 'T00:00:00Z',
+  });
+  const d = buildDaily([
+    row('2026-11-18', 1000, null, null),   // first reading: no gain at all
+    row('2026-11-19', 2000, 1000, 24.0),   // a clean day
+    row('2026-11-20', 2500,  500, 10.4),   // the switchover window
+    row('2026-11-21', 3000,  500, 26.0),   // late, but within tolerance
+    row('2026-11-22', 3600,  600, 40.0),   // a missed reading
+    row('2026-11-23', 4000,  400, null),   // gap unknown
+  ]);
+  const by = Object.fromEntries(d.map(r => [r.key, r]));
+  check(by['2026-11-18'].gain === null && by['2026-11-18'].extrapolated === false,
+        'the first row has no gain and is not flagged',
+        `gain=${by['2026-11-18'].gain} flag=${by['2026-11-18'].extrapolated}`);
+  check(by['2026-11-19'].extrapolated === false,
+        'a 24h window is not flagged', `hours=${by['2026-11-19'].hours}`);
+  check(by['2026-11-20'].extrapolated === true,
+        'a 10.4h window IS flagged — the row that read 18% high',
+        `gain=${by['2026-11-20'].gain}`);
+  check(by['2026-11-21'].extrapolated === false,
+        'an ordinary late reading is not nagged about', 'hours=26');
+  check(by['2026-11-22'].extrapolated === true,
+        'a 40h window is flagged too — the error runs both ways', 'hours=40');
+  check(by['2026-11-23'].extrapolated === true,
+        'and so is a gap we could not measure at all', 'hours=null');
+  // The flag must not change the number. It says how the number was arrived
+  // at; silently adjusting it would be a second, worse bug.
+  check(by['2026-11-20'].gain === Math.round((500 / 10.4) * 24),
+        'the flag annotates the gain, it does not alter it', `${by['2026-11-20'].gain}`);
+}
+
+// ── and the page actually shows it ─────────────────────────────────────────
+console.log('--- the history table renders the marker');
+{
+  const html = readFileSync(root + 'index.html', 'utf8');
+  check(/r\.extrapolated \? ytmApproxMark\(r\)/.test(html),
+        'the gain cell appends the marker when the row is flagged');
+  check(/function ytmApproxMark/.test(html), 'the marker helper exists');
+  check(/not 24, then scaled to a daily rate/.test(html),
+        'and its tooltip names the actual window length');
+  check(/\.ytm-approx\s*\{/.test(html), 'and it is styled');
+}
+
 console.log(fails ? `\n${fails} FAILED` : '\nAll correct.');
 process.exit(fails ? 1 : 0);

@@ -15,39 +15,34 @@
 // same drift puts a fixed 00:00 boundary off by a median of 50 minutes and up
 // to 110, which is too much to call it "Tuesday's views".
 //
-// Run from a Vercel cron at 05:00 UTC the reading lands within about a minute
+// Run from a Vercel cron at 15:00 UTC the reading lands within about a minute
 // of the boundary, so the window is a real fixed day rather than a drifting one.
 //
-// WHY 05:00 UTC AND NOT MIDNIGHT: it is 2PM KST, which is when the videos this
-// site tracks are released — Sun Showers and Power Trip both premiered at
-// exactly 2026-11-20T05:00:00Z. With the boundary on that instant, the first
-// full row after a release covers exactly release → release+24h, so the daily
-// table's day one IS the 24h figure. Put the boundary anywhere else and the
-// first row is a stub of a few hours followed by full days, which is the
-// partial-first-day trap CLAUDE.md documents on the Spotify side ("the first
-// row is not day one, and the next row is not day two"). There it is forced;
-// here it is a choice, so it is not taken.
+// WHY 15:00 UTC: it is MIDNIGHT KST, which is the boundary /vs.html already
+// buckets by (its KST_OFF) and, on the evidence, the one K-pop Radar uses —
+// the external source these numbers get checked against. Our old accidental
+// GitHub timing landed ~13:40 UTC, within ~1.3h of it, which is why the daily
+// figures matched K-pop Radar closely day after day. Moving away from it would
+// have made them disagree every time the rate changed, which is precisely the
+// days anyone looks.
 //
-// Korea has no DST, so 2PM KST is 05:00 UTC permanently. Fixed instant, never
-// a local hour — see CLAUDE.md.
+// 05:00 UTC (2PM KST, the release instant) was considered and rejected. It
+// would make the first full row after a release equal the 24h figure — but
+// that figure is ALREADY captured, and better, by youtube-24h-mark.yml, which
+// pins it from the hourly series to within 95 minutes. So it bought a
+// duplicate of something we have, at the price of disagreeing with the
+// reference source daily.
 //
-// IT DELIBERATELY DOES NOT MATCH THE REST OF THE SITE. 00:00 UTC is not a
-// preference for Spotify, it is what Spotify's day MEANS — the unit it
-// publishes. YouTube has no equivalent: its public counter is cumulative with
-// no day at all, so matching Spotify's hour would buy a coincidence and
-// nothing else.
+// Korea has no DST, so midnight KST is 15:00 UTC permanently. Fixed instant,
+// never a local hour — see CLAUDE.md.
 //
-// IT ALSO DOES NOT MATCH /vs.html, which buckets by midnight KST (15:00 UTC,
-// its KST_OFF). That is left alone on purpose. The two pages answer different
-// questions and a reader comparing a figure across them should know they are
-// nine hours apart.
-//
-// THE PYTHON SCRIPT IS NOT DELETED. It stays as the backstop, for the case
-// where this endpoint is failing and nobody has noticed — a reading not taken
-// is gone for good, which is the whole reason the snapshot exists. It will not
-// clobber a punctual row: it now skips a date that already has rows unless
-// forced. See the note there.
-//
+// IT DELIBERATELY DOES NOT MATCH THE REST OF THE SITE, which resets at 00:00
+// UTC. That is not a preference there: 00:00 UTC is what Spotify's day MEANS,
+// the unit it publishes. YouTube has no equivalent — its public counter is
+// cumulative with no day at all (YouTube Analytics has one, at midnight
+// Pacific, but it is creator-only, DST-drifting and lagged 48-72h) — so
+// matching Spotify's hour would buy a coincidence and nothing else.
+
 // Reads /api/youtube-catalog (which is where the YouTube API calls happen) and
 // writes Supabase REST directly, exactly as the script does. Both ends were
 // already HTTP services, which is what made this a port rather than a rewrite.

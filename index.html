@@ -4122,6 +4122,7 @@
      and the Day/Week/Month column rendered right-aligned against its own
      header. Caught by looking at it, not by reading it. */
   .ytm-hist-table th:first-child, .ytm-hist-table td.ytm-hist-when { text-align:left; }
+  .ytm-approx { opacity: 0.55; font-weight: 600; cursor: help; }
   .ytm-hist-table td { padding:7px 0; border-top:1px solid rgba(255,255,255,0.05);
     text-align:right; color:var(--v-text); }
   .ytm-hist-when { color:rgba(245,240,240,0.72); white-space:nowrap; }
@@ -29202,6 +29203,31 @@ function ytmHistSetTab(btn, tab) {
   if (_ytmHistVid && _ytmHist.has(_ytmHistVid)) ytmHistRender(_ytmHist.get(_ytmHistVid));
 }
 
+// ── A GAIN SCALED FROM THE WRONG-LENGTH WINDOW SAYS SO ────────────────────
+//
+// The daily gain is views-since-the-previous-reading scaled to 24h. That is
+// honest arithmetic and it is what keeps a late reading from reading as a
+// spike — but it assumes the hours actually sampled look like an average day,
+// and over a short window they need not.
+//
+// MEASURED, which is why this marker exists. The GitHub → Vercel switchover
+// left a 10.4h window spanning 22:36–09:00 KST. Scaled ×2.3 it reported
+// 66,396 for JISOO's "earthquake" where K-pop Radar reported 56,089 for the
+// same day — 18% high, because those hours hold the video's overnight peak
+// (~4,000/h) and none of its daytime trough (~2,000/h). On the page that row
+// looked exactly like a measured daily figure, so the only way to catch it
+// was to compare against another site. It is marked now.
+//
+// A tilde and a title, not a warning banner: the figure is still the best
+// estimate available for that day, it simply is not a measurement.
+function ytmApproxMark(r) {
+  const h = r.hours == null ? null : Math.round(r.hours * 10) / 10;
+  const why = h == null
+    ? 'The gap between the two readings is unknown, so this is their raw difference rather than a 24-hour rate.'
+    : `Measured over ${h}h, not 24, then scaled to a daily rate. Short windows can land on a busier or quieter stretch than an average day, so treat this as an estimate.`;
+  return ` <span class="ytm-approx" title="${escapeHtml(why)}">~</span>`;
+}
+
 function ytmHistRender(d) {
   const body = document.getElementById('ytvd-body');
   if (!body) return;
@@ -29222,7 +29248,7 @@ function ytmHistRender(d) {
       <td class="ytm-hist-when">${escapeHtml(r.label)}</td>
       <td class="ytm-hist-views">${Number(r.views).toLocaleString('en-US')}</td>
       <td class="ytm-hist-gain ${r.gain == null ? '' : (r.gain < 0 ? 'down' : 'up')}">${
-        r.gain == null ? '—' : ytmGain(r.gain)}</td>
+        r.gain == null ? '—' : ytmGain(r.gain)}${r.extrapolated ? ytmApproxMark(r) : ''}</td>
       <td class="ytm-hist-likes">${num(r.likes)}</td>
       <td class="ytm-hist-comments">${num(r.comments)}</td>
     </tr>`).join('');

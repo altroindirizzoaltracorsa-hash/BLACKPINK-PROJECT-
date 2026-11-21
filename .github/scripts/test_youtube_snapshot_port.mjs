@@ -130,8 +130,11 @@ console.log('--- the python backstop skips a date that already has rows');
 {
   const py = readFileSync(root + '.github/scripts/snapshot_youtube.py', 'utf8');
   check(/if not FORCE:/.test(py), 'the guard is there and is default-on');
-  check(/youtube_video_daily_stats"[\s\S]{0,200}?eq\.\{day\}/.test(py),
-        'it asks whether the day already has rows');
+  // The SHAPE of the guard is checked in section 10, which is where it
+  // belongs now that it is staleness-based rather than date-based. Here we
+  // only need that a guard exists and is default-on.
+  check(/newest reading is/.test(py),
+        'and it reports why it skipped, rather than skipping silently');
   check(/FORCE = os\.environ\.get\("FORCE"\) == "1"/.test(py),
         'FORCE is opt-in, not the default');
   const wf = readFileSync(root + '.github/workflows/youtube-daily-snapshot.yml', 'utf8');
@@ -140,29 +143,43 @@ console.log('--- the python backstop skips a date that already has rows');
   check(!/cron: '41 4 \* \* \*'/.test(wf), 'the old primary slot is gone');
 }
 
-// ── 9. the cron is at 2PM KST ──────────────────────────────────────────────
-// 05:00 UTC is the instant these videos are released (Sun Showers and Power
-// Trip both premiered at 2026-11-20T05:00:00Z), so the first full row after a
-// release covers exactly release → release+24h and the table's day one IS the
-// 24h figure. Any other hour makes the first row a stub of a few hours — the
-// partial-first-day trap CLAUDE.md documents on the Spotify side, where it is
-// forced. Here it is a choice, so it is not taken.
-//
-// Korea has no DST, so this is a fixed UTC instant and cannot drift.
-console.log('--- the Vercel cron takes the reading at 05:00 UTC (2PM KST)');
+// ── 9. the cron is at midnight KST ─────────────────────────────────────────
+// 15:00 UTC is midnight KST: the boundary /vs.html already buckets by, and on
+// the evidence the one K-pop Radar uses — the source these figures get checked
+// against. The old accidental GitHub timing (~13:40 UTC) sat within ~1.3h of
+// it, which is why the dailies matched K-pop Radar day after day.
+// Korea has no DST, so it is a fixed UTC instant and cannot drift.
+console.log('--- the Vercel cron takes the reading at 15:00 UTC (midnight KST)');
 {
   const vj = JSON.parse(readFileSync(root + 'vercel.json', 'utf8'));
   const c = (vj.crons || []).find(x => x.path.includes('youtube-snapshot'));
   check(!!c, 'the cron exists');
-  if (c) check(c.schedule === '0 5 * * *',
-               'at 05:00 UTC = 2PM KST, the release instant', c.schedule);
-  // /vs.html is DELIBERATELY NOT aligned to this — it buckets by midnight KST
-  // (15:00 UTC) and was left alone. Pinned so that if someone later changes
-  // one to match the other it is a deliberate edit to this assertion, not a
-  // silent drift in either direction.
+  if (c) check(c.schedule === '0 15 * * *',
+               'at 15:00 UTC = midnight KST', c.schedule);
+  // /vs.html buckets by the SAME instant now. Pinned so the two cannot drift
+  // apart silently: KST_OFF of 9h with a day index means midnight KST.
   const vs = readFileSync(root + 'vs.html', 'utf8');
   check(/const KST_OFF = 9 \* 3600000;/.test(vs),
-        '/vs.html still buckets by midnight KST, nine hours off this one');
+        '/vs.html buckets by midnight KST too — the two pages now agree');
+}
+
+// ── 10. the backstop guard does not depend on when either job runs ─────────
+// It used to skip when the current DATE already had rows, which is only safe
+// while this job is guaranteed to run after the cron on the same UTC date. At
+// 15:00 UTC that guarantee is gone — GitHub's 4.5-9h delay puts the backstop
+// either side of it — and a date check would let a mid-morning reading write
+// the row first, reintroducing exactly the drift the move removed.
+console.log('--- the backstop skips on STALENESS, not on the date');
+{
+  const py = readFileSync(root + '.github/scripts/snapshot_youtube.py', 'utf8');
+  check(/STALE_AFTER_H/.test(py), 'it has a staleness threshold');
+  check(/order":\s*"captured_at\.desc"/.test(py),
+        'and asks for the newest reading, not for today\'s rows');
+  check(!/"date":\s*f"eq\.\{day\}"/.test(py),
+        'the date-based guard is gone, not merely supplemented');
+  check(/age_h < STALE_AFTER_H/.test(py), 'and compares its age');
+  check(/if not FORCE:/.test(py), 'the guard is default-on');
+  check(/FORCE = os\.environ\.get\("FORCE"\) == "1"/.test(py), 'FORCE is opt-in');
 }
 
 console.log('');

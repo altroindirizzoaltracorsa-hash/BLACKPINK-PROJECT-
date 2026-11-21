@@ -14,32 +14,32 @@ name: YouTube daily snapshot
 # elapsed hours between readings rather than assuming a day — but a run that
 # lands when it is supposed to is still worth having.
 #
-# THIS IS NOW THE BACKSTOP, NOT THE PRIMARY. /api/youtube-snapshot runs from a
-# Vercel cron at 05:00 UTC (vercel.json) and lands within about a minute of the
-# boundary, which is what makes the daily gain a real fixed day rather than a
-# floating ~24h window.
+# THIS IS THE BACKSTOP, NOT THE PRIMARY. /api/youtube-snapshot runs from a
+# Vercel cron at 15:00 UTC — midnight KST — and lands within about a minute of
+# it, which is what makes the daily gain a real fixed day rather than a
+# floating window. See the note at the top of api/youtube-snapshot.js for why
+# that hour.
 #
-# 05:00 UTC is 2PM KST, the instant these videos are released — so the first
-# full row after a release covers exactly release → release+24h and the table's
-# day one IS the 24h figure. See the note at the top of api/youtube-snapshot.js.
-#
-# WHY IT MOVED: this job is 21 seconds of work and GitHub was running it about
-# NINE HOURS LATE, every day — scheduled 04:41, ran 13:36 and 13:53 on
-# consecutive days. That does not break a rate (the row carries hours_since and
-# the page divides by it) but it means "daily gain" is measured between two
-# arbitrary instants. Measured on the hourly series, that drift puts a fixed
-# 00:00 boundary off by a median of 50 minutes and up to 110.
+# WHY IT MOVED OFF GITHUB: this job is 21 seconds of work and GitHub was
+# running it 4h25m-9h12m late, measured across 30 consecutive scheduled runs —
+# drifting from ~09:30 in October to ~13:40 in November. That never broke a
+# rate (the row carries hours_since and the page divides by it) but it meant
+# "daily gain" was measured between two arbitrary instants.
 #
 # IT IS KEPT because a reading not taken is gone for good — YouTube serves a
-# cumulative number with no history — so the endpoint failing silently must not
-# mean a lost day. snapshot_youtube.py now SKIPS a date that already has rows,
-# so a late run can never overwrite the midnight one; without that guard this
-# backstop would undo the fix daily. FORCE=1 overrides for a deliberate re-run.
+# cumulative number with no history — so the endpoint failing silently must
+# not cost a day.
 #
-# 05:47 UTC: 47 minutes after the Vercel cron, so on a normal day the row for
-# that date already exists and the skip is the cheap path. GitHub's delay puts
-# it nearer 14:00 in practice, which is still the same UTC date and still a
-# skip. Not :00 or :30, for the queue reason above.
+# ITS GUARD IS ON STALENESS, NOT THE DATE. It used to skip when the current
+# date already had rows, which only works if this job is guaranteed to run
+# AFTER the cron on the same UTC date. At 15:00 UTC that guarantee is gone:
+# GitHub's delay can put this either side of 15:00 and on either date, and a
+# date check would then let a mid-morning reading write the row first and
+# reintroduce the drift. "Is the newest reading more than 26 hours old?" needs
+# no assumption about when either job runs. FORCE=1 overrides.
+#
+# The slot stays at 05:47 and the hour no longer matters, because the guard no
+# longer depends on it. Not :00 or :30, for the queue reason above.
 on:
   schedule:
     - cron: '47 5 * * *'

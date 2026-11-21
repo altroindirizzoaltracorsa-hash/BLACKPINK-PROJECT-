@@ -56,6 +56,10 @@ DRY_RUN = os.environ.get("DRY_RUN") == "1"
 # Overwrite a date that already has rows. Off by default so this backstop
 # cannot undo the punctual midnight reading — see the guard in main().
 FORCE = os.environ.get("FORCE") == "1"
+# How old the newest reading must be before this backstop takes one of its
+# own. 26h, not 24: a cron that fires a few minutes late must not make the
+# backstop think a day was missed.
+STALE_AFTER_H = float(os.environ.get("STALE_AFTER_H") or 26)
 OVERRIDE_DATE = os.environ.get("OVERRIDE_DATE")
 
 CHUNK = 200
@@ -309,28 +313,37 @@ def main():
 
     # ── DO NOT CLOBBER A PUNCTUAL READING ────────────────────────────────
     #
-    # THIS SCRIPT IS NOW THE BACKSTOP. /api/youtube-snapshot runs from a Vercel
-    # cron at 00:00 UTC and lands within about a minute of the boundary; this
-    # job is kept for the case where that endpoint is failing and nobody has
-    # noticed, because a reading not taken is gone for good.
+    # THIS SCRIPT IS THE BACKSTOP. /api/youtube-snapshot runs from a Vercel
+    # cron and lands within about a minute of its hour; this job exists only
+    # for the case where that endpoint is failing and nobody has noticed,
+    # because a reading not taken is gone for good.
     #
-    # But GitHub runs this ~9 HOURS LATE (measured: scheduled 04:41, ran 13:36
-    # and 13:53 on consecutive days), and the primary key is (video_ref, date)
-    # with merge-duplicates — so without this guard the late run would
-    # OVERWRITE the midnight row with a mid-afternoon one and destroy exactly
-    # the property the move to Vercel was made to get. The backstop would
-    # quietly undo the fix every single day.
+    # THE GUARD IS ON STALENESS, NOT ON THE DATE, and that distinction is the
+    # whole point. It used to ask "does today already have rows?", which works
+    # only while the backstop is guaranteed to run AFTER the cron on the same
+    # UTC date. That guarantee died the moment the cron moved to 15:00 UTC:
+    # GitHub runs this 4.5-9h late, so the firing can land either side of 15:00
+    # and on either date, and a date check would then let a mid-morning reading
+    # write the row before the punctual one — reintroducing the drift the move
+    # to Vercel removed.
     #
-    # So: write only if the day has no rows yet. FORCE=1 overrides, for a
-    # deliberate re-run.
+    # "Is the newest reading older than a day?" needs no assumption about when
+    # either job runs. It is true exactly when a reading was actually missed.
     if not FORCE:
-        existing = sb("GET", "/youtube_video_daily_stats", params={
-            "select": "video_ref", "date": f"eq.{day}", "limit": "1",
+        latest = sb("GET", "/youtube_video_daily_stats", params={
+            "select": "captured_at", "order": "captured_at.desc", "limit": "1",
         }) or []
-        if existing:
-            print(f"  ⏭ {day} already has rows — the Vercel cron got there first. "
-                  f"Nothing written (set FORCE=1 to overwrite).")
-            return 0
+        if latest:
+            seen = parse_ts(latest[0].get("captured_at"))
+            if seen:
+                age_h = (now - seen).total_seconds() / 3600.0
+                if age_h < STALE_AFTER_H:
+                    print(f"  ⏭ newest reading is {age_h:.1f}h old (under "
+                          f"{STALE_AFTER_H}h) — the Vercel cron is doing its job. "
+                          f"Nothing written (set FORCE=1 to override).")
+                    return 0
+                print(f"  ⚠ newest reading is {age_h:.1f}h old — the Vercel cron "
+                      f"appears to have missed one. Taking the reading.")
     if skipped:
         print(f"  ⚠ {skipped} video(s) had no row id and were skipped", file=sys.stderr)
     write(rows)
