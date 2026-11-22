@@ -30,9 +30,9 @@ on:
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Max distinct handles to test live (default 250)'
+        description: 'Max distinct handles to test live (default 400 — the board has ~353)'
         required: false
-        default: '250'
+        default: '400'
 
 jobs:
   probe:
@@ -95,24 +95,50 @@ jobs:
           # This is the whole question, and it is answered without a single API
           # call: an entry with no linkedAccounts is fetched under its display
           # name because of line 658.
+          # NOTE, measured 2026-11-22: the line-658 fallback fires for ZERO
+          # entries, because `entry.linkedAccounts || [...]` sees an EMPTY
+          # ARRAY as truthy. So a malformed handle like 'Humah kim' is a
+          # STORED linked account, not one we synthesised — it was typed into
+          # the signup field and never validated. The fallback is dead code;
+          # it is still counted here so that stays visible if it changes.
           fallback, linked, rows = [], [], []
+          other_only = []          # a scrobbler the cron CAN poll, just not Last.fm
+          none_at_all = []         # nothing server-side: only client-posted scores
+          POLLABLE = ("statsfm", "listenbrainz", "musicat", "librefm", "lastfm")
           for name, d in users.items():
               accts = d.get("linkedAccounts")
               scr = [a for a in (accts or []) if a.get("type") in ("lastfm", "librefm")
                      and a.get("username")]
-              if not accts:
+              if accts is None:
                   fallback.append(name)
                   rows.append(("fallback", "lastfm", d.get("username") or name, name))
-              else:
-                  if scr: linked.append(name)
+              elif scr:
+                  linked.append(name)
                   for a in scr:
                       rows.append(("linked", a["type"], a["username"], name))
+              else:
+                  # No Last.fm/Libre.fm. NOT the same as unreachable: Stats.fm
+                  # and ListenBrainz are polled server-side too. Separating
+                  # these two is the difference between "the cron cannot see
+                  # them" and "the cron sees them another way".
+                  kinds = sorted({a.get("type") for a in (accts or []) if a.get("username")})
+                  (other_only if any(k in POLLABLE for k in kinds) else none_at_all
+                   ).append((name, ",".join(kinds) or "-"))
 
           print(f"\n── WHERE THE HANDLE COMES FROM ──")
           print(f"  entries with a real linked Last.fm/Libre.fm account: {len(linked)}")
           print(f"  entries fetched under their DISPLAY NAME (line 658):  {len(fallback)}")
-          print(f"  entries with neither (no scrobbler to fetch):         "
-                f"{len(users) - len(linked) - len(fallback)}")
+          print(f"  entries with another pollable scrobbler instead:      {len(other_only)}")
+          print(f"  entries with NO server-side scrobbler at all:         {len(none_at_all)}")
+          print(f"\n  The last group is the one that matters for the daily goal: the")
+          print(f"  cron cannot refresh them at all, so their row carries today's")
+          print(f"  date ONLY if they open the site. That is structural, not a bug.")
+          for name, kinds in none_at_all[:40]:
+              print(f"    {name!r:<34} linked: {kinds}")
+          if other_only[:40]:
+              print(f"\n  Pollable by another route (so NOT invisible to the cron):")
+              for name, kinds in other_only[:40]:
+                  print(f"    {name!r:<34} linked: {kinds}")
 
           # ── Which handles cannot be handles at all ─────────────────────────
           illegal = [(src, k, h, who) for src, k, h, who in rows if not LEGAL.match(h or "")]
