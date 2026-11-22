@@ -10895,7 +10895,13 @@ const TRACKS = [
   // No `spotify` link yet: the pre-save was JISOO.lnk.to/SunShowers and the
   // track's own Spotify id has not been read off the release. Omitted rather
   // than guessed; the card already links the song.
-  { id: 'sunshowers',  title: 'SUN SHOWERS',       artist: 'JISOO',  track: 'Sun Showers', year: '2026', era: 'THE ANGRY BIRDS MOVIE 3', spotify: 'https://open.spotify.com/track/43LLlCRgC6fYYqIaXGLmpd' },
+  // `track` is the Last.fm lookup string, not a display name (the card shows
+  // `title`). It carries the SUFFIXED spelling with Spotify's mismatched
+  // quotes — straight open, curly close — because that is where the plays are:
+  // 1,716 listeners against 15 total on the bare title. See the long note on
+  // the matching entry in api/cron-scrobbles.js; the two must stay
+  // byte-identical.
+  { id: 'sunshowers',  title: 'SUN SHOWERS',       artist: 'JISOO',  track: 'Sun Showers (From "The Angry Birds Movie 3”)', year: '2026', era: 'THE ANGRY BIRDS MOVIE 3', spotify: 'https://open.spotify.com/track/43LLlCRgC6fYYqIaXGLmpd' },
 ];
 
 // Display name for a leaderboard sub-tab, taken from TRACKS rather than typed

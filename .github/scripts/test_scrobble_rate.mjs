@@ -565,6 +565,52 @@ console.log('--- a Last.fm outage never retires an account');
   globalThis.fetch = base;
 }
 
+// ── A CORRECTED TITLE MUST REACH AN IDLE ACCOUNT ──────────────────────────
+// The idle gate serves a cached all-time figure without asking Last.fm. That
+// is the whole saving — and it means a figure read under a WRONG SPELLING
+// would be served forever to anyone who has stopped scrobbling, which is
+// exactly the person a correction needs to reach.
+//
+// REAL CASE, 2026-11-22. Sun Showers' `track` was corrected from the bare
+// title to the suffixed one once Last.fm finished indexing and the two turned
+// out to be separate tracks (1,716 listeners against 15 total). Before this
+// guard, `covered` checked only that every track ID had a finite cached value
+// — and every ID still did, so an idle account would have gone on being
+// served the 0 that the wrong spelling produced.
+//
+// The cache therefore records the spelling it was written under, and a
+// mismatch forces a full re-read.
+console.log('--- a cache written under a different spelling is not reused');
+{
+  STORE.clear();
+  reset();
+  feed = [];
+  const cache = {};
+  await mod.refreshUser(entry('carol'), null, null, null, cache);
+  check(typeof cache.carol?.sig === 'string' && cache.carol.sig.length > 0,
+        'the entry records the spelling it was read under',
+        `${String(cache.carol?.sig).slice(0, 44)}…`);
+  check(cache.carol.sig.includes(mod.TRACKS[0].track),
+        'and the signature is over the TITLES, not just the ids',
+        mod.TRACKS[0].track);
+
+  // Unchanged playcount: the idle path, one request.
+  reset();
+  await mod.refreshUser(entry('carol'), null, null, null, cache);
+  check(calls.length === 1, 'an unchanged entry still costs one request', `${calls.length}`);
+
+  // Now a title has been corrected. Same ids, same playcount, same windows —
+  // only the spelling moved. The account must NOT be treated as idle.
+  cache.carol.sig = cache.carol.sig.replace(mod.TRACKS[0].track, 'Some Other Spelling');
+  reset();
+  await mod.refreshUser(entry('carol'), null, null, null, cache);
+  check(of('track.getInfo') === mod.TRACKS.length,
+        'a corrected title forces every all-time figure to be re-read',
+        `${of('track.getInfo')} of ${mod.TRACKS.length}`);
+  check(cache.carol.sig.includes(mod.TRACKS[0].track),
+        'and the entry is rewritten under the current spelling');
+}
+
 globalThis.fetch = realFetch;
 console.log(fails ? `\n${fails} FAILED` : '\nAll correct.');
 process.exit(fails ? 1 : 0);

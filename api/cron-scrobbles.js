@@ -178,14 +178,27 @@ const TRACKS = [
   // figures are RE-DERIVED from each account's Last.fm history on every run
   // rather than accumulated, and adding a track to TRACKS invalidates the
   // per-user cache precisely so a new release cannot be served as a cached 0.
-  // Spotify's own title is 'Sun Showers (From "The Angry Birds Movie 3”)' —
-  // note the MISMATCHED QUOTES, straight open and curly close. That is
-  // Spotify's metadata, not a scrobbler quirk: the same string comes back from
-  // the discography API (track 43LLlCRgC6fYYqIaXGLmpd) and from every fan's
-  // scrobbles. The bare title is kept here because norm()/trackKey strip the
-  // parenthetical on both sides, so it matches either way and does not depend
-  // on reproducing those two characters correctly.
-  { id: 'sunshowers', artist: 'JISOO',  track: 'Sun Showers' },
+  // THE SUFFIXED TITLE, WITH ITS MISMATCHED QUOTES — straight open (U+0022),
+  // curly close (U+201D). That is Spotify's own metadata, not a scrobbler
+  // quirk: the identical string comes from the discography API (track
+  // 43LLlCRgC6fYYqIaXGLmpd) and from every fan's scrobbles.
+  //
+  // THE BARE TITLE WAS CARRIED HERE FIRST AND HAD TO BE CHANGED. On 2026-11-22
+  // Last.fm finished indexing and the two spellings are SEPARATE tracks:
+  //   'Sun Showers (From "The Angry Birds Movie 3”)'  1,716 listeners
+  //   'Sun Showers'                                      15 plays in total
+  // track.getInfo is an exact-string lookup, so the bare title was reading a
+  // near-empty track: one fan with 255 real plays returned userplaycount 0.
+  // That is the "Someone to Hold" failure, caught this time by a daily check
+  // instead of by someone noticing a zero.
+  //
+  // DAY AND WEEK COUNTS NEVER DEPENDED ON THIS and still do not — norm()/
+  // trackKey strip the parenthetical on both sides, so they matched the whole
+  // time. Only the all-time figure needed the exact spelling.
+  //
+  // MUST STAY BYTE-IDENTICAL to index.html's entry; test_track_titles_match
+  // fails if they drift. Do not let an editor normalise the curly quote.
+  { id: 'sunshowers', artist: 'JISOO',  track: 'Sun Showers (From "The Angry Birds Movie 3”)' },
 ];
 
 // Less Than a Lover leaves the campaign at the reset cutoff. Per-track ltal values
@@ -282,6 +295,11 @@ async function persistStamp(sb, username, todayKey, stamps) {
 const normHandle = (u) => String(u || '').trim().replace(/^@+/, '');
 
 // ── Last.fm helpers ───────────────────────────────────────────
+// The spelling TRACKS currently uses, as one string. A cache entry records the
+// signature it was written under so that CORRECTING A TITLE invalidates it —
+// the per-id check cannot, because the id does not change. See `covered`.
+const TRACKS_SIG = TRACKS.map(t => `${t.id}:${t.artist}:${t.track}`).join('|');
+
 const LASTFM_RETRYABLE_ERRORS = new Set([8, 11, 16]);
 // 29 = Rate Limit Exceeded, kept SEPARATE from the three above because it needs
 // a different answer. An 8/11/16 is this one request's bad luck, so sleeping on
@@ -753,7 +771,20 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
       // from it as a silent zero for everyone, every run, until they happened
       // to scrobble something — exactly the failure the auto-discovery note in
       // CLAUDE.md describes on the Spotify side.
+      // AND IT HAS TO COVER THE TRACKS AS THEY ARE SPELLED NOW, not merely by
+      // id. The id check alone was not enough: when Sun Showers' `track` was
+      // corrected from the bare title to the suffixed one on 2026-11-22, every
+      // id was still present and finite, so `covered` stayed true and an idle
+      // account would have gone on being served the 0 the WRONG spelling had
+      // produced — indefinitely, since an idle account never re-reads. The
+      // fix reaches a fan only once they scrobble again, which is precisely
+      // the fan it does not reach.
+      //
+      // The signature is over id + artist + title, so any future spelling
+      // correction invalidates by itself. It costs one full sweep, which the
+      // rotating cursor spreads over a few runs.
       const covered = !!cached && !!cached.t && !!cached.d && !!cached.w
+        && cached.sig === TRACKS_SIG
         && TRACKS.every(t => Number.isFinite(cached.t[t.id]));
       const idle    = pc !== null && covered && cached.pc === pc;
       // Asked SEPARATELY from `idle` now, because the delta path below needs it
@@ -917,6 +948,8 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
           // totals were last read together, which is what expires the delta
           // path's trust in them after a day.
           ts: seenTs, tFull: fullAt,
+          // What the all-time figures were read UNDER. See `covered`.
+          sig: TRACKS_SIG,
         };
       }
 
