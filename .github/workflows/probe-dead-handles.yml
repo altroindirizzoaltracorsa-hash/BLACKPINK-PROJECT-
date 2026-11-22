@@ -1,0 +1,167 @@
+name: Why are the scrobble refreshes failing (read-only)
+# Eleven of twenty-one users failed in run 45052769716, all on
+# "Last.fm HTTP 404" / "HTTP 403", while the response reported `dead: []`.
+# Two candidate explanations, and they call for opposite fixes:
+#
+#   A. THE ACCOUNTS ARE GONE. Renamed or made private. Nothing to fix in the
+#      code; they should simply stop being retried.
+#
+#   B. WE ARE SENDING THE WRONG HANDLE. api/cron-scrobbles.js:658 reads
+#
+#          const linkedAccounts = entry.linkedAccounts
+#            || [{ type: 'lastfm', username: entry.username }];
+#
+#      so a fan with NO linked account has their DISPLAY NAME fetched as a
+#      Last.fm handle. Two of the names in that run ("Humah kim", "Chaengie là
+#      bồ của ltq") contain spaces, which a Last.fm username cannot, so at
+#      least some of the 404s are this. Those fans are not dead accounts and
+#      retiring them would be recording our own bug as their absence.
+#
+# This separates them. It prints, per failing handle, whether the handle came
+# from a real linked account or from the display-name fallback, whether it is
+# even a legal Last.fm username, and what the API actually answers.
+#
+# READ-ONLY: one GET of the public leaderboard, then one user.getInfo per
+# DISTINCT handle. No writes, no lock, nothing is retired or marked.
+#
+# The Last.fm key is shared with the whole live site and error 29 is the key
+# being spent, not a flake — so the calls are paced and capped.
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Max distinct handles to test live (default 250)'
+        required: false
+        default: '250'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        env:
+          BASE:  ${{ secrets.VERCEL_URL }}
+          LIMIT: ${{ github.event.inputs.limit }}
+        run: |
+          set -euo pipefail
+          # -L --location-trusted: VERCEL_URL 308-redirects to the apex, and
+          # without following, curl "succeeds" on a redirect stub. No admin
+          # header needed — the leaderboard is public.
+          curl -sS -L --location-trusted -o board.json \
+               -w "leaderboard: HTTP %{http_code}  %{size_download} bytes\n" \
+               "${BASE}/api/leaderboard"
+          python3 - <<'PY'
+          import json, os, re, time, urllib.parse, urllib.request
+
+          LFM_KEY = "666b8ef2f3cc360fbc20df275fba2981"
+          BASES   = {"lastfm":  "https://ws.audioscrobbler.com/2.0/",
+                     "librefm": "https://libre.fm/2.0/"}
+          LIMIT   = int(os.environ.get("LIMIT") or 250)
+
+          # Last.fm usernames: ASCII letters/digits/underscore/hyphen, starting
+          # with a letter. Anything else cannot be a handle, so a 404 on it is
+          # OUR bug and not a departed fan. Deliberately generous (no length
+          # bound) so the verdict is never stricter than the real rule.
+          LEGAL = re.compile(r'^[A-Za-z][A-Za-z0-9_-]*$')
+
+          def get(url, tries=2):
+              for i in range(tries):
+                  try:
+                      req = urllib.request.Request(url, headers={"User-Agent": "blinks-united-probe"})
+                      with urllib.request.urlopen(req, timeout=25) as r:
+                          return r.status, json.loads(r.read().decode())
+                  except urllib.error.HTTPError as e:
+                      return e.code, None              # 404/403 is the ANSWER here
+                  except Exception as e:
+                      if i == tries - 1: return None, {"__error": str(e)}
+                      time.sleep(0.8)
+              return None, None
+
+          def probe(kind, handle):
+              p = {"method": "user.getInfo", "user": handle, "format": "json"}
+              if kind == "lastfm": p["api_key"] = LFM_KEY
+              time.sleep(0.35)                          # shared key — see header
+              code, data = get(BASES[kind] + "?" + urllib.parse.urlencode(p))
+              if data and isinstance(data, dict) and data.get("error"):
+                  return f"error {data['error']}"
+              if code == 200 and data: return "ok"
+              return f"HTTP {code}" if code else "network"
+
+          board = json.load(open("board.json"))
+          users = board.get("users") or {}
+          print(f"\nboard entries: {len(users)}")
+
+          # ── Classify every entry by WHERE its handle comes from ────────────
+          # This is the whole question, and it is answered without a single API
+          # call: an entry with no linkedAccounts is fetched under its display
+          # name because of line 658.
+          fallback, linked, rows = [], [], []
+          for name, d in users.items():
+              accts = d.get("linkedAccounts")
+              scr = [a for a in (accts or []) if a.get("type") in ("lastfm", "librefm")
+                     and a.get("username")]
+              if not accts:
+                  fallback.append(name)
+                  rows.append(("fallback", "lastfm", d.get("username") or name, name))
+              else:
+                  if scr: linked.append(name)
+                  for a in scr:
+                      rows.append(("linked", a["type"], a["username"], name))
+
+          print(f"\n── WHERE THE HANDLE COMES FROM ──")
+          print(f"  entries with a real linked Last.fm/Libre.fm account: {len(linked)}")
+          print(f"  entries fetched under their DISPLAY NAME (line 658):  {len(fallback)}")
+          print(f"  entries with neither (no scrobbler to fetch):         "
+                f"{len(users) - len(linked) - len(fallback)}")
+
+          # ── Which handles cannot be handles at all ─────────────────────────
+          illegal = [(src, k, h, who) for src, k, h, who in rows if not LEGAL.match(h or "")]
+          print(f"\n── HANDLES THAT ARE NOT LEGAL LAST.FM USERNAMES ──")
+          print(f"  {len(illegal)} of {len(rows)} — every one of these 404s by construction,")
+          print(f"  and NONE of them is evidence that a fan left.")
+          for src, k, h, who in illegal[:40]:
+              why = "contains a space" if " " in h else "non-ASCII or bad start"
+              print(f"  [{src:<8}] {k:<7} {h!r:<34} ({why})  entry={who!r}")
+
+          # ── Now ask the APIs about the rest ────────────────────────────────
+          seen, todo = set(), []
+          for src, k, h, who in rows:
+              key = (k, (h or "").lower())
+              if key in seen: continue
+              seen.add(key)
+              todo.append((src, k, h, who))
+          capped = todo[:LIMIT]
+          print(f"\n── LIVE user.getInfo, {len(capped)} distinct handles"
+                f"{' (capped)' if len(todo) > LIMIT else ''} ──")
+
+          agg = {}
+          bad = []
+          for src, k, h, who in capped:
+              verdict = probe(k, h)
+              agg[(src, verdict)] = agg.get((src, verdict), 0) + 1
+              if verdict != "ok":
+                  bad.append((src, k, h, who, verdict, bool(LEGAL.match(h or ""))))
+
+          print(f"\n── RESULT BY WHERE THE HANDLE CAME FROM ──")
+          for (src, verdict), n in sorted(agg.items(), key=lambda kv: (kv[0][0], -kv[1])):
+              print(f"  {src:<8} {verdict:<12} {n:>4}")
+
+          print(f"\n── EVERY FAILING HANDLE ──")
+          print(f"  legal=yes means the handle is well-formed, so the account really")
+          print(f"  is gone or private. legal=no means we invented the handle.")
+          for src, k, h, who, verdict, legal in bad:
+              print(f"  {verdict:<12} [{src:<8}] {k:<7} legal={'yes' if legal else 'no ':<3} "
+                    f"{h!r:<30} entry={who!r}")
+
+          n_fb   = sum(1 for b in bad if b[0] == "fallback")
+          n_ill  = sum(1 for b in bad if not b[5])
+          print(f"\n── VERDICT ──")
+          print(f"  failing handles: {len(bad)} of {len(capped)} tested")
+          print(f"    from the display-name fallback (line 658, OUR bug): {n_fb}")
+          print(f"    not even a legal username (OUR bug):                {n_ill}")
+          print(f"    well-formed linked handles that genuinely fail:     "
+                f"{sum(1 for b in bad if b[0] == 'linked' and b[5])}")
+          print(f"\n  Only the last line is 'the account is gone'. The others are")
+          print(f"  handles we should never have sent, and retiring them would")
+          print(f"  record our own bug as the fan's absence.")
+          PY
