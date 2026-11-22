@@ -173,8 +173,12 @@ jobs:
               print(f"  {src:<8} {verdict:<12} {n:>4}")
 
           print(f"\n── EVERY FAILING HANDLE ──")
-          print(f"  legal=yes means the handle is well-formed, so the account really")
-          print(f"  is gone or private. legal=no means we invented the handle.")
+          print(f"  legal=no  the string cannot be a username, so this is OUR bug.")
+          print(f"  legal=yes the string COULD be a username. That is all it means.")
+          print(f"            It does NOT establish the account was deleted: a first")
+          print(f"            name typed into the Last.fm field ('Kat', 'Faith',")
+          print(f"            'JOSEPHINE', 'Mahi') is well-formed and never existed.")
+          print(f"            A string cannot tell 'deleted' from 'never typed right'.")
           for src, k, h, who, verdict, legal in bad:
               print(f"  {verdict:<12} [{src:<8}] {k:<7} legal={'yes' if legal else 'no ':<3} "
                     f"{h!r:<30} entry={who!r}")
@@ -185,9 +189,25 @@ jobs:
           print(f"  failing handles: {len(bad)} of {len(capped)} tested")
           print(f"    from the display-name fallback (line 658, OUR bug): {n_fb}")
           print(f"    not even a legal username (OUR bug):                {n_ill}")
-          print(f"    well-formed linked handles that genuinely fail:     "
+          print(f"    well-formed, so UNDECIDABLE from the string alone:  "
                 f"{sum(1 for b in bad if b[0] == 'linked' and b[5])}")
-          print(f"\n  Only the last line is 'the account is gone'. The others are")
-          print(f"  handles we should never have sent, and retiring them would")
-          print(f"  record our own bug as the fan's absence.")
+
+          # ── WHAT THIS COSTS, which is the number that matters ──────────────
+          # A failing handle is cheap on its own (user.getInfo throws on the
+          # first call). The damage is that there is no try/catch inside the
+          # per-account loop in refreshUser, so ONE dead account aborts the
+          # whole fan and discards the plays from their working accounts. So
+          # the figure to watch is ENTRIES affected, not handles.
+          ent_bad = {}
+          for src, k, h, who, verdict, legal in bad:
+              ent_bad.setdefault(who, []).append(f"{k}/{h}")
+          print(f"\n── ENTRIES THAT CANNOT BE REFRESHED AT ALL ──")
+          print(f"  {len(ent_bad)} of {len(users)} board entries "
+                f"({100*len(ent_bad)/max(1,len(users)):.0f}%) carry at least one")
+          print(f"  failing handle. Because one throw aborts the fan, every one of")
+          print(f"  these contributes ZERO to the daily goal every single day — and")
+          print(f"  unlike a slow sweep, this does not clear by itself.")
+          for who, hs in sorted(ent_bad.items(), key=lambda kv: -len(kv[1]))[:12]:
+              extra = f"  (+{len(hs)-3} more)" if len(hs) > 3 else ""
+              print(f"    {who!r:<34} {len(hs):>3} failing: {', '.join(hs[:3])}{extra}")
           PY
