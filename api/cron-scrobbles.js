@@ -298,7 +298,17 @@ const normHandle = (u) => String(u || '').trim().replace(/^@+/, '');
 // The spelling TRACKS currently uses, as one string. A cache entry records the
 // signature it was written under so that CORRECTING A TITLE invalidates it —
 // the per-id check cannot, because the id does not change. See `covered`.
-const TRACKS_SIG = TRACKS.map(t => `${t.id}:${t.artist}:${t.track}`).join('|');
+// PER TRACK, not one string for the whole list. A single global signature
+// answers "has anything changed?" and nothing more, so the only response to a
+// mismatch is to re-read all twenty titles for every account — which, with
+// multi-account fans, measured 185 Last.fm calls per user and bought THREE
+// users in a 150-second run. Correct, and so slow the board would take days
+// to come back.
+//
+// Per track it answers "WHICH titles changed?", and the answer to the Sun
+// Showers correction is one. Re-reading one figure costs one call.
+const trackSig = (t) => `${t.artist}\u001f${t.track}`;
+const TRACKS_SIG = Object.fromEntries(TRACKS.map(t => [t.id, trackSig(t)]));
 
 const LASTFM_RETRYABLE_ERRORS = new Set([8, 11, 16]);
 // 29 = Rate Limit Exceeded, kept SEPARATE from the three above because it needs
@@ -811,7 +821,12 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
       // fixing.
       const structurallyCovered = !!cached && !!cached.t && !!cached.d && !!cached.w
         && TRACKS.every(t => Number.isFinite(cached.t[t.id]));
-      const sigOk   = !!cached && cached.sig === TRACKS_SIG;
+      // The tracks whose spelling has moved since this entry was written. An
+      // entry from before signatures existed has none recorded, so every
+      // title counts as stale and it takes one full read — once.
+      const staleTitles = !cached ? []
+        : TRACKS.filter(t => !cached.sig || cached.sig[t.id] !== TRACKS_SIG[t.id]);
+      const sigOk   = !!cached && staleTitles.length === 0;
       const covered = structurallyCovered && sigOk;
       const idle    = pc !== null && covered && cached.pc === pc;
       // Asked SEPARATELY from `idle` now, because the delta path below needs it
@@ -891,9 +906,14 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
         // re-read. This is the expensive half of a title correction, and it
         // is the half that is actually necessary — the week does not need
         // re-reading, which is why canDelta above ignores the signature.
-        const touched = sigOk
-          ? TRACKS.filter(t => (addWeek[t.id] || 0) > 0)
-          : TRACKS.slice();
+        // What the fan played this hour, PLUS anything whose spelling moved —
+        // a renamed title's cached total was read against the wrong string
+        // whether or not they played it. Union, deduped by id: the Sun
+        // Showers correction adds one read, not nineteen.
+        const played = TRACKS.filter(t => (addWeek[t.id] || 0) > 0);
+        const touched = [...new Map(
+          [...played, ...staleTitles].map(t => [t.id, t])
+        ).values()];
         // artistPlays is EVERY BLACKPINK-credited play, not just the tracked
         // ones — "Pink Venom" moves it while touching no campaign title — so it
         // is gated on the artist appearing in the delta rather than on
@@ -911,10 +931,11 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
         ]);
         ap = apV;
         touched.forEach((t, i) => { allTime[t.id] = perTrack[i]; });
-        // All eighteen were just read together under the current spelling, so
-        // this IS a complete read and the stamp has to say so — otherwise the
-        // entry stays un-deltable and every later run pays for it again.
-        if (!sigOk) fullAt = Date.now();
+        // tFull means "every title was read together, just now". Only stamp
+        // it when that is actually true — a partial re-read of the renamed
+        // titles is not a complete read, and claiming it is would let the
+        // delta path keep trusting figures that are older than it thinks.
+        if (touched.length === TRACKS.length) fullAt = Date.now();
         for (const s of fresh) {
           const ts = parseInt(s.date?.uts || '0', 10);
           if (ts > seenTs) seenTs = ts;

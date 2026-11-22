@@ -598,75 +598,93 @@ console.log('--- a cache written under a different spelling is not reused');
   feed = [];
   const cache = {};
   await mod.refreshUser(entry('carol'), null, null, null, cache);
-  check(typeof cache.carol?.sig === 'string' && cache.carol.sig.length > 0,
-        'the entry records the spelling it was read under',
-        `${String(cache.carol?.sig).slice(0, 44)}…`);
-  check(cache.carol.sig.includes(mod.TRACKS[0].track),
-        'and the signature is over the TITLES, not just the ids',
-        mod.TRACKS[0].track);
+  const sig = cache.carol?.sig;
+  check(sig && typeof sig === 'object' && !Array.isArray(sig),
+        'the entry records a signature PER TRACK, not one string for the list',
+        `${Object.keys(sig || {}).length} entries`);
+  check(Object.keys(sig || {}).length === mod.TRACKS.length,
+        'one per tracked title', `${Object.keys(sig || {}).length} of ${mod.TRACKS.length}`);
+  check(String(sig?.[mod.TRACKS[0].id] || '').includes(mod.TRACKS[0].track),
+        'and it records the TITLE, not just the id', mod.TRACKS[0].track);
 
-  // Unchanged playcount: the idle path, one request.
+  // Unchanged playcount and unchanged titles: the idle path, one request.
   reset();
   await mod.refreshUser(entry('carol'), null, null, null, cache);
   check(calls.length === 1, 'an unchanged entry still costs one request', `${calls.length}`);
 
-  // Now a title has been corrected. Same ids, same playcount, same windows —
-  // only the spelling moved. The account must NOT be treated as idle.
-  cache.carol.sig = cache.carol.sig.replace(mod.TRACKS[0].track, 'Some Other Spelling');
-  reset();
-  await mod.refreshUser(entry('carol'), null, null, null, cache);
-  check(of('track.getInfo') === mod.TRACKS.length,
-        'a corrected title forces every all-time figure to be re-read',
-        `${of('track.getInfo')} of ${mod.TRACKS.length}`);
-  check(cache.carol.sig.includes(mod.TRACKS[0].track),
-        'and the entry is rewritten under the current spelling');
+  // ── ONE RENAMED TITLE COSTS ONE RE-READ, NOT TWENTY ─────────────────────
+  // A global signature could only say "something changed", so the only safe
+  // response was to re-read every title for every account. Measured live on
+  // 2026-11-22: 185 Last.fm calls per user, THREE users in a 150s run — the
+  // board would have taken days to come back from a one-word correction.
+  {
+    const renamed = mod.TRACKS[1];
+    cache.carol.sig = { ...cache.carol.sig, [renamed.id]: 'OldArtist\u001fOld Title' };
+    reset();
+    await mod.refreshUser(entry('carol'), null, null, null, cache);
+    check(of('track.getInfo') === 1,
+          'exactly the renamed title is re-read',
+          `${of('track.getInfo')} call(s) — twenty would be the blunt version`);
+    check(String(cache.carol.sig[renamed.id]).includes(renamed.track),
+          'and its signature is brought up to date', renamed.track);
+  }
 
-  // ── BUT IT MUST NOT RE-PAGINATE THE WEEK ────────────────────────────────
-  // A spelling change does not change the fan's scrobble history, so the
-  // watermark is still valid and the week must still be read forward from it
-  // — ONE page, not twelve.
-  //
-  // Gating canDelta on the signature instead got this wrong and cost a live
-  // outage: every account fell to the full path at once, the run hit Vercel's
-  // 300s wall, and a timed-out invocation commits NO board, so the leaderboard
-  // stopped updating entirely. Worse than the stale figure being fixed.
+  // ── AN ENTRY FROM BEFORE SIGNATURES EXISTED TAKES ONE FULL READ ─────────
+  {
+    STORE.clear(); reset(); feed = [];
+    const legacy = {};
+    await mod.refreshUser(entry('dave'), null, null, null, legacy);
+    delete legacy.dave.sig;                       // written before signatures
+    reset();
+    await mod.refreshUser(entry('dave'), null, null, null, legacy);
+    check(of('track.getInfo') === mod.TRACKS.length,
+          'a signature-less entry re-reads everything, once',
+          `${of('track.getInfo')} of ${mod.TRACKS.length}`);
+    check(Number.isFinite(legacy.dave.tFull),
+          'and THAT is a complete read, so tFull is stamped');
+  }
+
+  // ── A PARTIAL RE-READ MUST NOT CLAIM TO BE A COMPLETE ONE ───────────────
+  // tFull means "every title read together, just now". Stamping it after
+  // re-reading one renamed title would let the delta path go on trusting
+  // figures older than it thinks they are.
+  {
+    STORE.clear(); reset(); feed = [];
+    const c2 = {};
+    await mod.refreshUser(entry('erin'), null, null, null, c2);
+    const before = c2.erin.tFull;
+    await new Promise(r => setTimeout(r, 5));
+    c2.erin.sig = { ...c2.erin.sig, [mod.TRACKS[2].id]: 'x\u001fy' };
+    reset();
+    await mod.refreshUser(entry('erin'), null, null, null, c2);
+    check(c2.erin.tFull === before,
+          'a one-title re-read leaves tFull alone',
+          `${before} -> ${c2.erin.tFull}`);
+  }
+
+  // ── AND THE WEEK IS STILL NOT RE-PAGINATED ──────────────────────────────
   {
     const now2 = Math.floor(Date.now() / 1000);
-    // A WEEK WORTH MORE THAN ONE PAGE, so re-paginating it is measurably
-    // different from reading forward from the watermark. Without this the
-    // mock answers both with one page and the check cannot fail.
     pageSize = 2;
+    STORE.clear(); reset();
     feed = [];
     for (let k = 0; k < 8; k++) {
       feed.push(scrobble(mod.TRACKS[0].track, mod.TRACKS[0].artist, now2 - 3600 * (k + 2)));
     }
-    // Establish the watermark over the full history first.
-    playcount += 1;
-    reset();
-    await mod.refreshUser(entry('carol'), null, null, null, cache);
+    const c3 = {};
+    await mod.refreshUser(entry('faye'), null, null, null, c3);
     const fullPages = of('user.getRecentTracks');
     check(fullPages > 1, 'the mock really does paginate a full week read',
           `${fullPages} pages — if this is 1 the next check cannot fail`);
 
-    // Now ONE new scrobble, and a cache written under an older spelling.
     feed.push(scrobble(mod.TRACKS[0].track, mod.TRACKS[0].artist, now2 - 60));
-    playcount += 1;                       // carol scrobbled, so not idle
-    const tFullBefore = cache.carol.tFull;
-    cache.carol.sig = 'written-under-an-older-spelling';
+    playcount += 1;
+    c3.faye.sig = { ...c3.faye.sig, [mod.TRACKS[1].id]: 'q\u001fr' };
     reset();
-    await mod.refreshUser(entry('carol'), null, null, null, cache);
+    await mod.refreshUser(entry('faye'), null, null, null, c3);
     check(of('user.getRecentTracks') === 1,
           'the week is read forward from the watermark, not re-paginated',
           `${of('user.getRecentTracks')} page request(s), vs ${fullPages} for a full read`);
-    check(of('track.getInfo') === mod.TRACKS.length,
-          'while every all-time figure is still re-read',
-          `${of('track.getInfo')} of ${mod.TRACKS.length}`);
-    // STAMPED, and the stamp must have MOVED — merely being finite is also
-    // true of the stale stamp left by the previous read, so a check for
-    // finiteness passes against code that never restamps.
-    check(Number.isFinite(cache.carol.tFull) && cache.carol.tFull > tFullBefore,
-          'and the complete read is stamped afresh, so the next run can delta',
-          `tFull ${tFullBefore} -> ${cache.carol.tFull}`);
     pageSize = 200;
   }
   feed = [];
