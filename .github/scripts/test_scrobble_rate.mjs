@@ -121,14 +121,25 @@ globalThis.fetch = async (url) => {
 // proves refreshUser filters it out itself rather than trusting the wording.
 let feed = [];   // { name, artistName, uts }
 const scrobble = (name, artistName, uts) => ({ name, artistName, uts });
+// PAGE SIZE IS SETTABLE SO A FULL READ CAN BE TOLD FROM A DELTA READ.
+// It was hardcoded to one page, which made the mock answer every request —
+// a twelve-page week sweep and a one-page read forward from the watermark —
+// with a single page. A test that cannot tell those apart passes against the
+// code that re-paginates the whole week, which is exactly the regression that
+// took the live board down on 2026-11-22. Default 200 so every other section
+// behaves as before.
+let pageSize = 200;
 function recentTracksBody(q) {
   const from = parseInt(q.get('from') || '0', 10);
   const to   = parseInt(q.get('to')   || '9999999999', 10);
+  const page = parseInt(q.get('page') || '1', 10);
   const sel  = feed.filter(s => s.uts >= from && s.uts < to)
                    .sort((a, b) => b.uts - a.uts);
+  const pages = Math.max(1, Math.ceil(sel.length / pageSize));
+  const slice = sel.slice((page - 1) * pageSize, page * pageSize);
   return { recenttracks: {
-    track: sel.map(s => ({ name: s.name, artist: { '#text': s.artistName }, date: { uts: String(s.uts) } })),
-    '@attr': { totalPages: '1' },
+    track: slice.map(s => ({ name: s.name, artist: { '#text': s.artistName }, date: { uts: String(s.uts) } })),
+    '@attr': { totalPages: String(pages) },
   } };
 }
 const reset = () => { calls = []; };
@@ -609,6 +620,56 @@ console.log('--- a cache written under a different spelling is not reused');
         `${of('track.getInfo')} of ${mod.TRACKS.length}`);
   check(cache.carol.sig.includes(mod.TRACKS[0].track),
         'and the entry is rewritten under the current spelling');
+
+  // ── BUT IT MUST NOT RE-PAGINATE THE WEEK ────────────────────────────────
+  // A spelling change does not change the fan's scrobble history, so the
+  // watermark is still valid and the week must still be read forward from it
+  // — ONE page, not twelve.
+  //
+  // Gating canDelta on the signature instead got this wrong and cost a live
+  // outage: every account fell to the full path at once, the run hit Vercel's
+  // 300s wall, and a timed-out invocation commits NO board, so the leaderboard
+  // stopped updating entirely. Worse than the stale figure being fixed.
+  {
+    const now2 = Math.floor(Date.now() / 1000);
+    // A WEEK WORTH MORE THAN ONE PAGE, so re-paginating it is measurably
+    // different from reading forward from the watermark. Without this the
+    // mock answers both with one page and the check cannot fail.
+    pageSize = 2;
+    feed = [];
+    for (let k = 0; k < 8; k++) {
+      feed.push(scrobble(mod.TRACKS[0].track, mod.TRACKS[0].artist, now2 - 3600 * (k + 2)));
+    }
+    // Establish the watermark over the full history first.
+    playcount += 1;
+    reset();
+    await mod.refreshUser(entry('carol'), null, null, null, cache);
+    const fullPages = of('user.getRecentTracks');
+    check(fullPages > 1, 'the mock really does paginate a full week read',
+          `${fullPages} pages — if this is 1 the next check cannot fail`);
+
+    // Now ONE new scrobble, and a cache written under an older spelling.
+    feed.push(scrobble(mod.TRACKS[0].track, mod.TRACKS[0].artist, now2 - 60));
+    playcount += 1;                       // carol scrobbled, so not idle
+    const tFullBefore = cache.carol.tFull;
+    cache.carol.sig = 'written-under-an-older-spelling';
+    reset();
+    await mod.refreshUser(entry('carol'), null, null, null, cache);
+    check(of('user.getRecentTracks') === 1,
+          'the week is read forward from the watermark, not re-paginated',
+          `${of('user.getRecentTracks')} page request(s), vs ${fullPages} for a full read`);
+    check(of('track.getInfo') === mod.TRACKS.length,
+          'while every all-time figure is still re-read',
+          `${of('track.getInfo')} of ${mod.TRACKS.length}`);
+    // STAMPED, and the stamp must have MOVED — merely being finite is also
+    // true of the stale stamp left by the previous read, so a check for
+    // finiteness passes against code that never restamps.
+    check(Number.isFinite(cache.carol.tFull) && cache.carol.tFull > tFullBefore,
+          'and the complete read is stamped afresh, so the next run can delta',
+          `tFull ${tFullBefore} -> ${cache.carol.tFull}`);
+    pageSize = 200;
+  }
+  feed = [];
 }
 
 globalThis.fetch = realFetch;

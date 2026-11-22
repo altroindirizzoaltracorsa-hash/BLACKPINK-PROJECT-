@@ -793,9 +793,26 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
       // The signature is over id + artist + title, so any future spelling
       // correction invalidates by itself. It costs one full sweep, which the
       // rotating cursor spreads over a few runs.
-      const covered = !!cached && !!cached.t && !!cached.d && !!cached.w
-        && cached.sig === TRACKS_SIG
+      //
+      // SPLIT IN TWO, because the signature and the structure answer different
+      // questions and conflating them caused a 504. `sigOk` is "were these
+      // all-time figures read under the spelling we use now?" — a title
+      // correction makes it false. `structurallyCovered` is "does this entry
+      // have a usable shape, with a value for every track?" — a title
+      // correction does not touch that, and neither does it touch the WEEK
+      // WATERMARK: the fan's scrobble history did not change, only our name
+      // for one song did.
+      //
+      // Gating canDelta on the signature made every account re-paginate the
+      // whole week (~30 calls each instead of ~19) the moment the Sun Showers
+      // title was corrected, and the run hit Vercel's 300s wall and wrote
+      // NOTHING — a timed-out invocation commits no board at all, so the
+      // board simply stopped updating. Worse than the stale figure it was
+      // fixing.
+      const structurallyCovered = !!cached && !!cached.t && !!cached.d && !!cached.w
         && TRACKS.every(t => Number.isFinite(cached.t[t.id]));
+      const sigOk   = !!cached && cached.sig === TRACKS_SIG;
+      const covered = structurallyCovered && sigOk;
       const idle    = pc !== null && covered && cached.pc === pc;
       // Asked SEPARATELY from `idle` now, because the delta path below needs it
       // for an account that has scrobbled.
@@ -828,7 +845,10 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
       // its last COMPLETE 18-track read is under a day old; after that the
       // next run does a full one whatever the windows say.
       const ALLTIME_MAX_AGE_MS = 24 * 60 * 60 * 1000;
-      const canDelta = !idle && covered && winSame
+      // NOT gated on sigOk: see the note above. A spelling change forces the
+      // all-time figures to be re-read (below) but must not cost a 12-page
+      // week re-read that the watermark already covers.
+      const canDelta = !idle && structurallyCovered && winSame
         && Number.isFinite(cached.ts)
         && Number.isFinite(cached.tFull)
         && (Date.now() - cached.tFull) < ALLTIME_MAX_AGE_MS;
@@ -865,7 +885,15 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
         // hour on one song costs one track read, not eighteen. If the delta
         // holds no campaign track at all, none of them moved and the artist
         // total cannot have either.
-        const touched = TRACKS.filter(t => (addWeek[t.id] || 0) > 0);
+        // A SPELLING CHANGE MEANS EVERY CACHED TOTAL WAS READ AGAINST THE
+        // WRONG STRING, whether or not the fan played that song this hour, so
+        // "which tracks moved" is the wrong question and all of them are
+        // re-read. This is the expensive half of a title correction, and it
+        // is the half that is actually necessary — the week does not need
+        // re-reading, which is why canDelta above ignores the signature.
+        const touched = sigOk
+          ? TRACKS.filter(t => (addWeek[t.id] || 0) > 0)
+          : TRACKS.slice();
         // artistPlays is EVERY BLACKPINK-credited play, not just the tracked
         // ones — "Pink Venom" moves it while touching no campaign title — so it
         // is gated on the artist appearing in the delta rather than on
@@ -883,6 +911,10 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
         ]);
         ap = apV;
         touched.forEach((t, i) => { allTime[t.id] = perTrack[i]; });
+        // All eighteen were just read together under the current spelling, so
+        // this IS a complete read and the stamp has to say so — otherwise the
+        // entry stays un-deltable and every later run pays for it again.
+        if (!sigOk) fullAt = Date.now();
         for (const s of fresh) {
           const ts = parseInt(s.date?.uts || '0', 10);
           if (ts > seenTs) seenTs = ts;
@@ -1640,7 +1672,19 @@ export default async function handler(req, res) {
   //
   // Still an env-var default, for the reason it always was: it can be moved
   // without a deploy if a run is killed mid-write again.
-  const RUN_BUDGET_MS = Number(process.env.SCROBBLE_RUN_BUDGET_MS || 190000);
+  //
+  // 120s, DOWN FROM 190, after a second 504. The budget is checked between
+  // BATCHES of three, so the loop can overshoot it by a whole batch, and a
+  // batch of three accounts on the expensive path is tens of seconds of paced
+  // calls on top of whatever the archive-and-upsert tail then costs. 190 left
+  // too little margin for that and the invocation was killed at 300s having
+  // written nothing — a timed-out run commits no board at all, which is why
+  // this number is not merely a throughput dial.
+  //
+  // Fewer users per run, but every run COMMITS. The rotating cursor makes the
+  // board whole over several runs; a run that dies at the wall makes it whole
+  // over none.
+  const RUN_BUDGET_MS = Number(process.env.SCROBBLE_RUN_BUDGET_MS || 120000);
   const runStartedAt  = Date.now();
   // Module-level, so it carries over on a warm instance. Zero it per run or the
   // reported figure is "every call this container ever made".
