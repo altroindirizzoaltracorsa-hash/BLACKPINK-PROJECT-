@@ -1,0 +1,170 @@
+name: Why is the community goal short (read-only)
+# The daily community goal counts a fan ONLY if their board entry was
+# refreshed today:
+#
+#     if (s.daily_date !== todayLabel) return sum;     // index.html
+#
+# So a fan the hourly cron did not reach contributes ZERO — not a stale
+# number, nothing at all. Their scrobbles happened; the goal simply cannot
+# see them. That makes "the goal is short" and "the refresh did not finish"
+# the same sentence, and this measures which one is doing the work.
+#
+# It prints:
+#   COVERAGE   how many entries carry today's daily_date, and how old the
+#              rest are
+#   COUNTED    the goal total as the page computes it
+#   MISSING    a LIVE Last.fm recount of today's campaign plays for a sample
+#              of the stale fans — what the goal is throwing away
+#   ESTIMATE   that sample scaled to all stale fans
+#
+# The estimate is arithmetic on a sample and is labelled as such. The counted
+# and coverage figures are exact.
+#
+# READ-ONLY: GETs to the public leaderboard and to Last.fm. No writes, no
+# lock, and the Last.fm calls are paced because that key is shared with the
+# whole site (error 29 is the key being spent, not a flake).
+on:
+  workflow_dispatch:
+    inputs:
+      sample:
+        description: 'How many stale fans to recount live (default 8, max 25)'
+        required: false
+        default: '8'
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe
+        env:
+          BASE:   ${{ secrets.VERCEL_URL }}
+          SAMPLE: ${{ github.event.inputs.sample }}
+        run: |
+          set -euo pipefail
+          curl -sS -L --location-trusted -o board.json \
+               -w "leaderboard: HTTP %{http_code}  %{size_download} bytes\n" \
+               "${BASE}/api/leaderboard"
+          python3 - <<'PY'
+          import json, os, re, time, urllib.parse, urllib.request
+          from datetime import datetime, timezone
+
+          LFM_KEY = "666b8ef2f3cc360fbc20df275fba2981"
+          LFM     = "https://ws.audioscrobbler.com/2.0/"
+          SAMPLE  = min(25, int(os.environ.get("SAMPLE") or 8))
+
+          def note(s): print(f"::notice::{s}")
+          def get(url, tries=3):
+              last = None
+              for i in range(tries):
+                  try:
+                      req = urllib.request.Request(url, headers={"User-Agent": "blinks-united-probe"})
+                      with urllib.request.urlopen(req, timeout=30) as r:
+                          return json.loads(r.read().decode())
+                  except Exception as e:
+                      last = e; time.sleep(0.6 * (2 ** i))
+              return {"__error": str(last)}
+          def lfm(**p):
+              p.update(api_key=LFM_KEY, format="json")
+              time.sleep(0.3)          # the key is shared with the whole site
+              return get(LFM + "?" + urllib.parse.urlencode(p))
+
+          # THE DAY IS THE UTC DAY. Both sides agree on this — index.html's
+          # italyDateLabel() is UTC-anchored despite its name (it reads
+          # getDayBounds() and formats with getUTC*). Do not reach for a local
+          # hour here; see CLAUDE.md.
+          now = datetime.now(timezone.utc)
+          day_from = int(datetime(now.year, now.month, now.day, tzinfo=timezone.utc).timestamp())
+          today_label = f"{now.day:02d}/{now.month:02d}"
+          note(f"UTC day started {datetime.fromtimestamp(day_from, timezone.utc):%Y-%m-%d %H:%M} · "
+               f"today_label={today_label} · now {now:%H:%M}Z")
+
+          board = json.load(open("board.json"))
+          users = board.get("users") or {}
+
+          # Deduped exactly as the goal does: a linked secondary handle is
+          # already inside somebody's combined entry.
+          secondary = set()
+          for k, d in users.items():
+              for a in (d.get("linkedAccounts") or []):
+                  ak = (a.get("username") or "").lower()
+                  if ak and ak != k: secondary.add(ak)
+
+          CAMPAIGN = ["jump","shutdown","ddududu","go","ltal","fallenangel","heaven","sawadika",
+                      "click","v12","cobra","tarantino","cutuoff","sweat","newtrick","addicted",
+                      "sth","lwm","powertrip","sunshowers"]
+
+          fresh, stale, counted = [], [], 0
+          for k, d in users.items():
+              if k.lower() in secondary: continue
+              sc = d.get("scores") or {}
+              if sc.get("daily_date") == today_label:
+                  fresh.append((k, d))
+                  counted += sum(sc.get(f"daily_{t}") or 0 for t in CAMPAIGN)
+              else:
+                  stale.append((k, d))
+
+          total = len(fresh) + len(stale)
+          print(f"\n── COVERAGE ──")
+          print(f"  entries counted toward the goal (daily_date == today): {len(fresh)} of {total}"
+                f"  ({100*len(fresh)/max(1,total):.0f}%)")
+          print(f"  entries the goal is IGNORING entirely:                 {len(stale)}")
+          print(f"\n── COUNTED ──")
+          print(f"  goal total as the page computes it: {counted:,}")
+
+          def age_h(d):
+              u = d.get("updatedAt")
+              if not u: return None
+              try: t = datetime.fromisoformat(u.replace("Z", "+00:00"))
+              except Exception: return None
+              return (now - t).total_seconds() / 3600.0
+
+          ages = sorted(a for a in (age_h(d) for _, d in stale) if a is not None)
+          if ages:
+              def pct(p): return ages[min(len(ages)-1, int(len(ages)*p))]
+              print(f"  stale entries last refreshed: median {pct(0.5):.1f}h ago · "
+                    f"p90 {pct(0.9):.1f}h · oldest {ages[-1]:.1f}h")
+
+          # ── What the ignored fans actually did today ─────────────────────
+          # Sorted by how recently they were seen, so the sample is the fans
+          # most likely to still be active rather than long-dormant rows.
+          stale_sorted = sorted(stale, key=lambda kv: age_h(kv[1]) or 1e9)[:SAMPLE]
+          print(f"\n── MISSING (live Last.fm recount of today, {len(stale_sorted)} stale fans) ──")
+          recounted, with_plays = 0, 0
+          for k, d in stale_sorted:
+              handles = [a.get("username") for a in (d.get("linkedAccounts") or [])
+                         if a.get("type") in ("lastfm", "librefm") and a.get("username")]
+              if not handles: handles = [d.get("username") or k]
+              n = 0
+              for h in handles[:3]:          # cap: a few fans have many
+                  r = lfm(method="user.getRecentTracks", user=h,
+                          **{"from": day_from}, to=int(time.time()), limit=200, page=1)
+                  if r.get("error"):
+                      continue
+                  rt = (r.get("recenttracks") or {})
+                  arr = rt.get("track") or []
+                  if isinstance(arr, dict): arr = [arr]
+                  for t in arr:
+                      a = ((t.get("artist") or {}).get("#text") or "").lower()
+                      if not any(m in a for m in ("blackpink","jennie","jisoo","lisa","rose","rosé")):
+                          continue
+                      if not (t.get("date") or {}).get("uts"):   # "now playing"
+                          continue
+                      n += 1
+              recounted += n
+              if n: with_plays += 1
+              print(f"  {k:<28} last seen {('%.1fh' % age_h(d)) if age_h(d) else '?':>7} ago · "
+                    f"{n:>4} BP plays today (page 1 per handle)")
+
+          print(f"\n── ESTIMATE ──")
+          if stale_sorted:
+              per = recounted / len(stale_sorted)
+              print(f"  sampled {len(stale_sorted)} stale fans: {recounted:,} plays today, "
+                    f"{with_plays} of them active")
+              print(f"  scaled to all {len(stale)} stale entries: ~{per*len(stale):,.0f} plays "
+                    f"the goal is not counting")
+              print(f"  counted {counted:,} + uncounted ~{per*len(stale):,.0f} "
+                    f"= ~{counted + per*len(stale):,.0f}")
+          print("\n  The estimate is a sample scaled up and is only as good as the")
+          print("  sample; COVERAGE and COUNTED above are exact. A first page per")
+          print("  handle caps a very heavy fan, so the estimate is a FLOOR.")
+          PY
