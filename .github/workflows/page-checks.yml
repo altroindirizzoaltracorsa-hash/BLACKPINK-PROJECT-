@@ -467,6 +467,23 @@ jobs:
         if: always()
         run: node .github/scripts/test_account_dedup.mjs
 
+      # A scrobble's artist is not always just the member. One fan's Power
+      # Trip plays carried BOTH 'Jennie' and 'JENNIE, Grand Theft Auto VI',
+      # 20 each. Three of the four counting paths compare with `includes` and
+      # counted both; the client's ListenBrainz path used an exact map lookup
+      # and dropped half — so that fan saw half their plays on the badges page
+      # while the cron counted all of them, and the two disagreed depending on
+      # which wrote last.
+      # The check is PARITY, not a spelling list: pinning "this function
+      # returns jennie" would pass while the other side disagreed, which IS
+      # the failure. It drives the real client matcher in a browser and the
+      # real server matcher in Node over the same credits and requires the
+      # same answer. It also found a crash: an empty '#text' fell through
+      # `||` to the artist OBJECT and threw inside refreshUser.
+      - name: Client and server agree who an artist credit belongs to
+        if: always()
+        run: node .github/scripts/test_artist_credit_parity.mjs
+
       # api/youtube-snapshot.js is a PORT of snapshot_youtube.py, moved so a
       # Vercel cron can take the reading at 00:00 UTC instead of GitHub taking
       # it ~9 hours late (measured: scheduled 04:41, ran 13:36 and 13:53 on

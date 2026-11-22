@@ -504,7 +504,17 @@ function countByTrack(scrobbles) {
   for (const t of TRACKS) counts[t.id] = 0;
   for (const s of scrobbles) {
     const name   = (s.name || '').toLowerCase();
-    const artist = (s.artist?.['#text'] || s.artist || '').toLowerCase();
+    // `|| s.artist` FELL THROUGH TO THE OBJECT and threw. Last.fm sends the
+    // artist as { '#text': '…' }, so when '#text' is an EMPTY STRING — falsy —
+    // the || handed back the object itself and .toLowerCase() blew up with
+    // "is not a function", inside countByTrack, inside refreshUser: one
+    // malformed scrobble would fail that fan's entire refresh and they would
+    // keep their stale row with nothing in any log to say why.
+    //
+    // ?? instead of ||, so an empty '#text' stays the empty string, and
+    // String() so nothing non-string can reach .toLowerCase() again. Found by
+    // test_artist_credit_parity feeding the matchers an empty credit.
+    const artist = String(s.artist?.['#text'] ?? s.artist ?? '').toLowerCase();
     for (const t of TRACKS) {
       if (trackMatches(name, artist, t)) { counts[t.id]++; break; }
     }

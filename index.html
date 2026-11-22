@@ -14271,8 +14271,43 @@ const LB_MEMBER_MAP = {
   'rosé': 'rose', 'rose': 'rose', 'roseanne park': 'rose', 'roseanne': 'rose',
   'jennie': 'jennie', 'kim jennie': 'jennie', '제니': 'jennie',
 };
+// A SCROBBLE'S ARTIST IS NOT ALWAYS JUST THE MEMBER, which an exact map lookup
+// cannot see. Real credits observed on real scrobbles:
+//
+//     'Jennie'                        -> jennie   (exact, always worked)
+//     'JENNIE, Grand Theft Auto VI'   -> jennie   (dropped entirely, before)
+//
+// One fan's Power Trip plays were split across both strings, 20 and 20. The
+// other three counting paths — the cron's Last.fm and ListenBrainz matchers,
+// and this page's own Last.fm matcher — all compare with `includes` and
+// counted both. Only this one, the ListenBrainz path, used the exact map and
+// dropped half. So a fan with a ListenBrainz account linked lost those plays
+// on the badges page while the cron counted them, and the two then disagreed
+// about the same fan depending on which wrote last — the same shape as the
+// *_all sums that stopped at `lwm`.
+//
+// EXACT FIRST, so nothing that worked before can change. Then a fallback on
+// WHOLE TOKENS rather than a raw substring: 'rose' must not match inside
+// 'Rosenberg' or 'Primrose'. Accents stripped on both sides, because ROSÉ
+// scrobbles both ways and that is the bug _deAccent already exists for.
+//
+// AMBIGUITY RETURNS NULL, which is what an unmatched string did before, so
+// this cannot mis-assign. A credit naming two members has no single right
+// answer here — the caller branches on one member and then checks its own
+// track list, so guessing would file the play under the wrong one. No track
+// in TRACKS is a two-member collab today; if one ships, it needs its own
+// branch rather than a guess from this function.
 function _lbMemberKey(artist) {
-  return LB_MEMBER_MAP[(artist || '').toLowerCase().trim()] || null;
+  const raw = (artist || '').toLowerCase().trim();
+  if (LB_MEMBER_MAP[raw]) return LB_MEMBER_MAP[raw];
+  if (!raw) return null;
+  const flat = _deAccent(raw);
+  const hits = new Set();
+  for (const alias of Object.keys(LB_MEMBER_MAP)) {
+    const a = _deAccent(alias).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (new RegExp(`(^|[^a-z0-9])${a}([^a-z0-9]|$)`).test(flat)) hits.add(LB_MEMBER_MAP[alias]);
+  }
+  return hits.size === 1 ? [...hits][0] : null;
 }
 
 // Title key for campaign matching: drop (feat…)/[remix] parentheticals, then all
