@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-24T19:15:49.787Z",
-  "date": "2026-11-24",
+  "generatedAt": "2026-11-25T18:20:13.972Z",
+  "date": "2026-11-25",
   "regions": {
     "us": {
       "region": "United States",
@@ -51,13 +51,13 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 144,
+          "position": 153,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
         },
         {
-          "position": 167,
+          "position": 154,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -76,7 +76,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 123,
+          "position": 126,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -87,7 +87,14 @@
       "region": "France",
       "cc": "fr",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 159,
+          "name": "Dracula (with JENNIE)",
+          "artists": "Tame Impala",
+          "member": "JENNIE"
+        }
+      ]
     },
     "it": {
       "region": "Italy",
@@ -274,34 +281,40 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 31,
+          "position": 33,
           "name": "One Of The Girls",
           "artists": "The Weeknd, JENNIE & Lily Rose Depp",
           "member": "JENNIE"
         },
         {
-          "position": 108,
+          "position": 101,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
         },
         {
-          "position": 123,
+          "position": 131,
           "name": "SaWaDiKa",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 169,
+          "position": 175,
           "name": "Less than a Lover",
           "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 190,
+          "position": 185,
           "name": "like JENNIE",
           "artists": "JENNIE",
           "member": "JENNIE"
+        },
+        {
+          "position": 190,
+          "name": "number one girl",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
         }
       ]
     },
@@ -336,7 +349,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 153,
+          "position": 184,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
@@ -494,7 +507,7 @@
     }
   },
   "summary": {
-    "totalHits": 39,
+    "totalHits": 41,
     "regionsChecked": 40
   }
 }
