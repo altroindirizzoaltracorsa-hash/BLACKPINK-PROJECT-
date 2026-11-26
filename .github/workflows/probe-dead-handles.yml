@@ -33,6 +33,14 @@ on:
         description: 'Max distinct handles to test live (default 400 — the board has ~353)'
         required: false
         default: '400'
+      entry:
+        description: 'Also dump this one board entry in full (e.g. remspot3). Identification only — no API calls.'
+        required: false
+        default: ''
+      skip_live:
+        description: 'Set 1 to skip every Last.fm call and only read the board (free, instant)'
+        required: false
+        default: ''
 
 jobs:
   probe:
@@ -42,6 +50,8 @@ jobs:
         env:
           BASE:  ${{ secrets.VERCEL_URL }}
           LIMIT: ${{ github.event.inputs.limit }}
+          ENTRY: ${{ github.event.inputs.entry }}
+          SKIP_LIVE: ${{ github.event.inputs.skip_live }}
         run: |
           set -euo pipefail
           # -L --location-trusted: VERCEL_URL 308-redirects to the apex, and
@@ -140,6 +150,45 @@ jobs:
               for name, kinds in other_only[:40]:
                   print(f"    {name!r:<34} linked: {kinds}")
 
+          # ── One entry in full, for identification ──────────────────────────
+          # Asked for by name because `remspot3` carries 38 linked handles
+          # (remspot3 … remspot40), every one a 404 — 38 of the board's 83
+          # failures from a single row, which reads as test data rather than a
+          # fan. Deleting a board row is irreversible and is not a
+          # diagnostic's job, so this only DESCRIBES it: when it was last
+          # refreshed, whether a signed-in owner is attached, what it scores,
+          # and every handle on it. Costs no API calls.
+          want = (os.environ.get("ENTRY") or "").strip().lower()
+          if want:
+              hit = {k: v for k, v in users.items() if k.lower() == want
+                     or (v.get("username") or "").lower() == want}
+              print(f"\n── ENTRY {want!r} ──")
+              if not hit:
+                  print("  not on the board under that name")
+              for k, d in hit.items():
+                  sc = d.get("scores") or {}
+                  accts = d.get("linkedAccounts")
+                  print(f"  board key:      {k!r}")
+                  print(f"  username:       {(d.get('username'))!r}")
+                  print(f"  displayName:    {(d.get('displayName'))!r}")
+                  print(f"  updatedAt:      {d.get('updatedAt')}")
+                  print(f"  lastScrobbleAt: {d.get('lastScrobbleAt')}")
+                  # Presence only, never the value: an owner id identifies a
+                  # signed-in person and does not belong in a run log.
+                  print(f"  appUserId:      {'present (a signed-in owner)' if d.get('appUserId') else 'none'}")
+                  print(f"  daily_date:     {sc.get('daily_date')}   (today is {today_label})")
+                  print(f"  overall_all:    {sc.get('overall_all')}")
+                  print(f"  daily_all:      {sc.get('daily_all')}")
+                  print(f"  weekly_all:     {sc.get('weekly_all')}")
+                  print(f"  linkedAccounts: {0 if accts is None else len(accts)}"
+                        f"{' (key absent — would hit the line-658 fallback)' if accts is None else ''}")
+                  for a in (accts or []):
+                      print(f"    {a.get('type'):<13} {a.get('username')!r}")
+                  print(f"\n  A row whose every handle 404s cannot be refreshed and, since the")
+                  print(f"  isolation fix, still fails rather than publishing a zero. It costs")
+                  print(f"  about one Last.fm call per run. Harmless to leave; say so if it")
+                  print(f"  should be cleaned up.")
+
           # ── Which handles cannot be handles at all ─────────────────────────
           illegal = [(src, k, h, who) for src, k, h, who in rows if not LEGAL.match(h or "")]
           print(f"\n── HANDLES THAT ARE NOT LEGAL LAST.FM USERNAMES ──")
@@ -156,7 +205,12 @@ jobs:
               if key in seen: continue
               seen.add(key)
               todo.append((src, k, h, who))
-          capped = todo[:LIMIT]
+          capped = [] if (os.environ.get("SKIP_LIVE") or "").strip() == "1" else todo[:LIMIT]
+          if not capped:
+              print(f"\n── LIVE user.getInfo SKIPPED (skip_live=1) ──")
+              print(f"  {len(todo)} distinct handles not tested; the board-only findings")
+              print(f"  above are complete and cost nothing.")
+              raise SystemExit(0)
           print(f"\n── LIVE user.getInfo, {len(capped)} distinct handles"
                 f"{' (capped)' if len(todo) > LIMIT else ''} ──")
 
