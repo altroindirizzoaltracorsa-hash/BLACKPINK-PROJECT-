@@ -62,6 +62,14 @@ jobs:
                "${BASE}/api/leaderboard"
           python3 - <<'PY'
           import json, os, re, time, urllib.parse, urllib.request
+          from datetime import datetime, timezone
+
+          # THE DAY IS THE UTC DAY, as everywhere in this repo — index.html's
+          # italyDateLabel() is UTC-anchored despite its name. Needed here only
+          # to say whether an entry's daily_date is today's, which is what
+          # decides whether the community goal counts it at all.
+          _now = datetime.now(timezone.utc)
+          today_label = f"{_now.day:02d}/{_now.month:02d}"
 
           LFM_KEY = "666b8ef2f3cc360fbc20df275fba2981"
           BASES   = {"lastfm":  "https://ws.audioscrobbler.com/2.0/",
