@@ -1204,9 +1204,12 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
   // behaviour that existed before isolation, deliberately preserved for the
   // fans it was right for.
   //
-  // `remspot3` is why this is not theoretical: one board entry carrying 38
-  // linked handles (remspot3 … remspot40), every one a 404. Isolating all 38
-  // would otherwise "succeed" at a total of zero.
+  // It applies to a fan whose ONLY scrobblers are Last.fm/Libre.fm handles and
+  // all of them are gone — e.g. `kat` (two handles, both 404) or `izz`. The
+  // board's most extreme row, `remspot3` (38 handles, remspot3…remspot40, all
+  // 404), is NOT an instance: it also carries two Stats.fm accounts, so it
+  // takes the branch below instead. Checked rather than assumed — it was cited
+  // here as the example first, which was wrong.
   //
   // Gated on having NO other pollable source, because Stats.fm, ListenBrainz
   // and Musicat are fetched by the branches below and a fan whose Last.fm died

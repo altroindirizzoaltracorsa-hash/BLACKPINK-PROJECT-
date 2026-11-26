@@ -161,7 +161,11 @@ console.log('--- an HTTP 500 still fails the fan, so an outage cannot cut scores
 
 // ── 3. A fan whose every account is dead still fails ─────────────────────────
 // So the row keeps its last-known numbers rather than republishing a zero with
-// today's date on it. `remspot3` is the real instance: 38 handles, all 404.
+// today's date on it. Real instances on the board: `kat` (two handles, both
+// 404) and `izz`. NOT `remspot3` — its 38 dead handles made it look like the
+// obvious example, but it also carries two Stats.fm accounts and so takes the
+// other-source path in 3b. The handle names are kept here only because they
+// are the shape that exercises the guard.
 console.log('--- a fan with no working scrobbler left still fails');
 {
   reset();
