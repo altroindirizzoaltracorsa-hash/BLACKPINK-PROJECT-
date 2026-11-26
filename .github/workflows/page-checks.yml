@@ -467,6 +467,29 @@ jobs:
         if: always()
         run: node .github/scripts/test_account_dedup.mjs
 
+      # A dead linked account used to abort the whole fan, because the
+      # per-account loop in refreshUser had no try/catch. Measured over the
+      # board 2026-11-22: 83 of 353 handles answer 404/403, across 44 of 212
+      # entries — so a FIFTH of the board contributed zero to the daily
+      # community goal every day, which is why it had not been reached since
+      # 2026-10-30. blackpinkshazam had 146 BLACKPINK plays that day and scored
+      # zero because a second, Libre.fm handle 403s.
+      #
+      # The test guards the LIMITS as hard as the fix, because getting those
+      # wrong is worse than the bug: a 500 must still fail the fan (Last.fm
+      # answered 500 twelve times running on 2026-11-26 — isolating that would
+      # cut scores during someone else's outage), a fan with nothing readable
+      # left must still fail so their row keeps last-known numbers rather than
+      # publishing a fresh zero, and a cached DAILY count must never be carried
+      # across the day boundary into a daily goal.
+      #
+      # Mutation-tested five ways, all caught: no isolation at all, isolate
+      # every error, drop the all-dead guard, carry the daily count regardless
+      # of window, and zero the all-time totals instead of carrying them.
+      - name: One dead scrobbler does not zero a fan's working ones
+        if: always()
+        run: node .github/scripts/test_dead_account_isolation.mjs
+
       # A scrobble's artist is not always just the member. One fan's Power
       # Trip plays carried BOTH 'Jennie' and 'JENNIE, Grand Theft Auto VI',
       # 20 each. Three of the four counting paths compare with `includes` and

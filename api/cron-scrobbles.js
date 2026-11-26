@@ -350,6 +350,20 @@ let lfmMissingTracks = new Set();
 // like lfmCalls and lfmMissingTracks, or it reports every duplicate this
 // container has ever seen.
 let duplicateAccounts = [];
+// Linked Last.fm/Libre.fm accounts that answered 404/403 this run — the account
+// is not there. Isolated rather than fatal (see the catch in refreshUser), and
+// REPORTED for the same reason duplicates are: an account quietly contributing
+// nothing is indistinguishable from a fan who stopped listening.
+//
+// Measured 2026-11-22 over the whole board: 83 of 353 handles fail, spread
+// across 44 of 212 entries. Ten of the 83 cannot be usernames at all (a pasted
+// profile URL, a pasted page title, two email addresses, a Spotify user id,
+// placeholder text). The rest are well-formed, which does NOT establish the
+// account was deleted — 'Kat', 'CAMILA', 'Faith', 'JOSEPHINE' are first names
+// typed into the Last.fm field and were never accounts. A string cannot tell
+// "deleted" from "never entered correctly", so this list is named for what is
+// observed (the fetch failed) and not for a cause it cannot know.
+let deadAccounts = [];
 
 // WHY THERE IS A RATE GATE HERE AT ALL — the scrobble outage of early November
 // 2026, reported as "no están contando mis reproducciones desde hace días".
@@ -748,6 +762,11 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
   // Keyed on type as well as handle: the same name on Last.fm and Libre.fm is
   // two different accounts.
   const seenAccounts = new Set();
+  // How many Last.fm/Libre.fm accounts this fan has, and how many of them were
+  // not there this run. Compared after the loop: a fan whose EVERY scrobbler
+  // failed still fails the whole refresh, so their row keeps its last-known
+  // numbers instead of being published as a fresh zero. See the check below.
+  let lfmAccounts = 0, lfmAccountsDead = 0, lastDeadError = null;
   for (const acct of linkedAccounts) {
     const acctKey = `${acct.type}:${normHandle(acct.username).toLowerCase()}`;
     if (!normHandle(acct.username) || seenAccounts.has(acctKey)) {
@@ -785,6 +804,8 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
       // what bounds the risk.
       const ukey   = u.toLowerCase();
       const cached = lfmCache ? lfmCache[ukey] : null;
+      lfmAccounts++;
+      try {
       const pc     = await fetchUserPlaycount(u, fetchFn);
       // A cache entry has to cover every track counted TODAY. Without this a
       // release added to TRACKS after the entry was written would be served
@@ -1029,6 +1050,58 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
       // lastScrobbleAt only ever climbs, so an idle account needs no update:
       // entry.lastScrobbleAt already carries its newest play.
       if (newestBp && (!lastScrobbleAt || newestBp > lastScrobbleAt)) lastScrobbleAt = newestBp;
+      } catch (e) {
+        // ── A DEAD ACCOUNT MUST NOT TAKE THE FAN'S WORKING ONES WITH IT ─────
+        //
+        // There was no try/catch here, so ONE unreachable account aborted the
+        // whole of refreshUser and the fan published nothing. Measured over the
+        // board on 2026-11-22: 44 of 212 entries carry at least one failing
+        // handle, so a FIFTH of the board contributed zero to the daily
+        // community goal every single day. The clearest case: blackpinkshazam
+        // has a working Last.fm with 146 BLACKPINK plays that day and a
+        // Libre.fm handle that answers 403 — and scored zero because of the
+        // second one. That is also why the goal had not been reached since
+        // 2026-10-30 while a live recount put real activity at roughly twice
+        // the figure the bar was showing.
+        //
+        // ONLY 404/403 IS ISOLATED, and that limit is the whole safety of it.
+        // A 404/403 is a fact about ONE account: it is not there. A 500, an
+        // error 29 or a socket error means WE DO NOT KNOW — and on 2026-11-26
+        // Last.fm answered HTTP 500 for twelve consecutive accounts, which was
+        // a bad morning upstream and nothing to do with those fans. Isolating
+        // that case would publish a total with an account missing merely
+        // because it was unreachable, i.e. silently cut a fan's score during
+        // someone else's outage. So anything that is not 404/403 still throws
+        // and the fan keeps their last-known row, exactly as before.
+        if (!/HTTP (404|403)/.test(String(e?.message || ''))) throw e;
+        lfmAccountsDead++;
+        lastDeadError = e;
+        deadAccounts.push(`${entry.username}: ${acct.type}/${u}`);
+        // Carry this account's ALL-TIME totals forward from its own cache.
+        // They are cumulative and only ever climb, so the last figure read is
+        // the best available, and writing 0 would visibly shorten the fan's
+        // badges for a reason that is not about them. With no cache there is
+        // nothing to carry — this account has never been read successfully, so
+        // it has never contributed, and 0 is the honest figure rather than a
+        // loss.
+        if (cached) {
+          artistPlays += cached.ap || 0;
+          for (const t of TRACKS) totalPlays[t.id] += (cached.t && cached.t[t.id]) || 0;
+          // THE DAY AND WEEK COUNTS ARE CARRIED ONLY WHILE THE WINDOW IS STILL
+          // THE SAME ONE, and this is the half that keeps the community goal
+          // honest. It is a DAILY goal, so a count cached under yesterday's day
+          // key IS yesterday's plays: re-filing it under today would put stale
+          // listening into today's bar, which is the one thing the goal must
+          // never do. Outside its window it contributes 0. Same rule for the
+          // week, which can roll over without any new scrobble arriving.
+          if (cached.dk === dayWindowKey) {
+            for (const t of TRACKS) todayCounts[t.id] += (cached.d && cached.d[t.id]) || 0;
+          }
+          if (cached.wk === weekWindowKey) {
+            for (const t of TRACKS) weekCounts[t.id] += (cached.w && cached.w[t.id]) || 0;
+          }
+        }
+      }
     } else if (acct.type === 'listenbrainz') {
       const u = acct.username;
       try {
@@ -1118,6 +1191,37 @@ async function refreshUser(entry, sb, linkedMap, nameInfo, lfmCache = null, host
     // Musicat is NOT scraped here — see the providerScores block below. Its
     // per-fan cost is ~41 requests (5 artists + 18 all-time + 18 day), which is
     // the burst that genuinely does get throttled; Stats.fm's is one.
+  }
+
+  // ── A FAN WITH NOTHING LEFT TO READ STILL FAILS ───────────────────────────
+  //
+  // The catch above isolates one dead account so the fan's OTHER accounts
+  // still count. When there is no other account, there is nothing to isolate
+  // to: every figure would be a carried-forward cache value or a zero, and
+  // publishing that as a fresh refresh would stamp the row with today's date
+  // and feed it to a DAILY goal. So this case throws, the caller catches it as
+  // before, and the row keeps its last-known numbers — which is exactly the
+  // behaviour that existed before isolation, deliberately preserved for the
+  // fans it was right for.
+  //
+  // `remspot3` is why this is not theoretical: one board entry carrying 38
+  // linked handles (remspot3 … remspot40), every one a 404. Isolating all 38
+  // would otherwise "succeed" at a total of zero.
+  //
+  // Gated on having NO other pollable source, because Stats.fm, ListenBrainz
+  // and Musicat are fetched by the branches below and a fan whose Last.fm died
+  // but whose Stats.fm works must still be refreshed from Stats.fm.
+  // THE ORIGINAL ERROR IS RETHROWN, NOT A SYNTHETIC ONE, and that is load
+  // bearing rather than tidiness. The caller's `markMiss` only counts a miss
+  // whose message matches /HTTP (404|403)/, which is what retires a name after
+  // DEAD_AFTER consecutive misses. A message of our own wording — "all 1
+  // account(s) unavailable (404/403)" — does not match that regex, so the skip
+  // list silently stopped accumulating and a dead name went back to being
+  // retried every run forever. test_scrobble_rate caught it; it is only
+  // written down here because nothing about the synthetic message looked wrong.
+  if (lfmAccounts > 0 && lfmAccountsDead === lfmAccounts && lastDeadError
+      && !linkedAccounts.some(a => a.username && a.type !== 'lastfm' && a.type !== 'librefm')) {
+    throw lastDeadError;
   }
 
   // Add this profile's extension (blinksunited-direct) plays on top.
@@ -1713,6 +1817,7 @@ export default async function handler(req, res) {
   lfmNextSlot = 0;
   lfmMissingTracks = new Set();
   duplicateAccounts = [];
+  deadAccounts = [];
   let   stoppedAt     = null;   // first user not reached, if we ran out of time
 
   const ok        = [];
@@ -2283,6 +2388,12 @@ export default async function handler(req, res) {
     rateLimited,
     // Same account linked twice on one row (e.g. 'name' and '@name').
     duplicateAccounts,
+    // Linked Last.fm/Libre.fm accounts that answered 404/403 — not there. The
+    // fan's OTHER accounts were still counted (that is the point), so this is
+    // a per-account notice and not a failed user. A name that stays here for
+    // days is a handle worth correcting on that profile; the fan's score is
+    // meanwhile no longer held hostage to it.
+    deadAccounts,
     // Titles Last.fm answered "Track not found" for. Expected and transient on
     // a release day; a title still listed here a day later is OUR spelling
     // being wrong, and its all-time figure is reading 0 for everybody.

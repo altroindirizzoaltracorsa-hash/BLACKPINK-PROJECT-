@@ -100,6 +100,25 @@ jobs:
           # not errored: it is a tidy-up on somebody's profile, not a failure,
           # and a red run nobody can act on is a red run nobody reads.
           jq -r '.duplicateAccounts[]? | "  DUPLICATE ACCOUNT (counted once): \(.)"' response.json || true
+          # ── LINKED ACCOUNTS LAST.FM DOES NOT HAVE ──────────────────────────
+          #
+          # A per-account notice, NOT a failed user, and that distinction is
+          # the fix it reports. These used to abort the whole fan: 83 of 353
+          # handles on the board answer 404/403, spread over 44 of 212 entries,
+          # so a fifth of the board scored zero on the daily goal every day.
+          # The fan's other accounts are now counted and only the dead handle
+          # contributes nothing.
+          #
+          # Printed every run because an account quietly contributing nothing
+          # is indistinguishable from a fan who stopped listening. A handle
+          # still here after a few days is worth correcting on that profile —
+          # several are a pasted profile URL, a pasted page title, an email
+          # address or a first name typed into the Last.fm field.
+          jq -r '.deadAccounts[]? | "  NOT ON LAST.FM (fan still counted from their other accounts): \(.)"' response.json || true
+          deadn=$(jq -r '.deadAccounts // [] | length' response.json)
+          if [ "$deadn" -gt 0 ]; then
+            echo "::notice title=Linked accounts that are not there::$deadn linked Last.fm/Libre.fm account(s) answered 404/403. Their owners were still refreshed from their remaining accounts. See the NOT ON LAST.FM lines above."
+          fi
           miss=$(jq -r '.missingTracks // [] | length' response.json)
           if [ "$miss" -gt 0 ]; then
             echo "::warning title=Titles with no Last.fm page::$miss title(s) answered \"Track not found\" — normal within hours of a release, and OUR spelling being wrong if it persists past a day. See the NO LAST.FM PAGE lines above."
