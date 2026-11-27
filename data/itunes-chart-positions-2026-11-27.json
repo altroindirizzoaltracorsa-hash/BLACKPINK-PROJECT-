@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-27T07:29:52.428Z",
+  "generatedAt": "2026-11-27T20:52:38.434Z",
   "date": "2026-11-27",
   "regions": {
     "us": {
@@ -18,20 +18,7 @@
       "region": "Australia",
       "cc": "au",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 108,
-          "name": "Dracula (with JENNIE)",
-          "artists": "Tame Impala",
-          "member": "JENNIE"
-        },
-        {
-          "position": 196,
-          "name": "APT.",
-          "artists": "ROSÉ & Bruno Mars",
-          "member": "ROSÉ"
-        }
-      ]
+      "hits": []
     },
     "ca": {
       "region": "Canada",
@@ -43,7 +30,14 @@
       "region": "Germany",
       "cc": "de",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 144,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        }
+      ]
     },
     "fr": {
       "region": "France",
@@ -51,7 +45,7 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 19,
+          "position": 40,
           "name": "Dracula (with JENNIE)",
           "artists": "Tame Impala",
           "member": "JENNIE"
@@ -86,7 +80,14 @@
       "region": "Taiwan",
       "cc": "tw",
       "totalEntries": 99,
-      "hits": []
+      "hits": [
+        {
+          "position": 80,
+          "name": "ADDICTED",
+          "artists": "JISOO",
+          "member": "JISOO"
+        }
+      ]
     },
     "hk": {
       "region": "Hong Kong",
@@ -94,34 +95,22 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 23,
-          "name": "Leave With Me",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 109,
-          "name": "CLICK",
-          "artists": "JISOO",
-          "member": "JISOO"
-        },
-        {
-          "position": 113,
-          "name": "Someone to Hold",
-          "artists": "JENNIE",
-          "member": "JENNIE"
-        },
-        {
-          "position": 141,
+          "position": 84,
           "name": "Power Trip",
           "artists": "JENNIE",
           "member": "JENNIE"
         },
         {
-          "position": 153,
-          "name": "Sun Showers (From \"The Angry Birds Movie 3”)",
-          "artists": "JISOO",
-          "member": "JISOO"
+          "position": 138,
+          "name": "Leave With Me",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 150,
+          "name": "number one girl",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
         }
       ]
     },
@@ -129,20 +118,50 @@
       "region": "Singapore",
       "cc": "sg",
       "totalEntries": 99,
-      "hits": []
+      "hits": [
+        {
+          "position": 14,
+          "name": "ADDICTED",
+          "artists": "JISOO",
+          "member": "JISOO"
+        },
+        {
+          "position": 25,
+          "name": "toxic till the end",
+          "artists": "ROSÉ",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 70,
+          "name": "Leave With Me",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 85,
+          "name": "SaWaDiKa",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 91,
+          "name": "APT.",
+          "artists": "ROSÉ & Bruno Mars",
+          "member": "ROSÉ"
+        },
+        {
+          "position": 95,
+          "name": "Kill This Love",
+          "artists": "BLACKPINK",
+          "member": "BLACKPINK"
+        }
+      ]
     },
     "ph": {
       "region": "Philippines",
       "cc": "ph",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 44,
-          "name": "like JENNIE (Extended Remix)",
-          "artists": "JENNIE",
-          "member": "JENNIE"
-        }
-      ]
+      "hits": []
     },
     "th": {
       "region": "Thailand",
@@ -150,45 +169,51 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 24,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 26,
-          "name": "Dream",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 27,
+          "position": 16,
           "name": "Tarantino",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 35,
+          "position": 18,
+          "name": "Dream",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 22,
+          "name": "SaWaDiKa",
+          "artists": "LISA",
+          "member": "LISA"
+        },
+        {
+          "position": 25,
           "name": "Sweat",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 77,
-          "name": "ADDICTED",
-          "artists": "JISOO",
-          "member": "JISOO"
-        },
-        {
-          "position": 80,
+          "position": 36,
           "name": "Moonlit Floor",
           "artists": "LISA",
           "member": "LISA"
         },
         {
-          "position": 108,
+          "position": 119,
+          "name": "like JENNIE",
+          "artists": "JENNIE",
+          "member": "JENNIE"
+        },
+        {
+          "position": 121,
           "name": "One Of The Girls",
           "artists": "The Weeknd, JENNIE & 莉莉露絲·特普",
+          "member": "JENNIE"
+        },
+        {
+          "position": 151,
+          "name": "Love Hangover",
+          "artists": "JENNIE & Dominic Fike",
           "member": "JENNIE"
         }
       ]
@@ -197,7 +222,14 @@
       "region": "Indonesia",
       "cc": "id",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 190,
+          "name": "One Of The Girls",
+          "artists": "The Weeknd, JENNIE & 莉莉露絲·特普",
+          "member": "JENNIE"
+        }
+      ]
     },
     "my": {
       "region": "Malaysia",
@@ -205,22 +237,10 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 7,
+          "position": 24,
           "name": "ADDICTED",
           "artists": "JISOO",
           "member": "JISOO"
-        },
-        {
-          "position": 97,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
-        },
-        {
-          "position": 169,
-          "name": "number one girl",
-          "artists": "ROSÉ",
-          "member": "ROSÉ"
         }
       ]
     },
@@ -230,28 +250,10 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 54,
-          "name": "BLACK (feat. JENNIE)",
-          "artists": "G-DRAGON",
-          "member": "JENNIE"
-        },
-        {
-          "position": 57,
-          "name": "Without You (feat. ROSÉ)",
-          "artists": "G-DRAGON",
+          "position": 128,
+          "name": "number one girl",
+          "artists": "ROSÉ",
           "member": "ROSÉ"
-        },
-        {
-          "position": 118,
-          "name": "Kill This Love",
-          "artists": "BLACKPINK",
-          "member": "BLACKPINK"
-        },
-        {
-          "position": 188,
-          "name": "Someone to Hold (from the Netflix Film \"Steps\")",
-          "artists": "JENNIE",
-          "member": "JENNIE"
         }
       ]
     },
@@ -259,7 +261,14 @@
       "region": "India",
       "cc": "in",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 174,
+          "name": "Dracula (with JENNIE)",
+          "artists": "Tame Impala",
+          "member": "JENNIE"
+        }
+      ]
     },
     "nz": {
       "region": "New Zealand",
@@ -267,16 +276,10 @@
       "totalEntries": 199,
       "hits": [
         {
-          "position": 24,
+          "position": 125,
           "name": "APT.",
           "artists": "ROSÉ & Bruno Mars",
           "member": "ROSÉ"
-        },
-        {
-          "position": 151,
-          "name": "SaWaDiKa",
-          "artists": "LISA",
-          "member": "LISA"
         }
       ]
     },
@@ -290,27 +293,13 @@
       "region": "Sweden",
       "cc": "se",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 136,
-          "name": "Dracula (with JENNIE)",
-          "artists": "Tame Impala",
-          "member": "JENNIE"
-        }
-      ]
+      "hits": []
     },
     "no": {
       "region": "Norway",
       "cc": "no",
       "totalEntries": 199,
-      "hits": [
-        {
-          "position": 53,
-          "name": "Dream",
-          "artists": "LISA",
-          "member": "LISA"
-        }
-      ]
+      "hits": []
     },
     "pl": {
       "region": "Poland",
@@ -322,7 +311,14 @@
       "region": "Turkey",
       "cc": "tr",
       "totalEntries": 199,
-      "hits": []
+      "hits": [
+        {
+          "position": 48,
+          "name": "Dracula (with JENNIE)",
+          "artists": "Tame Impala",
+          "member": "JENNIE"
+        }
+      ]
     },
     "ar": {
       "region": "Argentina",
@@ -352,14 +348,7 @@
       "region": "Saudi Arabia",
       "cc": "sa",
       "totalEntries": 99,
-      "hits": [
-        {
-          "position": 84,
-          "name": "Tarantino",
-          "artists": "LISA",
-          "member": "LISA"
-        }
-      ]
+      "hits": []
     },
     "za": {
       "region": "South Africa",
@@ -411,7 +400,7 @@
     }
   },
   "summary": {
-    "totalHits": 28,
+    "totalHits": 26,
     "regionsChecked": 38
   }
 }
