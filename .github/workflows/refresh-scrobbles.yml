@@ -79,7 +79,22 @@ jobs:
           jq -r '.merged[]? | "  MERGED (dropped stale duplicate): \(.)"' response.json || true
           # Printed every run on purpose. A skip list that nobody ever reads is
           # how a real blink who renamed their Last.fm quietly stops counting.
-          jq -r '.dead[]? | "  SKIPPED (Last.fm has no such account): \(.)"' response.json || true
+          # ── ROWS SKIPPED THIS RUN ──────────────────────────────────────────
+          #
+          # THIS USED TO READ "SKIPPED (Last.fm has no such account)" AND THAT
+          # WAS A FALSE CLAIM, reported by the owner of `blackpinkshazam` whose
+          # Last.fm account plainly exists. The label was wrong three ways: the
+          # value in `.dead` is the BOARD ROW, not a Last.fm handle; the failure
+          # that retired it was on Libre.fm, a different service, on a different
+          # handle on the same row; and it was a 403 (refused), not a 404 (no
+          # such user). The code never established non-existence — it only knew
+          # that fetches for the row had failed — so the label asserted a cause
+          # it had not checked. Only 404s retire a row now.
+          #
+          # Which HANDLE failed is in `.deadAccounts` below, which names the
+          # account rather than the person. Keep these two distinct: one is a
+          # row we did not attempt, the other is an account that answered.
+          jq -r '.dead[]? | "  ROW SKIPPED THIS RUN (repeated 404s on it; retried daily — NOT a judgement about any one account): \(.)"' response.json || true
           # ── TITLES LAST.FM HAS NO PAGE FOR ────────────────────────────────
           #
           # A WARNING, NOT A FAILURE, and the distinction is the whole point.
@@ -114,10 +129,16 @@ jobs:
           # still here after a few days is worth correcting on that profile —
           # several are a pasted profile URL, a pasted page title, an email
           # address or a first name typed into the Last.fm field.
-          jq -r '.deadAccounts[]? | "  NOT ON LAST.FM (fan still counted from their other accounts): \(.)"' response.json || true
+          # Named for what was OBSERVED — the fetch was refused or found
+          # nothing — and not for a cause. "NOT ON LAST.FM" was the previous
+          # wording and it was wrong twice over: the entry carries its own
+          # service (a librefm/ handle is not Last.fm), and a 403 is a refusal
+          # rather than an absence. Each line already says type/handle, so it
+          # identifies the account precisely without guessing why.
+          jq -r '.deadAccounts[]? | "  ACCOUNT NOT READ (404/403; its owner was still counted from their other accounts): \(.)"' response.json || true
           deadn=$(jq -r '.deadAccounts // [] | length' response.json)
           if [ "$deadn" -gt 0 ]; then
-            echo "::notice title=Linked accounts that are not there::$deadn linked Last.fm/Libre.fm account(s) answered 404/403. Their owners were still refreshed from their remaining accounts. See the NOT ON LAST.FM lines above."
+            echo "::notice title=Linked accounts that could not be read::$deadn linked account(s) answered 404 or 403 and contributed nothing this run. Their owners WERE refreshed from their remaining accounts — this is a per-account notice, not a failed fan. A 403 means refused (private profile, or the service declining), not that the account is gone. See the ACCOUNT NOT READ lines above."
           fi
           miss=$(jq -r '.missingTracks // [] | length' response.json)
           if [ "$miss" -gt 0 ]; then

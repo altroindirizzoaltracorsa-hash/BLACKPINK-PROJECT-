@@ -535,13 +535,13 @@ console.log('--- an account Last.fm does not have stops being asked for');
         `${(r4.body.refreshed || []).length} refreshed`);
 
   // ── It lets go. Age the mark past the daily probe and let the account answer.
-  const dead = STORE.get('bu_lfm_dead_v1');
+  const dead = STORE.get('bu_lfm_dead_v2');
   for (const k of Object.keys(dead || {})) { dead[k].probed = 0; dead[k].last = 0; }
-  STORE.set('bu_lfm_dead_v1', dead);
+  STORE.set('bu_lfm_dead_v2', dead);
   mode = 'ok';
   const r5 = await run();
   check(r5.ghostCalls > 0, 'a day later it is tried once more', `${r5.ghostCalls} calls`);
-  check(!STORE.get('bu_lfm_dead_v1')?.ghost,
+  check(!STORE.get('bu_lfm_dead_v2')?.ghost,
         'and an account that comes back is un-skipped for good');
 
   globalThis.fetch = base;
@@ -570,9 +570,57 @@ console.log('--- a Last.fm outage never retires an account');
     const res = { setHeader() {}, status() { return this; }, json() { return this; } };
     await mod.default({ headers: {} }, res);
   }
-  check(!STORE.get('bu_lfm_dead_v1')?.patient,
+  check(!STORE.get('bu_lfm_dead_v2')?.patient,
         'five server errors in a row leave the account alone',
-        JSON.stringify(STORE.get('bu_lfm_dead_v1') || {}));
+        JSON.stringify(STORE.get('bu_lfm_dead_v2') || {}));
+  globalThis.fetch = base;
+}
+
+// ── 9c. A 403 RETIRES NOBODY EITHER ──────────────────────────────────────────
+// REPORTED, not hypothetical. The owner of `blackpinkshazam` found their row
+// skipped with "Last.fm has no such account" while
+// https://www.last.fm/user/blackpinkshazam plainly exists. markMiss counted
+// /HTTP (404|403)/, so a 403 retired the row — and the 403 was not even from
+// Last.fm: it came from a Libre.fm handle (`librefm/souralis`) on the same row,
+// which under the pre-isolation code aborted the whole fan.
+//
+// 404 is "no such user", a fact about the account. 403 is REFUSED, a fact
+// about the request — a private profile, an edge block, or a service declining
+// wholesale. Both Libre.fm handles on the board answer 403, which fits
+// libre.fm refusing far better than both accounts having been deleted.
+//
+// So: isolated by refreshUser (it cannot abort the fan) but NEVER grounds for
+// retirement, because a refusal is not an absence and a retired row stops
+// being fetched at all.
+console.log('--- a 403 is a refusal, not an absence: it retires nobody');
+{
+  STORE.clear();
+  STORE.set('bu_leaderboard_v1', { users: { refused: entry('refused') }, banned: [] });
+  const base = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const q = new URL(url).searchParams;
+    if ((q.get('user') || q.get('username')) === 'refused') {
+      calls.push({ method: q.get('method'), user: 'refused', at: Date.now() });
+      return { ok: false, status: 403, json: async () => ({}) };
+    }
+    return base(url);
+  };
+  let lastBody = null;
+  for (let i = 0; i < 5; i++) {
+    reset();
+    const res = { setHeader() {}, status() { return this; }, json(b) { lastBody = b; return this; } };
+    await mod.default({ headers: {} }, res);
+  }
+  check(!STORE.get('bu_lfm_dead_v2')?.refused,
+        'five 403s in a row leave the row alone',
+        JSON.stringify(STORE.get('bu_lfm_dead_v2') || {}));
+  // And it is still being ASKED — a retired row is never fetched again, which
+  // is what made the reported case invisible to its owner.
+  check(calls.filter(c => c.user === 'refused').length > 0,
+        'and the row is still being fetched on the fifth run, not skipped',
+        `${calls.filter(c => c.user === 'refused').length} calls`);
+  check(!(lastBody?.dead || []).some(u => String(u).toLowerCase() === 'refused'),
+        'and it is not reported as a skipped row');
   globalThis.fetch = base;
 }
 

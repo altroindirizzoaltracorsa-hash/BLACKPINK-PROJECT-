@@ -41,7 +41,16 @@ const CRON_LOCK_TTL_S = 600;
 // skipped name (the probe), so an account that comes back rejoins on its own —
 // otherwise this is a trap: the one thing we would never find out is that we
 // were wrong. A successful refresh clears the mark outright.
-const LFM_DEAD_KEY   = 'bu_lfm_dead_v1';
+// v2, and the version bump is the point: every retirement in v1 was recorded
+// under a rule now known to be wrong (403 counted as "no such account") and
+// under the pre-isolation behaviour where ONE dead linked account threw the
+// whole fan. `blackpinkshazam` was retired by both at once — a Libre.fm 403 on
+// a second handle, which aborted the row, three times. Those hits are not
+// evidence of anything, and leaving them would keep real listeners skipped for
+// up to 24h each while the fix sat deployed and ineffective. Starting the key
+// fresh costs one retry per affected row (~44 rows, ~1 call each) and only
+// genuine repeated 404s can accumulate again.
+const LFM_DEAD_KEY   = 'bu_lfm_dead_v2';
 const DEAD_AFTER     = 3;                  // consecutive misses before skipping
 const DEAD_PROBE_MS  = 24 * 60 * 60 * 1000; // how often a skipped name is retried
 const GOAL_HISTORY_KEY = 'bu_goal_history_v1';
@@ -1752,10 +1761,33 @@ export default async function handler(req, res) {
     if (deadList[k]) deadList[k].probed = deadNow;
   };
   const markMiss = (name, msg) => {
-    // Only "Last.fm does not have this account" counts. A timeout, a 500 or a
-    // rate-limit is Last.fm having a bad minute and must never retire a real
-    // blink — which is the whole way a skip list turns into silent data loss.
-    if (!/HTTP (404|403)/.test(String(msg || ''))) return;
+    // ONLY A 404 RETIRES A ROW. 403 USED TO, AND IT WAS WRONG.
+    //
+    // Reported by the owner of `blackpinkshazam`, whose row was being skipped
+    // with "Last.fm has no such account" while https://www.last.fm/user/
+    // blackpinkshazam plainly exists. Three separate errors stacked up and
+    // this is the one that did the damage:
+    //
+    //   · the row was retired on an HTTP 403, not a 404
+    //   · the 403 came from LIBRE.FM, a different service, on a different
+    //     handle on the same row (`librefm/souralis`)
+    //   · their Last.fm account was never fetched at all once retired,
+    //     because isDead short-circuits the whole row before the loop
+    //
+    // 404 means "no such user" — a fact about the account. 403 means
+    // REFUSED, which is a fact about the request: a private profile, an edge
+    // block, or a service declining wholesale. Both Libre.fm handles on the
+    // board answer 403, which is far more consistent with libre.fm refusing
+    // than with both accounts having been deleted. Retiring a real listener
+    // on that evidence is exactly the "skip list turns into silent data loss"
+    // failure this guard was written to prevent, arriving through the one
+    // status code the guard let through.
+    //
+    // A 403 is still ISOLATED by the catch in refreshUser, so it cannot abort
+    // the fan — it simply contributes nothing this run and is retried next
+    // run. That is the honest handling of "we were refused": skip the call,
+    // never the person, and never claim the account is gone.
+    if (!/HTTP 404/.test(String(msg || ''))) return;
     const k = String(name || '').toLowerCase();
     const d = deadList[k] || { hits: 0, since: deadNow };
     d.hits = (d.hits || 0) + 1;
